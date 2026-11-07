@@ -14,6 +14,9 @@ import {
 // (client bundle purity gate).
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { parseLocaleBootstrap, type LocaleBootstrap, type LocaleBridge } from './bootstrap.ts'
+import {
+  documentLocaleParameters, formatLocaleTemplate, resolveLocaleParameters, type LocaleParameters,
+} from '../parameters.ts'
 // Type-only: pulls the SlotRegistry service merge (ctx.slots).
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import {
@@ -164,6 +167,7 @@ function syncDocumentLanguage(snapshot: LocaleSnapshot): void {
  * `ctx.slots.installLocale`.
  */
 export class LocaleRuntime {
+  private readonly parameters: LocaleParameters
   private dicts = new Map<string, Map<string, LocaleDict>>()
   private bound = new Map<string, Translate>()
   private catalog = new Map<string, LocaleDefinition>()
@@ -183,8 +187,15 @@ export class LocaleRuntime {
    * @param host - durable preference scope owned by the providing plugin;
    * absent compositions (standalone dictionary registries) stay process-local.
    * @param bootstrap - native initialization; absent in ordinary browsers.
+   * @param parameters - Named defaults; omission reads the current document's initial presentation.
    */
-  constructor(ctx: ClientContext, host?: ConfigForm<LocaleSettings>, private readonly bootstrap?: LocaleBootstrap) {
+  constructor(
+    ctx: ClientContext,
+    host?: ConfigForm<LocaleSettings>,
+    private readonly bootstrap?: LocaleBootstrap,
+    parameters: Readonly<Record<string, string>> = documentLocaleParameters(),
+  ) {
+    this.parameters = resolveLocaleParameters(parameters)
     this.ctx = ctx
     this.host = host
     for (const locale of BUILT_IN_LOCALES) this.catalog.set(localeKey(locale.id), locale)
@@ -472,9 +483,7 @@ export class LocaleRuntime {
     const template = this.lookup(ns, key, chain)
       ?? (ns !== COMMON_NS ? this.lookup(COMMON_NS, key, chain) : undefined)
       ?? key
-    if (!params) return template
-    return template.replace(/\{(\w+)\}/g, (match, name: string) =>
-      name in params ? String(params[name]) : match)
+    return formatLocaleTemplate(template, this.parameters, params)
   }
 
   private lookup(ns: string, key: string, chain: readonly LocaleId[]): string | undefined {
@@ -579,7 +588,7 @@ export async function apply(ctx: ClientContext): Promise<void> {
     bootstrap = parseLocaleBootstrap(value)
   }
   const host = ctx.configForms.get<LocaleSettings>(LOCALE_SETTINGS_NAMESPACE)
-  const locale = new LocaleRuntime(ctx, host, bootstrap)
+  const locale = new LocaleRuntime(ctx, host, bootstrap, documentLocaleParameters())
   for (const [id, label] of [['ja', '日本語'], ['es', 'Español'], ['fr', 'Français'], ['de', 'Deutsch'], ['ru', 'Русский'], ['pt', 'Português']] as const) {
     ctx.effect(() => locale.addLanguage({ id, label, fallback: 'en' }), `locale: ${id} language`)
   }

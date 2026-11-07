@@ -7,7 +7,7 @@ import { apply as applyMenus, inject as injectMenus } from '@deepseek-ai/dsh-cli
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, screen } from '@testing-library/react'
-import { SlotTestRuntime, stubConfigForm, usePinnedBrowserLanguages } from '@deepseek-ai/dsh-client-test-runtime'
+import { makeTranslate, SlotTestRuntime, stubConfigForm, usePinnedBrowserLanguages } from '@deepseek-ai/dsh-client-test-runtime'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import type { SessionLiveEventEntry, SessionReference } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId, SessionSeq } from '@deepseek-ai/dsh-session/types'
@@ -31,6 +31,7 @@ usePinnedBrowserLanguages('en')
 
 const SID = 'session-1' as SessionId
 const NOTICE = 'Request quota exhausted.'
+const backToHarness = makeTranslate(en)('backToHarness', { productName: 'Mindeck', productTitle: 'Mindeck' })
 const disposers: Array<() => Promise<void>> = []
 const references: SessionReference[] = []
 
@@ -108,7 +109,7 @@ async function bench() {
     openSession: () => {},
   } as never)
   runtime.remote.provideNamespaces({ session: { openWorkspacePath: async () => ({ ok: true, value: { opened: true } }) } })
-  const locale = new LocaleRuntime(runtime.ctx)
+  const locale = new LocaleRuntime(runtime.ctx, undefined, undefined, { productName: 'Mindeck', productTitle: 'Mindeck' })
   runtime.ctx.provide('locale', locale)
   runtime.ctx.provide('shortcuts', { catalog: createSnapshotStore([]) })
   await runtime.mount({ apply: applyMenus, inject: injectMenus })
@@ -164,6 +165,7 @@ async function bench() {
   }, AccountSection))
   runtime.ctx.slots.inject('shell.overlay', () => runtime.ctx.slots.register({
     name: 'shell.overlay', id: 'desktop-onboarding', locale: 'settings.account',
+    children: { 'desktop.onboarding.illustration': { kind: 'single', scope: 'root' } },
     inject: (): DesktopOnboardingInjected => ({
       hooks: { onboarding, account },
       setVisible: () => {},
@@ -220,7 +222,7 @@ describe('shared Platform page ownership', () => {
     expect(b.platform.close).not.toHaveBeenCalled()
 
     // Returning closes the page, and the still-live notice reveals itself.
-    await act(async () => { screen.getByRole('button', { name: en.backToHarness }).click() })
+    await act(async () => { screen.getByRole('button', { name: backToHarness }).click() })
     expect(b.platform.close).toHaveBeenCalledOnce()
     expect(screen.getByRole('dialog', { name: en.quotaTitle })).toBeTruthy()
     expect(b.pages.getSnapshot()).toBeNull()
@@ -239,14 +241,14 @@ describe('shared Platform page ownership', () => {
     act(() => { usage.focus() })
     expect(document.activeElement).toBe(usage)
     await act(async () => { usage.click() })
-    expect(screen.getByRole('button', { name: en.backToHarness })).toBeTruthy()
+    expect(screen.getByRole('button', { name: backToHarness })).toBeTruthy()
     // The deferred notice paints nothing while the opaque page covers Settings.
     await fail(b.runtime, 0, 'ACCOUNT_QUOTA')
     expect(screen.queryByRole('dialog', { name: en.quotaTitle })).toBeNull()
 
     // Back mounts the Modal in the same commit that removes the page, so the
     // page's focus restore must run before the Modal takes the focus it owns.
-    await act(async () => { screen.getByRole('button', { name: en.backToHarness }).click() })
+    await act(async () => { screen.getByRole('button', { name: backToHarness }).click() })
     const modal = screen.getByRole('dialog', { name: en.quotaTitle })
     expect(document.activeElement).not.toBe(usage)
     expect(modal.contains(document.activeElement)).toBe(true)
@@ -277,7 +279,7 @@ describe('shared Platform page ownership', () => {
     expect(screen.queryByRole('dialog', { name: en.quotaTitle })).toBeNull()
 
     // Back closes the shared page and hands focus to the revealed Modal.
-    await act(async () => { screen.getByRole('button', { name: en.backToHarness }).click() })
+    await act(async () => { screen.getByRole('button', { name: backToHarness }).click() })
     expect(b.pages.getSnapshot()).toBeNull()
     const modal = screen.getByRole('dialog', { name: en.quotaTitle })
     expect(document.activeElement).not.toBe(recharge)
@@ -298,7 +300,7 @@ describe('shared Platform page ownership', () => {
     expect(b.platform.close).not.toHaveBeenCalled()
 
     // Returning reveals the notice; Top up reopens the destination it names.
-    await act(async () => { screen.getByRole('button', { name: en.backToHarness }).click() })
+    await act(async () => { screen.getByRole('button', { name: backToHarness }).click() })
     expect(screen.getByRole('dialog', { name: en.quotaTitle })).toBeTruthy()
     await act(async () => { screen.getByRole('button', { name: en.quotaTopUp }).click() })
     expect(b.platform.open.mock.calls.map(([page]) => page)).toEqual(['top-up', 'top-up'])
@@ -320,7 +322,7 @@ describe('shared Platform page ownership', () => {
 
     // Back never revives the replaced account Modal; the newest failure owns the
     // notice, and here that is the host fallback Toast.
-    await act(async () => { screen.getByRole('button', { name: en.backToHarness }).click() })
+    await act(async () => { screen.getByRole('button', { name: backToHarness }).click() })
     expect(b.pages.getSnapshot()).toBeNull()
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.getByRole('alert').textContent).toBe(NOTICE)
@@ -332,18 +334,18 @@ describe('shared Platform page ownership', () => {
     expect(screen.getByRole('dialog', { name: en.quotaTitle })).toBeTruthy()
     await act(async () => { screen.getByRole('button', { name: en.quotaTopUp }).click() })
     expect(b.platform.open).toHaveBeenCalledOnce()
-    expect(screen.getByRole('button', { name: en.backToHarness })).toBeTruthy()
+    expect(screen.getByRole('button', { name: backToHarness })).toBeTruthy()
 
     // The hold drops later notifications before they publish, so the chain
     // neither swaps to the fallback nor remounts this entry, and the page stays.
     await fail(b.runtime, 1, 'QUOTA')
     await fail(b.runtime, 2, 'ACCOUNT_QUOTA')
     expect(b.platform.close).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: en.backToHarness })).toBeTruthy()
+    expect(screen.getByRole('button', { name: backToHarness })).toBeTruthy()
     expect(screen.queryByRole('alert')).toBeNull()
 
     // Leaving the page dismisses, so a later failure surfaces again.
-    await act(async () => { screen.getByRole('button', { name: en.backToHarness }).click() })
+    await act(async () => { screen.getByRole('button', { name: backToHarness }).click() })
     expect(b.platform.close).toHaveBeenCalledOnce()
     expect(screen.queryByRole('dialog')).toBeNull()
     await fail(b.runtime, 3, 'QUOTA')
@@ -374,7 +376,7 @@ describe('shared Platform page ownership', () => {
 
     act(() => { b.account.set({ view: { ...storedView, status: 'signed-out' }, details: undefined, avatar: undefined, failed: false }) })
     expect(b.platform.close).toHaveBeenCalledOnce()
-    expect(screen.queryByRole('button', { name: en.backToHarness })).toBeNull()
+    expect(screen.queryByRole('button', { name: backToHarness })).toBeNull()
 
     // The hold ended with the dismissal, so the next failure publishes anew.
     await fail(b.runtime, 1, 'ACCOUNT_QUOTA')

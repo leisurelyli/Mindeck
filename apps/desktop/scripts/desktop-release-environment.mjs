@@ -1,4 +1,5 @@
 /** Resolve public release identifiers supplied by the packaging environment. */
+import product from '../src/product.json' with { type: 'json' }
 
 /** Environment variable that supplies the Electron application identifier. */
 export const DESKTOP_APP_ID_ENV = 'DSH_DESKTOP_APP_ID'
@@ -57,13 +58,16 @@ export function resolveNpmRegistry(env) {
 
 /**
  * Resolve and validate the application identifier shared by every platform target.
- * @param {NodeJS.ProcessEnv} env - Packaging environment.
- * @returns {string} Reverse-DNS application identifier.
+ * @param {NodeJS.ProcessEnv} env - Packaging environment; an absent application ID uses the Mindeck product identity.
+ * @returns {string} Reverse-DNS application identifier outside the reserved official namespace.
  */
 export function resolveDesktopAppId(env) {
-  const appId = requireEnvironmentValue(env, DESKTOP_APP_ID_ENV)
+  const appId = env[DESKTOP_APP_ID_ENV] === undefined ? product.appId : requireEnvironmentValue(env, DESKTOP_APP_ID_ENV)
   if (!/^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/u.test(appId)) {
     throw new Error(`desktop release environment: ${DESKTOP_APP_ID_ENV} must be a reverse-DNS identifier`)
+  }
+  if (appId.toLowerCase().startsWith('com.deepseek.')) {
+    throw new Error('desktop release environment: Mindeck requires its own application identifier')
   }
   return appId
 }

@@ -4,6 +4,7 @@ import { createElectronBuilderConfig } from './electron-builder-config.mjs'
 import { readInstalledUpdateRun } from './installed-update-qualification.ts'
 import { verifyInstalledUpdateApplication } from './prepare-installed-update-application.ts'
 import { verifyDesktopRuntime } from '../src/runtime-tree.ts'
+import { mindeckProduct } from '../src/product.ts'
 
 /**
  * Validate one version and construct its signed-only, test-only builder configuration.
@@ -19,6 +20,7 @@ export async function createInstalledUpdateBuilderConfig(manifest: string, versi
     || environment.DOWNLOAD_TEST_ORIGIN !== run.origin || environment.DOWNLOAD_TEST_COS_BUCKET !== run.bucket) {
     throw new Error('installed update: signed ordinary-update qualification requires matching test deployment settings')
   }
+  if (!mindeckProduct.automaticUpdates) throw new Error('Mindeck updater qualification is disabled until a separate update pipeline is configured')
   const application = await verifyInstalledUpdateApplication(run.root)
   const dsh = join(run.root, version, 'dsh')
   await verifyDesktopRuntime(dsh, version, { platform: 'win32', arch: 'x64' })

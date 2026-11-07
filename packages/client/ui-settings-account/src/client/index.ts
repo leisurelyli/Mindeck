@@ -36,6 +36,7 @@ export type { AccountSectionInjected, AccountSectionProps } from './AccountSecti
 export type { AccountMenuProps } from './AccountMenu.tsx'
 export type { AccountSnapshot } from './AccountSection.tsx'
 export type { AccountKey } from './locales.ts'
+export type { DesktopOnboardingIllustrationOwnerProps } from './onboarding-contract.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap { 'settings.account': AccountKey }
@@ -296,6 +297,7 @@ export function apply(ctx: Context): void {
     }, 'account: desktop credential readiness')
     ctx.slots.inject('shell.overlay', () => ctx.slots.register({
       name: 'shell.overlay', id: 'desktop-onboarding', locale: 'settings.account',
+      children: { 'desktop.onboarding.illustration': { kind: 'single', scope: 'root' } },
       inject: (): DesktopOnboardingInjected => ({
         hooks: { account: operations.hooks.account, onboarding: controller.state },
         setVisible: (visible: boolean) => {

@@ -20,10 +20,13 @@ Function un.CleanData
   ${IfNot} ${Errors}
     Return
   ${EndIf}
-  ; Only a DSH_HOME published as a Windows environment variable is visible here.
-  ReadEnvStr $UnHome DSH_HOME
+  ; Preserve the Mindeck home, including an explicit Windows environment override.
+  ReadEnvStr $UnHome MINDECK_HOME
+  ${If} $UnHome == ""
+    StrCpy $UnHome "$PROFILE\${MINDECK_HOME_DIRECTORY}"
+  ${EndIf}
   ClearErrors
-  StrCpy $UnTarget "$APPDATA\${PRODUCT_FILENAME}"
+  StrCpy $UnTarget "$APPDATA\${MINDECK_USER_DATA_DIRECTORY}"
   Call un.RemoveData
   !ifdef APP_PACKAGE_NAME
     ; Electron derives user data from the package name; a scoped name nests it one directory deeper.

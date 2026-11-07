@@ -7,6 +7,8 @@
  * chain per suite.
  */
 
+import { documentLocaleParameters, formatLocaleTemplate } from '@deepseek-ai/dsh-client-locale/parameters'
+
 /**
  * Build a translate stub resolving through `dicts` in order (namespace
  * first, then the shared common vocabulary), falling back to the key.
@@ -25,8 +27,6 @@ export function makeTranslate(
         break
       }
     }
-    if (!params) return template
-    return template.replace(/\{(\w+)\}/g, (match, name: string) =>
-      name in params ? String(params[name]) : match)
+    return formatLocaleTemplate(template, documentLocaleParameters(), params)
   }
 }

@@ -169,14 +169,14 @@ it('moves welcome-entry focus to the document without changing keyboard tab orde
   } finally { dom.window.close() }
 })
 
-it.each(['win32', 'darwin'] as const)('installs the embedded mandatory UI only in the Windows app document (%s)', async (platform) => {
+it.each(['win32', 'darwin'] as const)('keeps disabled mandatory-update UI out of application documents (%s)', async (platform) => {
   vi.stubGlobal('process', { ...process, platform })
   for (const url of ['dsh-app://app/', 'dsh-app://shell/mandatory-update.html', 'https://example.com/']) {
     vi.resetModules()
     vi.mocked(installMandatoryUpdateOverlay).mockClear()
     vi.stubGlobal('location', new URL(url))
     await import('../src/preload-app.ts')
-    expect(installMandatoryUpdateOverlay).toHaveBeenCalledTimes(platform === 'win32' && url === 'dsh-app://app/' ? 1 : 0)
+    expect(installMandatoryUpdateOverlay).not.toHaveBeenCalled()
   }
 })
 

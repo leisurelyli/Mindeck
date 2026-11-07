@@ -7,14 +7,22 @@ afterEach(() => { document.body.innerHTML = '' })
 function mount() {
   const el = document.createElement('div')
   document.body.append(el)
-  return { el, page: new BootPage(el) }
+  return { el, page: new BootPage(el, 'Mindeck') }
 }
 
 describe('BootPage', () => {
+  it('uses the supplied product identity before any plugin is active', () => {
+    const el = document.createElement('div')
+    const page = new BootPage(el, 'Acme Desk')
+    expect(el.textContent).toContain('Acme Desk')
+    expect(el.textContent).not.toContain('Mindeck')
+    page.dispose()
+  })
+
   it('draws the loading skeleton before any plugin state arrives', () => {
     const { el } = mount()
     expect(el.firstElementChild?.getAttribute('data-dsh-boot')).toBe('')
-    expect(el.textContent).toContain('HARNESS')
+    expect(el.textContent).toContain('Mindeck')
     expect(el.textContent).toContain('Loading plugins…')
   })
 

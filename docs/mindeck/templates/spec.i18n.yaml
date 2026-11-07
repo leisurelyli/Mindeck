@@ -1,0 +1,31 @@
+# Bilingual-pair consistency record for spec.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/mindeck/templates/spec.md
+/:
+  en: 74855c67682183d3
+  zh: 4227cca6bba783a5
+/feature-specification-template:
+  en: 0e6d7c5f03c92dda
+  zh: a070cd8c7c2ac570
+/feature-specification-template/summary:
+  en: f7ddbe54e7145e65
+  zh: 1d7a42ac23404cda
+/feature-specification-template/table-of-contents:
+  en: f2cf62b3fb398e6f
+  zh: 27ae73e52af4d0e9
+/feature-specification-template/identification:
+  en: 072a2eabeaba1cfe
+  zh: 11be5447bad5c9d6
+/feature-specification-template/problem-and-scope:
+  en: 5883be5a9356001b
+  zh: d8c3c67c12c10a00
+/feature-specification-template/design-and-dependencies:
+  en: dc8082088d3f017c
+  zh: 3e040a6909e79580
+/feature-specification-template/acceptance-and-evidence:
+  en: 527785800e7d282a
+  zh: 60137536ba209614
+/feature-specification-template/dev-note:
+  en: 14d1d3e58864cb71
+  zh: 96e6642930f97557

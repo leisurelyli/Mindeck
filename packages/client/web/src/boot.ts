@@ -6,6 +6,7 @@
  * @module @deepseek-ai/dsh-client-web/src/boot
  */
 import { Context } from '@deepseek-ai/cordis'
+import { documentLocaleParameters, resolveLocaleParameters } from '@deepseek-ai/dsh-client-locale/parameters'
 import type {
   BootManifest, ClientModuleCreateOptions, ClientModuleSystem, DshWindow,
 } from '@deepseek-ai/dsh-client-modules/client'
@@ -37,7 +38,7 @@ export class AppWebEntry {
   constructor(container: HTMLElement, seams?: BootSeams) {
     this.container = container
     this.seams = seams
-    this.page = new BootPage(container)
+    this.page = new BootPage(container, document.title || resolveLocaleParameters().productTitle)
   }
 
   /**
@@ -57,6 +58,9 @@ export class AppWebEntry {
       // row, or rejects it into the failure rendering below. An absent global
       // means no bootstrap owns the document and there is nothing to wait for.
       await (globalThis as { __DSH_BOOT_READY__?: { promise: Promise<void> } }).__DSH_BOOT_READY__?.promise
+      const parameters = documentLocaleParameters()
+      this.page.setProductName(parameters.productName)
+      document.title = parameters.productTitle
       const win = globalThis as DshWindow
       const moduleLoader = win.__ModuleLoader__
       if (moduleLoader === undefined) {

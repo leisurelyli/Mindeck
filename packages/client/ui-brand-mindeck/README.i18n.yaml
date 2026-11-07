@@ -1,0 +1,37 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/client/ui-brand-mindeck/README.md
+/:
+  en: 04fc33db42a08f5c
+  zh: 8bd6b03d59dfecc2
+/deepseek-ai-dsh-client-ui-brand-mindeck:
+  en: 7f623adbfecd566c
+  zh: 94fb819c9757e4e7
+/deepseek-ai-dsh-client-ui-brand-mindeck/summary:
+  en: a041135433fee227
+  zh: 3e8ecb9c67d58562
+/deepseek-ai-dsh-client-ui-brand-mindeck/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 9f0336825ccdaacd
+/deepseek-ai-dsh-client-ui-brand-mindeck/use-this-package:
+  en: f2254f282987dbfb
+  zh: 93504149807066b1
+/deepseek-ai-dsh-client-ui-brand-mindeck/understand-the-implementation:
+  en: 023ec3a34dc92d60
+  zh: 813118b4bb4272e8
+/deepseek-ai-dsh-client-ui-brand-mindeck/further-exploration:
+  en: c14f0364ad8116f0
+  zh: ed39abe39bfac2a7
+/deepseek-ai-dsh-client-ui-brand-mindeck/model-experience:
+  en: 618008c7641070e7
+  zh: f68d68d29a2149e4
+/deepseek-ai-dsh-client-ui-brand-mindeck/model-experience/kv-cache-effect:
+  en: ca75c51c89c2c9b0
+  zh: b539decdf8ad801d
+/deepseek-ai-dsh-client-ui-brand-mindeck/known-limitations-and-deferred-work:
+  en: b3e32c2a91b8e35f
+  zh: d2168c9af61607dd
+/deepseek-ai-dsh-client-ui-brand-mindeck/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 8ec3e73528ddb1a6

@@ -735,6 +735,7 @@ for (const native of [false, true]) it(`exposes desktop progress actions and dis
   if (native) vi.stubGlobal('dshPlatform', platform)
   const c = await start()
   const entry = c.ctx.slots.entries('shell.overlay').find(entry => entry.options.id === 'desktop-onboarding')!
+  expect(c.ctx.slots.spec('desktop.onboarding.illustration')).toEqual({ kind: 'single', scope: 'root' })
   const injected = (entry.inject!() as object) as DesktopOnboardingInjected
   expect(injected.hooks.account.getSnapshot().desktopOnboardingVisible).toBe(true)
   injected.setVisible(false)
@@ -752,6 +753,7 @@ for (const native of [false, true]) it(`exposes desktop progress actions and dis
   expect(injected.hooks.onboarding.getSnapshot().visible).toBe(false)
   await c.unload(SELF)
   expect(c.ctx.slots.entries('shell.overlay').some(entry => entry.options.id === 'desktop-onboarding')).toBe(false)
+  expect(c.ctx.slots.spec('desktop.onboarding.illustration')).toBeUndefined()
   expect(mock.remote.account.getBalance).not.toHaveBeenCalled()
 }, 60_000)
 

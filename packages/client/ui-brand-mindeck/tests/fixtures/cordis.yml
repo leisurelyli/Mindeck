@@ -1,0 +1,4 @@
+- name: cordis:renderer
+- name: cordis:locale
+- name: cordis:mindeck
+- name: cordis:surface

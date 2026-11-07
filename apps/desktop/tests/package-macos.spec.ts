@@ -11,7 +11,14 @@ import {
   type MacOSArtifactOperations,
 } from '../scripts/package-macos.ts'
 import { desktopElectronBuilderArguments, resolveDesktopPackageTarget } from '../scripts/package-target.ts'
-import { writeMacOSAppUpdateConfig } from '../scripts/macos-app-update-config.mjs'
+
+it('qualifies signed Mindeck artifacts without an update deployment', async () => {
+  const f = await fixture()
+  const signing = Object.fromEntries(Object.entries(environment).filter(([name]) => !name.startsWith('DOWNLOAD_')))
+  try {
+    await expect(packageMacOSArtifacts({ ...f.request, environment: signing }, f.build, f.apple)).resolves.toBeUndefined()
+  } finally { await rm(f.root, { recursive: true, force: true }) }
+})
 
 const environment = {
   DSH_DESKTOP_MACOS_SIGNING_IDENTITY: 'Example Company (TEAMID1234)',
@@ -29,14 +36,11 @@ function barrier() {
 async function fixture(arch: 'arm64' | 'x64' = 'arm64') {
   const root = await mkdtemp(join(tmpdir(), 'desktop-parallel-notarization-'))
   const artifactsRoot = join(root, 'artifacts')
-  const appPath = join(artifactsRoot, arch === 'arm64' ? 'mac-arm64' : 'mac', 'DeepSeek Harness.app')
+  const appPath = join(artifactsRoot, arch === 'arm64' ? 'mac-arm64' : 'mac', 'Mindeck.app')
   await mkdir(join(appPath, 'Contents', 'Resources'), { recursive: true })
   await writeFile(join(appPath, 'payload'), 'signed content')
-  await writeMacOSAppUpdateConfig(join(appPath, 'Contents', 'Resources'), {
-    publicUrl: `https://desktop-updates.example.com/dsh-desk/0123456789abcdef0123456789abcdef/feeds/mac-${arch}/`,
-  }, 'deepseek-harness-updater')
   const version = '1.2.3-alpha.1'
-  const base = `deepseek-harness-${version}-mac-${arch}`
+  const base = `mindeck-workspace-${version}-mac-${arch}`
   const request = { arch, artifactsRoot, version, environment }
   const apple: MacOSArtifactOperations = {
     copyApp: async (source, destination) => {
@@ -106,8 +110,7 @@ describe('parallel macOS artifacts', () => {
       expect(JSON.parse(await readFile(join(f.request.artifactsRoot, `${f.base}.dmg`), 'utf8')))
         .toEqual({ payload: 'signed content', appTicket: false })
       expect(await readFile(join(f.appPath, 'ticket'), 'utf8')).toBe('accepted')
-      expect(await readFile(join(f.appPath, 'Contents', 'Resources', 'app-update.yml'), 'utf8'))
-        .toContain(`/dsh-desk/0123456789abcdef0123456789abcdef/feeds/mac-${arch}/`)
+      expect(existsSync(join(f.appPath, 'Contents', 'Resources', 'app-update.yml'))).toBe(false)
       expect((await readdir(f.root)).sort()).toEqual(['artifacts'])
       expect(f.apple.verifySignature).toHaveBeenCalledTimes(4)
       expect(f.apple.verifyNotarization).toHaveBeenCalledTimes(1)
@@ -161,7 +164,7 @@ describe('parallel macOS artifacts', () => {
     }
   })
 
-  it.each(['copy', 'signature', 'post-signature', 'ticket', 'metadata', 'update-config', 'post-update-config'] as const)('rejects incomplete %s qualification without promoting artifacts', async (failure) => {
+  it.each(['copy', 'signature', 'post-signature', 'ticket', 'artifact', 'update-config', 'post-update-config'] as const)('rejects incomplete %s qualification without promoting artifacts', async (failure) => {
     const f = await fixture()
     try {
       if (failure === 'update-config') {
@@ -181,8 +184,8 @@ describe('parallel macOS artifacts', () => {
       }
       await expect(packageMacOSArtifacts(f.request, async (artifact) => {
         await f.build(artifact)
-        if (failure === 'metadata' && artifact.format === 'zip') {
-          await writeFile(join(artifact.output, 'nightly-mac.yml'), '')
+        if (failure === 'artifact' && artifact.format === 'zip') {
+          await writeFile(join(artifact.output, `${f.base}.zip`), '')
         }
         if (failure === 'post-update-config' && artifact.format === 'zip') {
           await writeFile(join(artifact.appPath, 'Contents', 'Resources', 'app-update.yml'), '{}')
@@ -196,7 +199,7 @@ describe('parallel macOS artifacts', () => {
   it('passes the actual App and isolated output directory to each single-target builder', () => {
     const target = resolveDesktopPackageTarget('mac-arm64', 'darwin', 'arm64')
     for (const format of ['zip', 'dmg'] as const) {
-      const appPath = join('private build', format, 'DeepSeek Harness.app')
+      const appPath = join('private build', format, 'Mindeck.app')
       const output = join(dirname(appPath), 'artifacts')
       expect(desktopElectronBuilderArguments(target, false, { format, appPath, output })).toEqual([
         'exec', 'electron-builder', '--config', 'electron-builder.config.mjs',

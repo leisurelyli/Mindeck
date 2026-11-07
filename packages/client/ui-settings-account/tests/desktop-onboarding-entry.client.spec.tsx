@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { GlobalStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
+import type { GlobalStandardProps, PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import { act, cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { AccountSnapshot } from '../src/client/AccountSection.tsx'
@@ -8,6 +8,10 @@ import type { DesktopOnboardingState } from '../src/client/onboarding-contract.t
 import { zh, type AccountKey } from '../src/client/locales.ts'
 
 let appRoot: HTMLDivElement
+
+const emptySlots: PropsRenderSlots<'desktop.onboarding.illustration'> = {
+  renderSlot: (_name, _owner, options) => options?.fallback ?? null,
+}
 
 it.each([false, true])('resizes only after eligibility resolves (completed=%s)', (done) => {
   const setActive = vi.fn()
@@ -53,7 +57,7 @@ function mount(initiallyDone = false, initiallyLoading = false) {
   // This entry consumes only its injected selectors; the shell owns the global hooks.
   const globals = {} as GlobalStandardProps
   const setVisible = vi.fn()
-  const element = () => <DesktopOnboardingEntry {...globals}
+  const element = () => <DesktopOnboardingEntry {...globals} {...emptySlots}
     setVisible={setVisible} useOnboarding={select => select(state)} useAccount={select => select(account)}
     update={async () => true} complete={async () => true} retry={async () => true}
     t={key => key in zh ? zh[key as AccountKey] : key} />

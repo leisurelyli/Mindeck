@@ -2,6 +2,7 @@
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
+import product from '../src/product.json' with { type: 'json' }
 
 const require = createRequire(import.meta.url)
 const templates = join(dirname(require.resolve('app-builder-lib/package.json')), 'templates/nsis')
@@ -80,7 +81,7 @@ export function installWindowsDirectoryInstaller() {
     const uninstaller = join(directory, 'uninstaller.nsh')
     await writeFile(uninstaller, directoryUninstaller(await readFile(join(templates, 'uninstaller.nsh'), 'utf8')))
     adapted = replaceOnce(adapted, '!include "uninstaller.nsh"', `!include "${uninstaller}"`)
-    return `!define DSH_UPDATER_CACHE_NAME "${this.packager.appInfo.updaterCacheDirName}"\n!define DSH_SEVENZIP_PATH "${tool}"\n!define DSH_SEVENZIP_LICENSE_DIR "${dirname(dirname(sourceTool))}"\n${await compute.call(this, adapted, ...args)}`
+    return `!define MINDECK_USER_DATA_DIRECTORY "${product.userDataDirectory}"\n!define MINDECK_HOME_DIRECTORY "${product.homeDirectory}"\n!define DSH_UPDATER_CACHE_NAME "${this.packager.appInfo.updaterCacheDirName}"\n!define DSH_SEVENZIP_PATH "${tool}"\n!define DSH_SEVENZIP_LICENSE_DIR "${dirname(dirname(sourceTool))}"\n${await compute.call(this, adapted, ...args)}`
   }
 }
 

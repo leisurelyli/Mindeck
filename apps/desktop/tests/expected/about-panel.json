@@ -1,11 +1,16 @@
 {
   "darwin:en-US": {
     "menu": [
-      { "label": "About DeepSeek Harness", "role": "about" },
-      { "type": "separator" }
+      {
+        "label": "About Mindeck",
+        "role": "about"
+      },
+      {
+        "type": "separator"
+      }
     ],
     "options": {
-      "applicationName": "DeepSeek Harness",
+      "applicationName": "Mindeck",
       "applicationVersion": "1.0.0",
       "version": "",
       "copyright": "",
@@ -14,11 +19,16 @@
   },
   "darwin:zh-CN": {
     "menu": [
-      { "label": "关于 DeepSeek Harness", "role": "about" },
-      { "type": "separator" }
+      {
+        "label": "关于 Mindeck",
+        "role": "about"
+      },
+      {
+        "type": "separator"
+      }
     ],
     "options": {
-      "applicationName": "DeepSeek Harness",
+      "applicationName": "Mindeck Dev",
       "applicationVersion": "1.0.0",
       "version": "",
       "copyright": "",
@@ -27,11 +37,15 @@
   },
   "win32:zh-CN": {
     "menu": [
-      { "label": "关于 DeepSeek Harness" },
-      { "type": "separator" }
+      {
+        "label": "关于 Mindeck"
+      },
+      {
+        "type": "separator"
+      }
     ],
     "options": {
-      "applicationName": "DeepSeek Harness",
+      "applicationName": "Mindeck",
       "applicationVersion": "1.0.0",
       "version": "",
       "copyright": "",
@@ -40,11 +54,15 @@
   },
   "win32:en-US": {
     "menu": [
-      { "label": "About DeepSeek Harness" },
-      { "type": "separator" }
+      {
+        "label": "About Mindeck"
+      },
+      {
+        "type": "separator"
+      }
     ],
     "options": {
-      "applicationName": "DeepSeek Harness",
+      "applicationName": "Mindeck Dev",
       "applicationVersion": "1.0.0",
       "version": "",
       "copyright": "",

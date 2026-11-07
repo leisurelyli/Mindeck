@@ -39,6 +39,8 @@ Web 和 Desktop 的数学公式渲染要求支持 WOFF2。[Web 构建](../../../
 
 ### 启动页
 
+加载名称最初使用安装 HTML 的标题。`__DSH_BOOT_READY__` 兑现后（缺省时无需等待），启动逻辑读取公开的[语言参数](../locale/README.zh.md#use-this-package)，将加载名称设为 `productName`，将文档标题设为 `productTitle`。参数无效时进入启动失败处理。`DSH_CLIENT_TITLE` 控制构建的初始 HTML 标题；组装后的 UI 再通过 `ui-layout` 投射标题。
+
 启动页只使用原生 DOM 与本地 CSS，因此 bundle 与插件激活失败保持可见：它显示一个 spinner 节点，其 CSS 圆弧随 entry 激活而增长。spinner 及其动画相位会一直保留，直到完整 UI 替换启动页。必需插件导入或激活失败时，页面按名称列出每个未激活插件及原因（缺失服务、导入失败或激活错误），并标出必需项，而不是白屏。可选插件的失败只出现在一条控制台警告中，不会阻止应用启动。控制台包含原始导入错误。
 
 <a id="the-shared-module-table"></a>

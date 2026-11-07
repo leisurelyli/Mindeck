@@ -9,6 +9,7 @@
   },
   "include": [
     "apps/web/tests/home-whale.e2e.ts",
+    "apps/web/tests/product-branding.e2e.ts",
     "apps/web/tests/sidebar-drawer.e2e.ts",
     "apps/web/tests/creation-recommendations.e2e.ts",
     "apps/web/tests/plugin-recommendations.e2e.ts",
@@ -22,6 +23,7 @@
     "apps/web/tests/chat-fold-opened-group.e2e.ts",
     "apps/web/tests/chat-flow-layout.e2e.ts",
     "apps/web/product-isolation.ts",
+    "apps/web/mindeck-branding.ts",
     "apps/web/katex-fonts.ts",
     "apps/web/tests/connection-recovery.e2e.ts",
     "apps/web/tests/server-restart.e2e.ts",
@@ -525,6 +527,7 @@
     { "path": "./packages/bundle/sdk-app" },
     { "path": "./packages/bundle/sdk-minimal" },
     { "path": "./packages/bundle/web-app" },
+    { "path": "./packages/bundle/mindeck-app" },
     { "path": "./packages/util/official-bundles" },
     { "path": "./packages/boot/app-boot" },
     { "path": "./packages/boot/cmdline" },

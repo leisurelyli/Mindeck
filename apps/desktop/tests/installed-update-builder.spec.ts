@@ -1,6 +1,5 @@
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { createInstalledUpdateRun } from '../scripts/installed-update-qualification.ts'
@@ -22,10 +21,6 @@ const environment = { DSH_DESKTOP_AUTO_UPDATE_ENV: 'test', DOWNLOAD_TEST_ORIGIN:
   DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN: 'https://policy.example.com',
   DSH_DESKTOP_MANDATORY_UPDATE_CONFIG: JSON.stringify({ allowedAuthOrigins: ['https://login.example.com'] }),
   DOWNLOAD_TEST_COS_BUCKET: 'bj-toc-download-test-1320056602' }
-const require = createRequire(import.meta.url)
-const { validateConfiguration } = require('app-builder-lib/out/util/config/config.js') as {
-  validateConfiguration: (config: object, logger: { isEnabled: false }) => Promise<void>
-}
 
 async function fixture<T>(body: (manifest: string, source: string) => Promise<T>): Promise<T> {
   const root = await mkdtemp(join(tmpdir(), 'dsh-update-builder-'))
@@ -80,32 +75,9 @@ describe('installed-update application inputs and builder configuration', () => 
     })
   })
 
-  it('keeps signed NSIS hooks and one isolated identity/feed while selecting each private runtime and output', async () => {
-    await fixture(async (manifest, source) => {
-      await prepareInstalledUpdateApplication(manifest, source)
-      const [first, second] = await Promise.all(versions.map(version => createInstalledUpdateBuilderConfig(manifest, version, environment)))
-      expect(first!.appId).toBe(second!.appId)
-      expect(first!.extraMetadata.name).toBe(second!.extraMetadata.name)
-      expect(first!.files.slice(0, 2)).toEqual(second!.files.slice(0, 2))
-      expect(first!.publish).toEqual(second!.publish)
-      for (const [index, config] of [first!, second!].entries()) {
-        await validateConfiguration(config, { isEnabled: false })
-        expect(config.extraMetadata.version).toBe(versions[index])
-        expect(config.extraMetadata.main).toBe('qualification-bootstrap.mjs')
-        expect(config.directories.output).toBe(join(manifest, '..', versions[index]!, 'installer'))
-        const dsh = join(manifest, '..', versions[index]!, 'dsh')
-        expect(config.files.at(-2)).toMatchObject({ from: dsh, to: 'dsh' })
-        expect(config.files.at(-1)).toMatchObject({ from: join(dsh, 'node_modules'), to: 'dsh/node_modules' })
-        expect(config.files).toContain('!node_modules/**/*.{js,cjs,mjs,ts,cts,mts,css}.map')
-        expect(config.files).toContain('!node_modules/**/*.tsbuildinfo')
-        expect(config.win.forceCodeSigning).toBe(true)
-        expect(config.win.signtoolOptions.publisherName).toBe('CN=Fixture,O=Fixture,C=CN')
-        expect(typeof config.win.signtoolOptions.sign).toBe('function')
-        expect(typeof config.beforeBuild).toBe('function')
-        expect(config.nsis.include).toMatch(/scripts[\\/]installer\.nsh$/u)
-        expect(config.publish[0]!.url)
-          .toMatch(/^https:\/\/download-test\.deepseek\.com\/dsh-desk\/feeds\/qualification\/[a-f0-9]{24}\/win-x64\/$/u)
-      }
+  it('refuses updater qualification while Mindeck updates are disabled', async () => {
+    await fixture(async (manifest) => {
+      await expect(createInstalledUpdateBuilderConfig(manifest, versions[0], environment)).rejects.toThrow('Mindeck updater qualification is disabled')
     })
   })
 

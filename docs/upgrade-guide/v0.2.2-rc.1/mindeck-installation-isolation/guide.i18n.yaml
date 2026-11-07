@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for guide.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/upgrade-guide/v0.2.2-rc.1/mindeck-installation-isolation/guide.md
+/:
+  en: cbf85e3567d5bcc7
+  zh: 34a9009ea668b769
+/mindeck-installation-and-state-isolation:
+  en: 85df455c7c31013a
+  zh: 36afc8a67890bf46
+/mindeck-installation-and-state-isolation/change:
+  en: 6a73fd79c78f60ff
+  zh: 8c0f81aab001ffc2
+/mindeck-installation-and-state-isolation/migration:
+  en: 2d2a5251c9a8b3f7
+  zh: f9e716a4e3d16c11

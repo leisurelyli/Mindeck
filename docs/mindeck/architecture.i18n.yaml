@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for architecture.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/mindeck/architecture.md
+/:
+  en: 5029b0cdf84275b1
+  zh: 3e65dfc77b0ea66c
+/mindeck-architecture:
+  en: e6b8185b0f110807
+  zh: c9c248945052ac18
+/mindeck-architecture/summary:
+  en: 536bf9b1d7d49c88
+  zh: c54078fb3793c210
+/mindeck-architecture/table-of-contents:
+  en: 8d472505dbc4fcdb
+  zh: 1a622a8c5ba23476
+/mindeck-architecture/development-constraints:
+  en: d7b54a0b63962bfe
+  zh: 2664ce70ad20280c
+/mindeck-architecture/reuse-references:
+  en: f095b9480a21640f
+  zh: 11d171aa9d7fd9b2
+/mindeck-architecture/verification-boundaries:
+  en: 61dbe33dcd496f6e
+  zh: cd78d6a39c1488af
+/mindeck-architecture/dev-note:
+  en: f03ac468847c2a62
+  zh: 5a6f4da56bbea169

@@ -1,0 +1,31 @@
+# Bilingual-pair consistency record for issue.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/mindeck/templates/issue.md
+/:
+  en: aa2e9bbb77bd24d7
+  zh: c1c9347e9c7c0a10
+/implementation-ticket-template:
+  en: 997b50d913fb69c6
+  zh: 8847dfeb5d29a7c2
+/implementation-ticket-template/summary:
+  en: ddd0a9bb4cb53cd6
+  zh: 186ee7d0053e4926
+/implementation-ticket-template/table-of-contents:
+  en: 7b383117d6f540f2
+  zh: 79a6ff8338372183
+/implementation-ticket-template/tracking:
+  en: 6c87162412fa518a
+  zh: 8172dedb4a316788
+/implementation-ticket-template/work-definition:
+  en: fd52d3d4dc76d9de
+  zh: b35e07d10de580e7
+/implementation-ticket-template/verification-record:
+  en: deacaaba6774aedf
+  zh: a561c63f68f162f1
+/implementation-ticket-template/completion:
+  en: 4bd77a8a080a901d
+  zh: 097e9daab4aad217
+/implementation-ticket-template/dev-note:
+  en: ed80641e9359ce26
+  zh: 615082d1e277530f

@@ -7,11 +7,17 @@ import { prepareInstalledUpdateBootstrap } from './prepare-installed-update-boot
 import { prepareInstalledUpdateRuntime } from './prepare-installed-update-runtime.ts'
 import { planInstalledUpdateDistribution } from './installed-update-distribution.ts'
 import { prepareInstalledUpdateApplication } from './prepare-installed-update-application.ts'
+import { mindeckProduct } from '../src/product.ts'
 
 const repository = resolve(import.meta.dirname, '../../..')
 
 async function main(): Promise<void> {
   const [command, original, successor, directory, ...extra] = process.argv.slice(2)
+  if (!mindeckProduct.automaticUpdates && command !== 'collect' && command !== 'inspect') {
+    console.error('Mindeck updater qualification is disabled; configure a separate update pipeline before preparing test installers.')
+    process.exitCode = 1
+    return
+  }
   if (command === 'collect' && original !== undefined && successor !== undefined && directory === undefined) {
     console.log(JSON.stringify({ collection: await collectInstalledUpdateJournals(original, successor), operatorAcceptance: 'pending' }, null, 2))
     return

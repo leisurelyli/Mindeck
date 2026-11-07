@@ -1,0 +1,4 @@
+.illustration img { display: block; width: 100%; height: auto; }
+.illustration .dark { display: none; }
+:global(body[data-ds-dark-theme]) .light { display: none; }
+:global(body[data-ds-dark-theme]) .dark { display: block; }

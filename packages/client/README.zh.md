@@ -51,6 +51,7 @@ kind: "package-group"
 | [`resources/`](resources/README.zh.md) | 统一资源模型：`useResource` 会话标准钩子背后的协议提供方 | `ctx.resources` |
 | [`ui-sidebar-files/`](ui-sidebar-files/README.zh.md) | 工作区文件页，以及停靠与浮动文件预览旁每个分栏一棵的工作区目录树 | — |
 | [`ui-brand-official/`](ui-brand-official/README.zh.md) | 用官方名称与标记填充通用浏览器品牌 slot | — |
+| [`ui-brand-mindeck/`](ui-brand-mindeck/README.zh.md) | 在浏览器品牌插槽中提供 Mindeck 图稿与本地化名称 | — |
 | [`ui-workspace/`](ui-workspace/README.zh.md) | 提供工作区选择与创建界面 | — |
 | [`ui-conversation/`](ui-conversation/README.zh.md) | 展示当前对话及其输入界面 | — |
 | [`ui-chat/`](ui-chat/README.zh.md) | 投影并渲染 Chat 对话 target | — |

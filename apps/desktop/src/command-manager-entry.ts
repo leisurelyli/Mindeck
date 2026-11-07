@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CommandInstallationError, inspectFileCommand, installFileCommand, removeFileCommand } from './command-installation.ts'
+import { mindeckProduct } from './product.ts'
 
 const [operation, expected] = process.argv.slice(2)
 const fingerprint = expected ?? ''
@@ -12,6 +13,7 @@ const resources = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 if (process.platform === 'darwin') process.umask(0o022)
 
 try {
+  if (!mindeckProduct.globalTerminalCommand) throw new CommandInstallationError('ENOTSUP', 'Mindeck does not install a global Harness command.')
   if (!['inspect', 'install', 'remove'].includes(operation ?? '')) throw new CommandInstallationError('EINVAL', 'Invalid command-management operation.')
   if (operation !== 'inspect' && !/^[a-f0-9]{64}$/u.test(fingerprint)) throw new CommandInstallationError('EINVAL', 'Missing command confirmation.')
   if (process.platform === 'darwin') {

@@ -18,6 +18,7 @@
     "test:updates:channels": "pnpm run build && node scripts/test-update-channels.mjs",
     "test:updates:local": "pnpm run build && node scripts/test-local-updater.mjs",
     "prepare:runtime": "tsx scripts/prepare-runtime.ts",
+    "render:mindeck-icons": "tsx scripts/render-mindeck-icons.ts",
     "render:tray-icon": "tsx scripts/render-tray-icon.ts",
     "prepare:primary-runtime": "tsx scripts/prepare-primary-runtime.ts",
     "sign:primary-runtime": "tsx scripts/sign-primary-runtime.ts",

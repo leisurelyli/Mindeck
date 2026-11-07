@@ -37,7 +37,7 @@ Native shells may provide `__DSH_LOCALE__` with an asynchronous `read()` and an 
 
 ### Registering a dictionary
 
-Call `ctx.locale.register(ns, { zh, en, ja })` with a namespace merged into `LocaleNamespaceMap`; the compiler checks every key against the namespace's typed key union and requires both baseline locales (`zh` and `en`). Additional locale ids are optional, and their dictionaries are checked against the same namespace keys. Consumers translate through `ctx.locale.bind(ns)` or the framework-injected `t` seat. A dictionary registered after the UI is already mounted is picked up without a remount. Preserve named placeholders, slash commands, and API field names verbatim in translations; `pnpm run check:i18n` checks first-party dictionaries and rejects zero-width spaces (U+200B) and byte-order marks (U+FEFF) in locale resources.
+Call `ctx.locale.register(ns, { zh, en, ja })` with a namespace merged into `LocaleNamespaceMap`; the compiler checks every key against the namespace's typed key union and requires both baseline locales (`zh` and `en`). Additional locale ids are optional, and their dictionaries are checked against the same namespace keys. Consumers translate through `ctx.locale.bind(ns)` or the framework-injected `t` seat. A dictionary registered after the UI is already mounted is picked up without a remount. Re-registering an occupied namespace/locale pair throws, even with the same dictionary. Preserve named placeholders, slash commands, and API field names verbatim in translations; `pnpm run check:i18n` checks first-party dictionaries and rejects zero-width spaces (U+200B) and byte-order marks (U+FEFF) in locale resources.
 
 ### Resolving package text
 
@@ -71,6 +71,12 @@ An external id is a non-empty ASCII BCP 47-style tag. Its fallback must already 
 
 Every authenticated browser persists the preference through the Host settings service under the shared [settings scope policy](../ui-settings/README.md).
 
+### Deployment parameters
+
+Host `Config.parameters` accepts a string map. A nonempty map replaces the entire `DSH_LOCALE_PARAMETERS` environment input; an empty or omitted map inherits that JSON input. Without either input, `productName` defaults to `DeepSeek Harness`; a missing `productTitle` defaults to the resolved `productName`. Invalid selected JSON, non-string values, or blank product names or titles fail Host loading. Every parameter is public browser data: never put secrets here.
+
+Use `{productName}` in ordinary product copy and `{productTitle}` in shared titles. Named values passed to a translation call override the deployment defaults; unknown placeholders remain unchanged. Other named string parameters follow the same rules.
+
 -----
 
 <a id="understand-the-implementation"></a>
@@ -95,12 +101,15 @@ Document language synchronization writes `<html lang>` only when its value chang
 
 The typed object form requires complete dictionaries for both baseline locales. The per-locale form lets language packs register each namespace independently. For each key, lookup walks the active language's declared fallback chain in the requested namespace, repeats that chain in `common`, then displays the key itself. Bound translate functions retain stable identity per namespace so they can ride inject surfaces without breaking memoization.
 
+The Host projects resolved parameters through `webserver/index-inject` as `__DSH_LOCALE_PARAMETERS__` in the initial table. The public `./parameters` entry validates that carrier and creates detached, read-only defaults. `LocaleRuntime` reads the current document's parameters by default when its fourth constructor argument is omitted; it applies them during named interpolation.
+
 ### Source map
 
 | File | Role |
 |---|---|
 | [`src/client/index.ts`](src/client/index.ts) | `LocaleRuntime`, dictionary registry, Language row registration, `locale/change` event |
-| [`src/index.ts`](src/index.ts) | Node half: registers the `locale` settings namespace |
+| [`src/index.ts`](src/index.ts) | Host configuration and initial-document parameters |
+| [`src/parameters.ts`](src/parameters.ts) | Public parameter parsing, defaults and named interpolation |
 | [`src/locale-settings.ts`](src/locale-settings.ts) | The durable schema for `locale.preference` |
 | [`src/locales/`](src/locales/) | The shipped language dictionaries |
 
@@ -138,6 +147,7 @@ These limits define where localization is incomplete or frozen at registration t
 
 - **Registry-held text reads its translation once** — copy captured at registration time outside the slot render path (e.g. the `/model` command description in the command registry) keeps the language it was registered under until re-registration; slot-rendered copy follows switches live.
 - **Language packs own language-specific behavior** — the registry supplies selection, persistence, browser matching, key fallback, and `<html lang>`; it does not add plural rules or bidirectional layout.
+- **Deployment parameters are a document startup snapshot** — they are not dynamic product settings. After changing the source values, restart the corresponding Host and reload the page; language switching does not refresh these defaults.
 
 <a id="dev-note"></a>
 ### Dev Note

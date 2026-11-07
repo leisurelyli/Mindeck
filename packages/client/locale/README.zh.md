@@ -37,7 +37,7 @@ kind: "package-reference"
 
 ### 注册字典
 
-用已合并进 `LocaleNamespaceMap` 的命名空间调用 `ctx.locale.register(ns, { zh, en, ja })`；编译器会对照该命名空间的类型化键并集检查每个键，并要求两个基础 locale（`zh` 和 `en`）齐全。其他 locale id 为可选项，其字典同样按该命名空间的键检查。消费方通过 `ctx.locale.bind(ns)` 或框架注入的 `t` 席位翻译。UI 已挂载后再注册的字典无需重新挂载即可生效。翻译必须原样保留命名占位符、斜杠命令和 API 字段名；`pnpm run check:i18n` 检查仓库内的字典，并拒绝语言资源中的零宽空格（U+200B）和字节顺序标记（U+FEFF）。
+用已合并进 `LocaleNamespaceMap` 的命名空间调用 `ctx.locale.register(ns, { zh, en, ja })`；编译器会对照该命名空间的类型化键并集检查每个键，并要求两个基础 locale（`zh` 和 `en`）齐全。其他 locale id 为可选项，其字典同样按该命名空间的键检查。消费方通过 `ctx.locale.bind(ns)` 或框架注入的 `t` 席位翻译。UI 已挂载后再注册的字典无需重新挂载即可生效。重复注册已占用的命名空间与 locale 组合会抛错，即使传入同一字典也不例外。翻译必须原样保留命名占位符、斜杠命令和 API 字段名；`pnpm run check:i18n` 检查仓库内的字典，并拒绝语言资源中的零宽空格（U+200B）和字节顺序标记（U+FEFF）。
 
 ### 解析包文本
 
@@ -71,6 +71,12 @@ export function apply(ctx) {
 
 每个已认证浏览器都遵循共享的 [settings scope 策略](../ui-settings/README.zh.md)，通过 Host settings 服务持久化偏好。
 
+### 部署参数
+
+Host `Config.parameters` 接受字符串映射。非空映射整体替代 `DSH_LOCALE_PARAMETERS` 环境输入；空映射或省略时继承该 JSON 输入。两者均缺省时，`productName` 默认为 `DeepSeek Harness`；缺少 `productTitle` 时使用解析后的 `productName`。所选 JSON 无效、值不是字符串，或产品名称及标题为空白，都会导致 Host 加载失败。所有参数都是公开的浏览器数据，切勿放入密钥。
+
+普通产品文案使用 `{productName}`，共用标题使用 `{productTitle}`。翻译调用传入的命名值优先于部署默认值；未知占位符保持原样。其他命名字符串参数遵循相同规则。
+
 -----
 
 <a id="understand-the-implementation"></a>
@@ -95,14 +101,17 @@ export function apply(ctx) {
 
 带类型的对象形式要求两个基础 locale 都有完整字典；逐 locale 形式允许语言包独立注册每个命名空间。逐键查找会先在请求命名空间中沿生效语言声明的 fallback 链查找，再在 `common` 中重复该链，最后显示键本身。绑定的翻译函数按命名空间保持稳定身份，因此可通过 inject 机制传递，且不会破坏 memoization。
 
+Host 通过 `webserver/index-inject` 将解析后的参数作为 `__DSH_LOCALE_PARAMETERS__` 投射到初始表。公开的 `./parameters` 入口验证该载体，并创建与输入分离的只读默认值。省略第四个构造参数时，`LocaleRuntime` 默认读取当前文档的参数，并在命名插值时使用它们。
+
 ### 源码地图
 
 | 文件 | 职责 |
 |---|---|
 | [`src/client/index.ts`](src/client/index.ts) | `LocaleRuntime`、字典注册表、Language 行注册、`locale/change` 事件 |
-| [`src/index.ts`](src/index.ts) | node 半侧：注册 `locale` 设置命名空间 |
+| [`src/index.ts`](src/index.ts) | Host 配置与初始文档参数 |
+| [`src/parameters.ts`](src/parameters.ts) | 公开参数解析、默认值与命名插值 |
 | [`src/locale-settings.ts`](src/locale-settings.ts) | `locale.preference` 的持久 schema |
-| [`src/locales/`](src/locales/) | 内置的 `zh`／`en`／`ja` 字典 |
+| [`src/locales/`](src/locales/) | 内置语言字典 |
 
 </details>
 
@@ -138,6 +147,7 @@ export function apply(ctx) {
 
 - **注册表持有的文本只读取一次翻译**——在 slot 渲染路径之外于注册时捕获的文案（例如 command 注册表中的 `/model` 命令描述）在重新注册前保持注册时的语言；slot 渲染的文案随切换实时更新。
 - **语言包负责语言特有行为**——注册表提供选择、持久化、浏览器匹配、逐键回退和 `<html lang>`；它不增加复数规则或双向布局。
+- **部署参数是文档启动快照**——它们不是动态产品设置。修改来源值后，需重启对应 Host 并重新加载页面；切换语言不会刷新这些默认值。
 
 <a id="dev-note"></a>
 ### 开发备注

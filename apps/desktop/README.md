@@ -2,7 +2,7 @@
 description: "Desktop runs the Harness workspace in a native application. This reference covers application behavior, development and integration; the packaging, Windows signing and publication guides own build and release operations."
 ---
 
-# DeepSeek Harness Desktop
+# Mindeck Desktop
 
 English | [中文](README.zh.md)
 
@@ -59,17 +59,13 @@ Press F12 (Fn+F12 on media-key keyboards), Command+Option+I on macOS, or Ctrl+Sh
 
 ## Terminal command
 
-The application menu's **Manage dsh Command…** entry, immediately below **Check for Updates…**, shows the current command and offers Install, Repair, and Remove. The command uses Desktop's installed runtime and the ordinary [dsh CLI](../cli/README.md), including when the Desktop application is closed. Open a new terminal after installation and run `dsh --version`.
-
-On macOS, installation creates `/usr/local/bin/dsh` and requests administrator authentication when the directory requires it. Shell startup files are unchanged. On Windows, the management dialog registers the command in the current user's PATH. A pre-existing command requires confirmation before switching; repairing Desktop's own selected command does not repeat that confirmation. The macOS link preserves and restores the displaced launcher; Windows preserves other PATH entries, including entries that predate registration. A command with higher PATH precedence is reported with its location. After moving the application, use Repair on macOS or Install from the new location on Windows. Remove leaves unrelated installations intact.
-
-Command registration is optional after installing Desktop. Use **Manage dsh Command… → Remove** before uninstalling Desktop to remove its CLI registration; the application uninstaller does not remove it. Finish CLI commands before updating or uninstalling Desktop. The CLI runtime version follows the installed Desktop release. See [bundled command runtime](#bundled-command-runtime) for Desktop plugin commands and runtime limitations.
+Mindeck does not install a global terminal command or modify PATH. Its command-registration worker refuses operations, and its installer omits the public CLI launcher; existing Harness commands remain owned by their existing installation. See [installation isolation](../../docs/mindeck/isolation.md).
 
 <a id="closing-the-window-and-quitting"></a>
 
 ## Closing the window and quitting
 
-Closing the main window (macOS close button and ⌘W; Windows ×, Alt+F4, and the taskbar Close window command) hides it; Windows asks for acknowledgement before the first hide. The page and the Host keep running, tasks continue, and the next show presents the same document with its session, drafts, and scroll position; a fullscreen macOS window leaves fullscreen before hiding. The window returns through the Dock icon, a second launch, or `dsh://open` on macOS, and through the tray on Windows. Minimize is unchanged. Closing the welcome window before the workspace opens quits on Windows and, on macOS, keeps the application in the Dock without a window.
+Closing the main window (macOS close button and ⌘W; Windows ×, Alt+F4, and the taskbar Close window command) hides it; Windows asks for acknowledgement before the first hide. The page and the Host keep running, tasks continue, and the next show presents the same document with its session, drafts, and scroll position; a fullscreen macOS window leaves fullscreen before hiding. The window returns through the Dock icon, a second launch, or `mindeck-workspace://open` on macOS, and through the tray on Windows. Minimize is unchanged. Closing the welcome window before the workspace opens quits on Windows and, on macOS, keeps the application in the Dock without a window.
 
 Windows keeps a tray icon for the whole run. Its tooltip is the product name, a single click shows and focuses the window, and the context menu offers Open DeepSeek Harness and Quit DeepSeek Harness in the shell locale. Before the first hide, the shared update-dialog overlay explains that running tasks continue and the window can be reopened from the system tray. Confirm hides the window and writes `background-close-confirmed` under Electron userData; Escape, dismissal, or dialog failure keeps the window visible and does not record acknowledgement. Repeated close requests focus the existing shell dialog. In-place updates retain the marker and uninstall removes it. The old `background-notice-shown` marker does not suppress this confirmation. Closing the window sends no system notification. The tray bitmaps are `resources/tray-windows.ico`, rendered from `resources/icon-windows.svg` at 16, 20, 24, 32, 40, 48, and 64 pixels by `pnpm run render:tray-icon`, and packaged as `resources/tray.ico`. macOS ships no menu bar icon.
 
@@ -131,11 +127,7 @@ Welcome loads the shared Toast palette and shadow tokens, with system typography
 
 ## Bundled command runtime
 
-The installed `resources/runtime/cli/bin/dsh` shell script (`dsh.cmd` on Windows) runs the ordinary CLI dispatcher using Desktop's Electron executable and bundled pnpm. It works while Desktop is closed and retains the Electron runtime limitations. Ordinary profile, configuration, and plugin commands use the same implementation as npm dsh; the command does not open Desktop.
-
-To manage Desktop's plugins, launch Desktop once to initialize its profile, fully quit the application, then run `dsh plugin --profile desktop add <package>`, `list`, or `remove <package>`. Reopen Desktop to use the changes. Package operations retain the shared profile write lock and compatibility checks. The installed command refuses an uninitialized Desktop profile instead of creating an ordinary CLI profile in its place.
-
-Finish CLI commands before updating or uninstalling Desktop; the installer does not coordinate with running commands. The CLI does not supply Office authoring-skill resource paths. Desktop's existing Office setup and Web attachment conversion retain their own resource configuration. `prepare:runtime` copies the launch scripts without compiling a native CLI launcher.
+The application still carries the Harness runtime required by its Host and plugins. Mindeck does not expose that runtime through a public terminal launcher. Manage plugins through the running application; official Desktop CLI instructions apply to the official installation.
 
 <a id="installation-ownership"></a>
 
@@ -193,7 +185,7 @@ The development application menu offers Reload Page (Cmd+R on macOS, Ctrl+R else
 pnpm run dev:desktop
 ```
 
-Development Harness state defaults to `apps/desktop/.desktop-build/development/home`, the disposable npm project lives at `apps/desktop/.desktop-build/development/project`, and Electron browser data lives at `apps/desktop/.desktop-build/development/electron-user-data`. Sessions, settings, credentials, package links, and browser data therefore stay out of the user's normal Harness home. An explicit `DSH_HOME` replaces only the development Harness home. Renderer DevTools opens automatically; Main, Renderer, and dsh Host debugging listen on ports 9229, 9222, and 9230. `DSH_DESKTOP_MAIN_INSPECT_PORT`, `DSH_DESKTOP_RENDERER_DEBUG_PORT`, and `DSH_DESKTOP_HOST_INSPECT_PORT` replace those ports, while `DSH_DESKTOP_OPEN_DEVTOOLS=0` keeps the detached Renderer tools closed.
+The launcher selects the independent Mindeck development home and Electron user data described in [installation isolation](../../docs/mindeck/isolation.md). Use the documented `MINDECK_*` overrides for custom locations. The disposable npm project remains under `apps/desktop/.desktop-build/development/project`; debugger settings retain the overrides described below.
 
 After an explicit build, `start:desktop` reconstructs the disposable project and launches the existing artifacts without building again:
 
@@ -213,7 +205,7 @@ Dependency installation does not run the locked Electron package's separate bina
 
 The API-key input starts empty and uses `autocomplete="new-password"` to ask Chromium not to autofill saved login passwords.
 
-Repeated launches and `dsh://open` keep the workspace hidden until the startup credential check or a welcome action permits entry. Entering from Welcome places keyboard focus on the document without selecting a sidebar control; Tab navigation remains available.
+Repeated launches and `mindeck-workspace://open` keep the workspace hidden until the startup credential check or a welcome action permits entry. Entering from Welcome places keyboard focus on the document without selecting a sidebar control; Tab navigation remains available.
 
 Desktop checks configured model API-key references after the Host starts and before opening the workspace. With no configured key, the welcome window offers the API-key page. Save and continue writes through the existing credential service using the official DeepSeek provider's configured reference, then opens the workspace. Set up later opens the workspace without saving the draft or a completion setting; the next process launch checks credentials again. Back to sign in returns to the entry and clears the unsaved key and validation message. Buttons keep their labels and block competing actions while saving or opening the workspace. The Desktop preload marker suppresses the Web credential dialog, while retaining the Models settings page and the welcome notice.
 
@@ -265,6 +257,8 @@ Use `node apps/desktop/scripts/test-windows-installer.mjs --uninstall-only --com
 <a id="updates"></a>
 
 ## Updates
+
+Mindeck disables automatic and mandatory updates and embeds no update feed. The following sections document retained upstream updater mechanisms and qualification tooling; they are inactive in the Mindeck product. See [distribution limits](../../docs/mindeck/isolation.md#external-services-and-distribution).
 
 On Windows, the downloaded-update confirmation explains that the application closes during installation, reopens automatically, and should not be launched again while updating. An installer restart carrying `--updated` raises and focuses the main window once when startup opens the workspace directly, without enabling always-on-top. Startup into the welcome page discards that request so a later login keeps its normal activation behavior. Ordinary launches and other platforms do not use this foregrounding step.
 

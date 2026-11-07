@@ -1,11 +1,13 @@
 /** Per-language JSON resources shared by NSIS packaging, native UI tests and the i18n check. */
 import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import product from '../src/product.json' with { type: 'json' }
 
 const defaultDirectory = fileURLToPath(new URL('../installer/locales/', import.meta.url))
 
 /**
  * Read and validate installer translations before generating compiler input.
+ * Resolve {productName} from the product description, preserving other placeholders.
  * @param {string} directory - Directory containing one JSON file per installer language.
  * @returns {{id: string, nsisLanguage: string, strings: Record<string, string>, uninstaller: Record<string, string>}[]} Complete language resources.
  */
@@ -27,7 +29,7 @@ export function readInstallerLocales(directory = defaultDirectory) {
       for (const [key, text] of Object.entries(value)) {
         if (typeof text !== 'string' || text.trim() === '') throw new Error(`${name}: ${key} must be nonempty text`)
         if (/[\u200b\ufeff]/u.test(text)) throw new Error(`${name}: ${key} contains an invisible locale character`)
-        result[key] = text
+        result[key] = text.replaceAll('{productName}', () => product.name)
       }
       return result
     }

@@ -104,7 +104,7 @@ function mountFrame(windowWidth = frameWidth, content?: AppFrameProps['renderSlo
       useContextMenu={contextMenuHook()} useResource={useResource}
       useWorkspaces={sel => sel(workspaceState)}
       {...allowAllAccess}
-      t={key => key === 'brand.localBuild' ? 'DSH Local Build' : key}
+      t={key => key === 'brand.productTitle' ? 'Product' : key}
     />
   )
   const utils = render(element())
@@ -190,13 +190,13 @@ afterEach(() => {
 })
 
 describe('AppFrame', () => {
-  it('localizes the product title without a configured build title', () => {
+  it('uses the locale-owned product title', () => {
     mountFrame()
-    expect(document.title).toBe('DSH Local Build')
+    expect(document.title).toBe('Product')
   })
 
   it('follows the selected durable Session title', () => {
-    vi.stubEnv('DSH_CLIENT_TITLE', 'Product')
+
     selectedSessionTitle = 'First'
     const { rerenderFrame } = mountFrame()
     expect(document.title).toBe('First — Product')
@@ -293,7 +293,7 @@ describe('AppFrame', () => {
       expect(instance.getSnapshot().layoutInfo).toBe(layoutInfo)
       expect(tracks(frame)).toEqual([280, 0])
       expect(selectedSession).toBe(sessionId)
-      expect(document.title).toBe(panelId === null ? 'Session title — DSH Local Build' : 'DSH Local Build')
+      expect(document.title).toBe(panelId === null ? 'Session title — Product' : 'Product')
     }
   })
 })

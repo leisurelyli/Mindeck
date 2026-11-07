@@ -37,6 +37,7 @@ export const ja = {
   'subtitle.collapse': '{name} の説明を折りたたむ',
   'back': '戻る',
   'brand.localBuild': 'DSHローカルビルド',
+  'brand.productTitle': '{productTitle}',
   'workspace.defaultName': 'デフォルトワークスペース',
   'unknown': '不明',
   'none': 'なし',

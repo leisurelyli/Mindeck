@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/mindeck/README.md
+/:
+  en: 7c8c31d9b8dd3889
+  zh: fd3ec979b2a9807a
+/mindeck-documentation:
+  en: f7b799f9208cd9ac
+  zh: da44226718825bef
+/mindeck-documentation/summary:
+  en: 019dcf245dd846e7
+  zh: 90a3390eb9bc7d6c
+/mindeck-documentation/table-of-contents:
+  en: 2f32c7624c82b7a7
+  zh: 3f56bdedca7748ce
+/mindeck-documentation/reading-order:
+  en: f336bf64943c33c2
+  zh: d1870e9abd43c5fc
+/mindeck-documentation/document-ownership:
+  en: d5e7ab6d12c3066e
+  zh: 2c46430a7bbf7898
+/mindeck-documentation/local-work:
+  en: 96c48b32a6aa5492
+  zh: 23a492d276c3a32c
+/mindeck-documentation/dev-note:
+  en: 24d17d79fa4d9fe6
+  zh: 92a12a610ada9bf0

@@ -1,0 +1,21 @@
+{
+  "name": "Mindeck",
+  "packageName": "mindeck-workspace",
+  "developmentName": "Mindeck Dev",
+  "appId": "io.github.leisurelyli.mindeck.workspace",
+  "scheme": "mindeck-workspace",
+  "developmentScheme": "mindeck-workspace-dev",
+  "homeDirectory": ".mindeck-workspace",
+  "developmentHomeDirectory": ".mindeck-workspace-dev",
+  "userDataDirectory": "MindeckWorkspace",
+  "developmentUserDataDirectory": "MindeckWorkspaceDev",
+  "automaticUpdates": false,
+  "globalTerminalCommand": false,
+  "branding": {
+    "masterSvg": "packages/client/ui-brand-mindeck/src/client/assets/mindeck.svg",
+    "desktopDirectory": "resources/mindeck",
+    "installerDirectory": "installer/assets/mindeck",
+    "webDirectory": "mindeck",
+    "webManifest": "mindeck.webmanifest"
+  }
+}

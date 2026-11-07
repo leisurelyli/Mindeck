@@ -1,0 +1,25 @@
+# Bilingual-pair consistency record for glossary.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/mindeck/glossary.md
+/:
+  en: 92fea358a3772ac1
+  zh: 6413bacbd93e2bc2
+/mindeck-glossary:
+  en: 79f336d2a2b87893
+  zh: 307c5fe422b7b9d1
+/mindeck-glossary/summary:
+  en: 82298cb2be9efe80
+  zh: 232d7ea3e8227f69
+/mindeck-glossary/table-of-contents:
+  en: bf644092ffc1ca41
+  zh: 5133cace4f116ce4
+/mindeck-glossary/terms:
+  en: 92551588444177af
+  zh: 440fde27985792b0
+/mindeck-glossary/maintenance:
+  en: 62c47f33665a4224
+  zh: 110d4aa09e546e60
+/mindeck-glossary/dev-note:
+  en: ecd7ecc965cba6b5
+  zh: 333767adfd926d33

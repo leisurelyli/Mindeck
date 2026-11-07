@@ -29,12 +29,13 @@ export class BootPage {
   /**
    * Build and attach the boot page.
    * @param container - Application mount point.
+   * @param productName - Identity resolved before client plugins start.
    */
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, productName: string) {
     this.root = div(css.boot)
     this.root.dataset.dshBoot = ''
     this.card = div(css.card)
-    this.wordmark = div(css.wordmark, 'HARNESS')
+    this.wordmark = div(css.wordmark, productName)
     this.spinner = div(css.spinner)
     this.spinner.dataset.dshBootSpinner = ''
     this.hint = div(css.hint, 'Loading plugins…')
@@ -42,6 +43,14 @@ export class BootPage {
     this.root.append(this.card)
     container.append(this.root)
     this.updateProgress()
+  }
+
+  /**
+   * Apply the authoritative identity after a native injection table becomes ready.
+   * @param productName - Validated product display name.
+   */
+  setProductName(productName: string): void {
+    this.wordmark.textContent = productName
   }
 
   /**

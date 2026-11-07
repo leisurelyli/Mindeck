@@ -28,6 +28,14 @@ const stubLanguages = (...tags: string[]): void => {
 }
 
 describe('LocaleRuntime', () => {
+  it('supplies deployment parameters to namespace and common templates without registering replacement dictionaries', () => {
+    const ctx = new Context()
+    const svc = new LocaleRuntime(ctx, undefined, undefined, { productName: 'Acme Desk' })
+    svc.register('example-brand', 'zh', { about: '关于 {productName}', progress: '{productName}: {count}' })
+    expect(svc.bind('example-brand')('about')).toBe('关于 Acme Desk')
+    expect(svc.bind('example-brand')('progress', { count: 2 })).toBe('Acme Desk: 2')
+  })
+
   beforeEach(() => {
     // A Chinese browser is the baseline these specs assert their zh state on.
     stubLanguages('zh-CN')

@@ -2,11 +2,17 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
 import { afterEach, expect, it, vi } from 'vitest'
+import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
+import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { DesktopOnboarding } from '../src/client/DesktopOnboarding.tsx'
 import type { DesktopOnboardingProps, DesktopOnboardingState } from '../src/client/onboarding-contract.ts'
 import { en, zh } from '../src/client/locales.ts'
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
+
+const emptySlots: PropsRenderSlots<'desktop.onboarding.illustration'> = {
+  renderSlot: (_name, _owner, options) => options?.fallback ?? null,
+}
 
 function mount(step: DesktopOnboardingState['progress']['step'] = 'welcome', balance: 'zero' | 'positive' | 'bonus' | 'failed' | 'loading' = 'positive', status: DesktopOnboardingState['status'] = 'ready', copy: typeof zh = zh, creditFunded = false) {
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
@@ -22,13 +28,16 @@ function mount(step: DesktopOnboardingState['progress']['step'] = 'welcome', bal
   })
   let changeStatus: (value: DesktopOnboardingState['status']) => void = () => {}
   const update = vi.fn(async (_change: Parameters<DesktopOnboardingProps['update']>[0]) => true)
+  // These copy snapshots describe the Mindeck deployment.
+  const translate = makeTranslate(copy)
   function App() {
     const [state, setState] = useState<DesktopOnboardingState>({
       status, visible: true, error: status === 'error' ? 'settings' : null, creditFunded,
       progress: { version: 1, step, purpose: null, process: null, completion: null, usage: 'compact', developerTools: false },
     })
     changeStatus = (value) => { setState(current => ({ ...current, status: value })) }
-    return <DesktopOnboarding track={track} locale={copy === zh ? 'zh' : 'en'} state={state} t={key => copy[key]} complete={complete} retry={retry}
+    return <DesktopOnboarding {...emptySlots} track={track} locale={copy === zh ? 'zh' : 'en'} state={state}
+      t={key => translate(key, { productName: 'Mindeck', productTitle: 'Mindeck' })} complete={complete} retry={retry}
       update={async (change) => {
         setState(current => ({ ...current, status: 'saving' }))
         const saved = await update(change)
@@ -45,6 +54,16 @@ function mount(step: DesktopOnboardingState['progress']['step'] = 'welcome', bal
     /** The viewer returning through the shared host's Back action. */
     back: () => { returnFromPage?.() },
   }
+}
+
+for (const step of ['welcome', 'credit'] as const) {
+  it.each([en, zh])(`uses upstream ${step} illustrations without a slot occupant`, (copy) => {
+    mount(step, 'positive', 'ready', copy)
+    const language = copy === zh ? '-zh' : ''
+    const name = step === 'welcome' ? 'welcome' : 'recharge'
+    expect([...document.querySelectorAll<HTMLImageElement>('[data-desktop-onboarding] img')].map(img => img.getAttribute('src')))
+      .toEqual(['', '-dark'].map((theme): unknown => expect.stringContaining(`/assets/onboarding-${name}${language}${theme}.webp`)))
+  })
 }
 
 it('keeps welcome mandatory and enters credit only through Start', async () => {

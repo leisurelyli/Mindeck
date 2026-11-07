@@ -1,3 +1,4 @@
+import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 /**
  * ui-model-selection browser half on a real cordis Context with fake command/slots/
  * connection faces and real session scopes: the plugin mounts ModelDirectoryResolver
@@ -212,7 +213,7 @@ describe('ui-model-selection dual entry', () => {
     const input = projection('owned')
     const options = await b.popup().options(input, new AbortController().signal)
     b.rejectSelection()
-    await expect(b.popup().onSelect(options[0]!, input)).rejects.toThrow(zh['error.sessionInUse'])
+    await expect(b.popup().onSelect(options[0]!, input)).rejects.toThrow(makeTranslate(zh)('error.sessionInUse'))
     expect(b.ctx.modelDirectories.directoryFor(sid('owned')).store.getSnapshot()).toMatchObject({
       status: 'error', pending: null, error: 'session/writer-held: writer held',
     })

@@ -1,6 +1,6 @@
-DeepSeek Harness
-DeepSeek Harness
-Welcome to DeepSeek Harness
+Mindeck
+Mindeck
+Welcome to Mindeck
 Build potential. Explore intelligence.
 Sign in
 Add API Key

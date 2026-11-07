@@ -13,6 +13,7 @@ import { packagingStep } from './packaging-step.mjs'
 import { preparePrimaryRuntime } from './prepare-primary-runtime.ts'
 import { prepareDesktopCli } from './prepare-cli.ts'
 import { prepareCommandLink } from './prepare-command-link.ts'
+import { mindeckProduct } from '../src/product.ts'
 
 const BUILD_PATHS = resolveDesktopTargetBuildPaths()
 const RUNTIME_ROOT = BUILD_PATHS.runtime
@@ -36,6 +37,7 @@ async function prepareElectron({ platform, arch }: DesktopTarget): Promise<strin
 function prepareCli({ platform, arch }: DesktopTarget): void {
   cpSync(join(import.meta.dirname, 'node-bin'), join(RUNTIME_ROOT, 'bin'), { recursive: true })
   chmodSync(join(RUNTIME_ROOT, 'bin', 'node'), 0o755)
+  if (!mindeckProduct.globalTerminalCommand) return
   const cli = join(RUNTIME_ROOT, 'cli')
   prepareDesktopCli(cli, platform)
   if (platform === 'darwin') {

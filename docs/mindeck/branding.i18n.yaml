@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for branding.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/mindeck/branding.md
+/:
+  en: aed0074a0cf7191e
+  zh: 333d479c369c1b64
+/mindeck-brand-assets:
+  en: a3b48894ed7ba780
+  zh: 85f3c9b847158ccd
+/mindeck-brand-assets/summary:
+  en: 58a33ac9774109cc
+  zh: 67883d3980bcfd4c
+/mindeck-brand-assets/table-of-contents:
+  en: d527a3c1e7eb7dd7
+  zh: 8dc24b5ba78ba70e
+/mindeck-brand-assets/source-artwork:
+  en: 4c5d212464002faa
+  zh: 6daae18039e7f050
+/mindeck-brand-assets/generate-icons:
+  en: 4f9d12f5c0c13249
+  zh: ae489baa6cc63b28
+/mindeck-brand-assets/application-integration:
+  en: 5d858a6e3da09bfd
+  zh: 7a43f91b2c464212
+/mindeck-brand-assets/dev-note:
+  en: 7de13c52b13b5462
+  zh: f541a9574dbdb114

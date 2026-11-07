@@ -1,5 +1,6 @@
 /** Welcome page with a required explicit start. */
 import type { RefObject } from 'react'
+import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { DesktopOnboardingProps } from './onboarding-contract.ts'
 import { OnboardingIllustration } from './OnboardingIllustration.tsx'
@@ -10,11 +11,12 @@ import artZhDark from './assets/onboarding-welcome-zh-dark.webp'
 import css from './DesktopOnboarding.module.css'
 
 /** @param props - localized content, focus target and navigation. @returns the welcome step. */
-export function OnboardingWelcomeStep({ t, locale, heading, busy, onStart }: Pick<DesktopOnboardingProps, 't' | 'locale'> & {
-  heading: RefObject<HTMLHeadingElement>
-  busy: boolean
-  onStart: () => void
-}) {
+export function OnboardingWelcomeStep({ t, locale, renderSlot, heading, busy, onStart }: Pick<DesktopOnboardingProps, 't' | 'locale'>
+  & PropsRenderSlots<'desktop.onboarding.illustration'> & {
+    heading: RefObject<HTMLHeadingElement>
+    busy: boolean
+    onStart: () => void
+  }) {
   return <div className={`${css.content} ${css.welcome}`}>
     <div className={css.copy}>
       <h1 id="desktop-onboarding-title" ref={heading} tabIndex={-1}>{t('onboardingWelcome')} <em className={css.brand}>{t('onboardingBrand')}</em></h1>
@@ -22,7 +24,9 @@ export function OnboardingWelcomeStep({ t, locale, heading, busy, onStart }: Pic
       <Button variant="primary" className={`${css.action} ${css.start}`} disabled={busy} onClick={onStart}>{t('onboardingStart')}</Button>
     </div>
     <div className={css.welcomeIllustration} aria-hidden="true">
-      <OnboardingIllustration className={css.welcomeArtwork} src={locale === 'zh' ? artZh : art} darkSrc={locale === 'zh' ? artZhDark : artDark} />
+      {renderSlot('desktop.onboarding.illustration', { step: 'welcome', locale, className: css.welcomeArtwork }, {
+        fallback: <OnboardingIllustration className={css.welcomeArtwork} src={locale === 'zh' ? artZh : art} darkSrc={locale === 'zh' ? artZhDark : artDark} />,
+      })}
     </div>
   </div>
 }

@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for upstream-sync.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/mindeck/upstream-sync.md
+/:
+  en: 418bced643edf700
+  zh: 1de496f69785708a
+/upstream-synchronization:
+  en: c73fef4f8070bd09
+  zh: 807a6b46e5ff0de3
+/upstream-synchronization/summary:
+  en: 7b4348e9c370ebce
+  zh: 695778d5ae7ed2ab
+/upstream-synchronization/table-of-contents:
+  en: be7811ebc185f2ff
+  zh: 591748b3749440a6
+/upstream-synchronization/integration-policy:
+  en: 454b3f87ce19ba1c
+  zh: 5d42145c12b4e421
+/upstream-synchronization/customization-maintenance:
+  en: fe667195d11b1698
+  zh: 6693b5f8650fa0a7
+/upstream-synchronization/synchronization-record:
+  en: b119f3f8977c0e16
+  zh: 5d267c4f971b3b97
+/upstream-synchronization/dev-note:
+  en: 3baeb24ee9accc40
+  zh: 694b28d83ff455e5

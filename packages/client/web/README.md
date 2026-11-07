@@ -39,6 +39,8 @@ Boot runs in two stages: the module stage adopts the parser-loaded bootstrap bat
 
 ### The boot page
 
+The loading name initially uses the installation HTML's title. After `__DSH_BOOT_READY__` resolves (or without waiting when it is absent), boot reads the public [locale parameters](../locale/README.md#use-this-package), sets the loading name to `productName` and the document title to `productTitle`. Invalid parameters follow the boot-failure path. `DSH_CLIENT_TITLE` controls the build's initial HTML title; the assembled UI then projects its title through `ui-layout`.
+
 The boot page uses plain DOM and local CSS, so bundle and plugin-activation failures remain visible: it shows one spinner node whose CSS arc grows as entries activate. The spinner and its animation phase persist until the full UI replaces the boot page. When a required plugin fails import or activation, the page names every inactive plugin with the reason (missing service, import failure, or activation error) and marks the required ones, instead of a blank page. An optional plugin's failure appears in one console warning and does not stop the application. The console contains the original import error.
 
 <a id="the-shared-module-table"></a>

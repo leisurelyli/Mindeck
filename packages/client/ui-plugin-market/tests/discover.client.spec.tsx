@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { MarketListingEntry, MarketListingVersion, MarketSearchResult } from '@deepseek-ai/dsh-api-remotes/client'
@@ -12,10 +13,7 @@ import { en, zh, type PluginMarketLocaleKey } from '../src/client/locales.ts'
 
 afterEach(cleanup)
 
-function translator(dictionary: Record<PluginMarketLocaleKey, string>): DiscoverSectionProps['t'] {
-  return ((key: PluginMarketLocaleKey, params?: Record<string, string>): string =>
-    Object.entries(params ?? {}).reduce<string>((text, [name, value]) => text.replaceAll(`{${name}}`, value), dictionary[key])) as DiscoverSectionProps['t']
-}
+function translator(dictionary: Record<PluginMarketLocaleKey, string>): DiscoverSectionProps['t'] { return makeTranslate(dictionary) }
 
 const A = 'https://a.example/index.json'
 const B = 'https://b.example/index.json'
@@ -149,7 +147,7 @@ describe('DiscoverSection', () => {
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: en.install }))
     expect(install).toHaveBeenCalledWith({ spec: 'dsh-a@1.0.0', registry: 'https://r.example/', title: 'Alpha', version: '1.0.0' })
     expect(screen.queryByRole('dialog')).toBeNull()
-    for (const [name, label] of [['dsh-b', en.statusInstalled], ['dsh-c', en.statusUpdate], ['dsh-f', en.statusProvided]] as const) {
+    for (const [name, label] of [['dsh-b', en.statusInstalled], ['dsh-c', en.statusUpdate], ['dsh-f', makeTranslate(en)('statusProvided')]] as const) {
       fireEvent.click(card(name).getByRole('button', { name: `View ${name} in Installed` }))
       expect(card(name).getByText(label)).toBeTruthy()
       expect(openPackage).toHaveBeenLastCalledWith(name)
@@ -159,7 +157,7 @@ describe('DiscoverSection', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(card('dsh-g').getByRole('button', { name: 'Install dsh-g' }).getAttribute('aria-disabled')).toBe('true')
     fireEvent.click(card('dsh-h').getByRole('button', { name: 'Install dsh-h' }))
-    expect(within(screen.getByRole('dialog')).getByText(en.exempted)).toBeTruthy()
+    expect(within(screen.getByRole('dialog')).getByText(makeTranslate(en)('exempted'))).toBeTruthy()
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: en.close }))
     expect(screen.queryByRole('dialog')).toBeNull()
   })
@@ -309,10 +307,10 @@ describe('DiscoverSection', () => {
     expect(openPackage).toHaveBeenCalledWith('dsh-b')
     fireEvent.click(git.getByRole('button', { name: en.backToList }))
     fireEvent.click(card('dsh-g').getByRole('button', { name: 'View dsh-g' }))
-    expect(screen.getAllByText('This version is not compatible with the running DSH 0.2.0; it requires DSH 0.1.0.')).toHaveLength(2)
+    expect(screen.getAllByText('This version is not compatible with the running Mindeck 0.2.0; it requires Mindeck 0.1.0.')).toHaveLength(2)
     fireEvent.click(screen.getByRole('button', { name: en.backToList }))
     fireEvent.click(card('dsh-h').getByRole('button', { name: 'View dsh-h' }))
-    expect(screen.getAllByText(en.exempted)).toHaveLength(2)
+    expect(screen.getAllByText(makeTranslate(en)('exempted'))).toHaveLength(2)
   })
 
   it('links a repository without a directory', () => {
@@ -355,7 +353,7 @@ describe('DiscoverSection', () => {
     expect(install).toHaveBeenCalledWith({ spec: 'dsh-v@3.0.0-rc.1', title: 'dsh-v', version: '3.0.0-rc.1' })
   })
 
-  it('marks exempted versions and offers no version of a bundle DSH provides', () => {
+  it('marks exempted versions and offers no version of a bundle Mindeck provides', () => {
     const name = 'dsh-x'
     const exempted = release(name, '2.0.0', { compatibility: { ...INCOMPATIBLE, exempted: true } })
     const entries: MarketListingEntry[] = [
@@ -366,7 +364,7 @@ describe('DiscoverSection', () => {
     fireEvent.click(card(name).getByRole('button', { name: `View ${name}` }))
     const row = within(document.querySelector('[data-market-version="2.0.0"]') as HTMLElement)
     expect(row.getByText(en.versionExempted)).toBeTruthy()
-    expect(row.getAllByText(en.exempted).length).toBeGreaterThan(0)
+    expect(row.getAllByText(makeTranslate(en)('exempted')).length).toBeGreaterThan(0)
     expect(row.getByRole('button', { name: `Install ${name} 2.0.0` })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: en.backToList }))
     fireEvent.click(card('dsh-p').getByRole('button', { name: 'View dsh-p' }))

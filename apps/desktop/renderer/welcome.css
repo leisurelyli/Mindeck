@@ -341,3 +341,17 @@ body {
 .actions .welcome-loading { color: inherit; }
 
 .auth-waiting .copy-link:disabled { cursor: default; }
+
+.brand.mindeck-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 36px;
+  font-weight: 500;
+  line-height: 40px;
+}
+
+.mindeck-brand img {
+  flex: none;
+}

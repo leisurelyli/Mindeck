@@ -1,3 +1,4 @@
+import { mindeckBranding } from './mindeck-branding.ts'
 import { readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -171,7 +172,7 @@ export default defineConfig({
   // directory, and the served index resolves identically from the site root.
   base: './',
   plugins: [
-    rejectStandaloneServe(), clientDocumentTitle(), brandFontLicense(), katexWoff2Fonts(), react(), emitPreviewPage(),
+    rejectStandaloneServe(), clientDocumentTitle(), mindeckBranding(), brandFontLicense(), katexWoff2Fonts(), react(), emitPreviewPage(),
     productWebBundleIsolation(src('../..'), src('.')),
   ],
   build: {

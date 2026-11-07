@@ -1,0 +1,7 @@
+# Mindeck presentation follows the stock Web bundle. Installation identity
+# and public locale parameters are supplied by the Mindeck launchers.
+- id: ui-brand-official
+  disabled: true
+- insert:
+    - id: ui-brand-mindeck
+      name: '@deepseek-ai/dsh-client-ui-brand-mindeck'

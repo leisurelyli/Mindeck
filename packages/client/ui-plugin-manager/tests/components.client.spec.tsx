@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { contextMenuHook } from '@deepseek-ai/dsh-client-test-runtime'
+import { contextMenuHook, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import type { ConfigPageForm } from '../src/client/slot-contract.ts'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
@@ -20,17 +20,13 @@ import type { PluginManagerPageProps } from '../src/client/index.ts'
 import type { PluginTab } from '../src/client/tab-ledger.ts'
 import type { ConfigLedger } from '../src/client/config-ledger.ts'
 import { rowKey, type InstallState, type PackageRow, type PackageView, type PluginManagerState, type UpdateState, type VersionCheck } from '../src/client/manager-store.ts'
-import { INSTALL_GIT_EXAMPLE, INSTALL_PATH_EXAMPLE, en, zh, type PluginManagerLocaleKey } from '../src/client/locales.ts'
+import { INSTALL_GIT_EXAMPLE, INSTALL_PATH_EXAMPLE, en, zh } from '../src/client/locales.ts'
 import type { PluginActivationOwnerProps, PluginAddActionsProps, PluginDetailProps, PluginTabProps, PluginsSubject } from '../src/client/slot-contract.ts'
 
 beforeEach(() => { localStorage.clear() })
 afterEach(cleanup)
 
-const translate = (dict: typeof en): PluginManagerPageProps['t'] => ((key: PluginManagerLocaleKey, params?: Record<string, string>): string =>
-  Object.entries(params ?? {}).reduce(
-    (text, [name, value]) => text.replaceAll(`{${name}}`, value),
-    dict[key],
-  )) as PluginManagerPageProps['t']
+const translate = (dict: typeof en): PluginManagerPageProps['t'] => makeTranslate(dict)
 
 const t = translate(en)
 
@@ -56,7 +52,7 @@ function row(overrides: Partial<PackageRow> = {}): PackageRow {
 
 const INCOMPATIBLE = { name: 'dsh-late', version: '2.0.0', runtimeVersion: '0.1.0', requirements: { '@deepseek-ai/dsh': '^0.2.0', '@deepseek-ai/dsh-core': '^0.2.0' } }
 /** The English sentence an incompatibility of {@link INCOMPATIBLE}, optionally renamed, reads as. */
-const incompatibleText = (name = INCOMPATIBLE.name): string => en.reasonIncompatibleVersion
+const incompatibleText = (name = INCOMPATIBLE.name): string => makeTranslate(en)('reasonIncompatibleVersion')
   .replace('{plugin}', `${name}@2.0.0`).replace('{runtime}', '0.1.0').replace('{requirements}', '@deepseek-ai/dsh ^0.2.0, @deepseek-ai/dsh-core ^0.2.0')
 const MIRROR = 'https://registry.npmmirror.com/'
 const OFFICIAL = 'https://registry.npmjs.org/'
@@ -1315,14 +1311,14 @@ describe('PluginManagerPage', () => {
         const installed = { ...entry, installed: true, availability, installTarget: { spec: `${name}@1.0.0`, version: '1.0.0' } }
         set({ packages: [other, installed] })
         expect(card()).not.toBeNull()
-        expect(screen.getByText(dict.reasonUnsupportedPlatform)).toBeTruthy()
+        expect(screen.getByText(makeTranslate(dict)('reasonUnsupportedPlatform'))).toBeTruthy()
         expect(screen.getByRole('switch', { name: dict.enableToggle.replace('{name}', name) })).toHaveProperty('disabled', true)
       }
       set({ packages: [other, { ...entry, enabled: true }] })
       fireEvent.click(screen.getByRole('button', { name: dict.openDetail.replace('{name}', name) }))
       const toggle = screen.getByRole('switch', { name: dict.enableToggle.replace('{name}', name) })
       expect(toggle).toHaveProperty('disabled', false)
-      expect(screen.getByText(`${dict.reasonLabel}: ${dict.reasonUnsupportedPlatform}`)).toBeTruthy()
+      expect(screen.getByText(`${dict.reasonLabel}: ${makeTranslate(dict)('reasonUnsupportedPlatform')}`)).toBeTruthy()
       fireEvent.click(toggle)
       expect(actions.setEnabled).toHaveBeenCalledExactlyOnceWith(name, false)
     })
@@ -1548,7 +1544,7 @@ describe('PluginManagerPage', () => {
     const { actions, setLanguage } = renderTab({ install: { ...IDLE_INSTALL, open: true } })
     setLanguage(locale)
     expect(screen.getByPlaceholderText(placeholder)).toBeTruthy()
-    expect(screen.getByText(locale.installUpgradeNotice)).toBeTruthy()
+    expect(screen.getByText(makeTranslate(locale)('installUpgradeNotice'))).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: locale.installGuideToggle }))
     expect(screen.getByText('dsh-plugin-whale-pet')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: locale.installGuideFillAria.replace('{example}', 'dsh-plugin-whale-pet') }))
@@ -1566,7 +1562,7 @@ describe('PluginManagerPage', () => {
     expect(screen.getByRole('textbox', { name: en.installSpecLabel }).getAttribute('aria-describedby')).toBe(hint.id)
     setLanguage(zh)
     expect(screen.getByRole('status').textContent).toBe(zh[key])
-    expect(screen.getByRole('note').textContent).toContain(zh.installGuideSafety)
+    expect(screen.getByRole('note').textContent).toContain(makeTranslate(zh)('installGuideSafety'))
     set({ install: { ...install, spec: '@actual/plugin' } })
     expect(screen.queryByRole('status')).toBeNull()
     expect(screen.getByRole('textbox', { name: zh.installSpecLabel }).getAttribute('aria-describedby')).toBeNull()
@@ -1626,13 +1622,13 @@ describe('PluginManagerPage', () => {
     expect(within(detail).getByText(`${en.reasonLabel}: ${en.reasonOperationError}`)).toBeTruthy()
     // An incompatibility reads from its structured packages in the dictionary's words, one sentence per package.
     set({ packages: [pkg({ error: { code: 'incompatible-version', incompatible: [INCOMPATIBLE, { ...INCOMPATIBLE, name: 'other' }] } })] })
-    expect(within(detail).getByText(`${en.reasonLabel}: ${incompatibleText()} ${incompatibleText('other')} ${en.reasonIncompatibleInstalled}`)).toBeTruthy()
+    expect(within(detail).getByText(`${en.reasonLabel}: ${incompatibleText()} ${incompatibleText('other')} ${makeTranslate(en)('reasonIncompatibleInstalled')}`)).toBeTruthy()
     set({ packages: [pkg({ error: { code: 'incompatible-version' } })] })
-    expect(within(detail).getByText(`${en.reasonLabel}: ${en.reasonIncompatibleVersionUnnamed} ${en.reasonIncompatibleInstalled}`)).toBeTruthy()
+    expect(within(detail).getByText(`${en.reasonLabel}: ${makeTranslate(en)('reasonIncompatibleVersionUnnamed')} ${makeTranslate(en)('reasonIncompatibleInstalled')}`)).toBeTruthy()
     fireEvent.click(within(detail).getByRole('button', { name: en.backToList }))
     expect(document.querySelector('[data-plugin-detail]')).toBeNull()
     set({ packages: [pkg({ enabled: false, error: { code: 'unsupported-platform' } })] })
-    expect(screen.getByText(en.reasonUnsupportedPlatform)).toBeTruthy()
+    expect(screen.getByText(makeTranslate(en)('reasonUnsupportedPlatform'))).toBeTruthy()
     expect(screen.getByRole('switch', { name: en.enableToggle.replace('{name}', 'dsh-better-sidebar') })).toHaveProperty('disabled', true)
     set({ packages: [pkg({ enabled: true, error: { code: 'unsupported-platform' } })] })
     expect(screen.getByRole('switch', { name: en.enableToggle.replace('{name}', 'dsh-better-sidebar') })).toHaveProperty('disabled', false)
@@ -1821,7 +1817,7 @@ describe('PluginManagerPage', () => {
     const problems: [string, string][] = [
       ['invalid-spec', en.installProblemInvalid.replace('{reason}', 'r')],
       ['already-installed', en.installProblemInstalled],
-      ['shipped', en.installProblemShipped],
+      ['shipped', makeTranslate(en)('installProblemShipped')],
       ['not-found', en.installProblemNotFound],
       ['not-a-package', en.installProblemNotPackage],
       ['not-a-bundle', en.installProblemNotBundle.replace('{reason}', 'r')],
@@ -1934,14 +1930,14 @@ describe('PluginManagerPage', () => {
     // A path without a description reads by its kind.
     expect(screen.getByText('dsh-x')).toBeTruthy()
     expect(screen.getByText(en.installSubjectPath)).toBeTruthy()
-    expect(screen.queryByText(en.installDoneRestart)).toBeNull()
+    expect(screen.queryByText(makeTranslate(en)('installDoneRestart'))).toBeNull()
     // No way back to the spec from here; enabling is the one action.
     expect(screen.queryByRole('button', { name: en.installEditAria })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: en.installEnableNow }))
     expect(actions.enableInstalled).toHaveBeenCalledTimes(1)
     set({ install: { ...IDLE_INSTALL, open: true, spec: '/plugins/dsh-x', phase: 'done', subject, installed: 'dsh-x', restartRequired: true, restartReason: 'host-module', enabling: true } })
     expect(screen.getByRole('button', { name: en.installEnableNow })).toHaveProperty('disabled', true)
-    expect(screen.getByText(en.installDoneRestart.replace('{reason}', en.restartReasonHostModule))).toBeTruthy()
+    expect(screen.getByText(makeTranslate(en)('installDoneRestart').replace('{reason}', makeTranslate(en)('restartReasonHostModule')))).toBeTruthy()
 
     // A run that named no bundle leaves only Done.
     set({ install: { ...IDLE_INSTALL, open: true, spec: 'dsh-x', phase: 'done', subject: { spec: 'dsh-x', status: 'accepted', kind: 'registry', name: 'dsh-x', bundle: true, registry: null } } })
@@ -1958,7 +1954,7 @@ describe('PluginManagerPage', () => {
       subject: { status: 'accepted', spec: name, name, kind: 'registry', registry: null, bundle: true, bundled: true, version: '1.0.0' },
     } })
     setLanguage(dict)
-    expect(screen.getByText(dict.installBundledTitle)).toBeTruthy()
+    expect(screen.getByText(makeTranslate(dict)('installBundledTitle'))).toBeTruthy()
     expect(screen.getByText(dict.installBundledDescription)).toBeTruthy()
     expect(screen.queryByText(dict.installedTitle)).toBeNull()
     expect(screen.queryByRole('button', { name: dict.installDetailsShow })).toBeNull()
@@ -2061,9 +2057,9 @@ describe('PluginManagerPage', () => {
     // A compatibility refusal outranks the kind pnpm's exit was classified as.
     set({ install: { ...IDLE_INSTALL, open: true, spec: 'x', phase: 'failed',
       failure: { reason: '', code: 'incompatible-version', incompatible: [INCOMPATIBLE], kind: 'unknown' } } })
-    expect(screen.getByText(`${incompatibleText()} ${en.reasonIncompatibleInstall}`)).toBeTruthy()
+    expect(screen.getByText(`${incompatibleText()} ${makeTranslate(en)('reasonIncompatibleInstall')}`)).toBeTruthy()
     set({ install: { ...IDLE_INSTALL, open: true, spec: 'x', phase: 'failed', failure: { reason: '', code: 'incompatible-version' } } })
-    expect(screen.getByText(`${en.reasonIncompatibleVersionUnnamed} ${en.reasonIncompatibleInstall}`)).toBeTruthy()
+    expect(screen.getByText(`${makeTranslate(en)('reasonIncompatibleVersionUnnamed')} ${makeTranslate(en)('reasonIncompatibleInstall')}`)).toBeTruthy()
     set({ install: { ...IDLE_INSTALL, open: true, spec: 'x', phase: 'failed', failure: { reason: 'the transport said so' } } })
     expect(screen.getByText('the transport said so')).toBeTruthy()
     set({ install: { ...IDLE_INSTALL, open: true, spec: 'x', phase: 'failed', failure: { reason: '' } } })
@@ -2512,10 +2508,10 @@ describe('PluginManagerPage', () => {
     vi.useFakeTimers()
     try {
       const { actions, set } = renderTab({ notice: { kind: 'restart', packageName: 'x', reason: 'no-hmr', seq: 1 } })
-      expect(screen.getByRole('alert').textContent).toContain(en.restartNotice.replace('{reason}', en.restartReasonNoHmr))
+      expect(screen.getByRole('alert').textContent).toContain(makeTranslate(en)('restartNotice').replace('{reason}', en.restartReasonNoHmr))
       // A Host that names no reason still asks for the restart.
       set({ notice: { kind: 'restart', packageName: 'x', reason: undefined, seq: 4 } })
-      expect(screen.getByRole('alert').textContent).toContain(en.restartNotice.replace(' {reason}', ''))
+      expect(screen.getByRole('alert').textContent).toContain(makeTranslate(en)('restartNotice').replace(' {reason}', ''))
       set({ notice: { kind: 'overridden', packageName: 'pkg-1', seq: 2 } })
       expect(screen.getByRole('alert').textContent).toContain(en.overriddenNotice.replace('{name}', 'pkg-1'))
       set({ notice: { kind: 'cancelled', seq: 3 } })
@@ -2526,7 +2522,7 @@ describe('PluginManagerPage', () => {
       set({ notice: { kind: 'failed', action: 'uninstall', code: 'bundle-in-use', reason: '', packageName: 'pkg-1', seq: 5 } })
       expect(screen.getByRole('alert').textContent).toContain(en.failedUninstall.replace('{reason}', en.reasonBundleInUse))
       set({ notice: { kind: 'failed', action: 'enable', code: 'incompatible-version', incompatible: [INCOMPATIBLE], reason: '', packageName: 'pkg-1', seq: 5 } })
-      expect(screen.getByRole('alert').textContent).toContain(en.failedEnable.replace('{reason}', `${incompatibleText()} ${en.reasonIncompatibleInstalled}`))
+      expect(screen.getByRole('alert').textContent).toContain(en.failedEnable.replace('{reason}', `${incompatibleText()} ${makeTranslate(en)('reasonIncompatibleInstalled')}`))
       set({ notice: { kind: 'failed', action: 'rowDisable', code: 'operation-error', reason: 'EACCES', packageName: 'pkg-1', seq: 6 } })
       expect(screen.getByRole('alert').textContent).toContain(en.failedRowDisable.replace('{reason}', 'EACCES'))
       set({ notice: { kind: 'failed', action: 'disable', reason: '', packageName: 'pkg-1', seq: 7 } })
@@ -2766,7 +2762,7 @@ describe('on-demand Official bundles', () => {
     expect(screen.queryByText(en.statusUpdateAvailable) !== null).toBe(expected)
     fireEvent.click(screen.getByRole('button', { name: en.openDetail.replace('{name}', title) }))
     const detail = document.querySelector('[data-plugin-detail]') as HTMLElement
-    expect(within(detail).getByText(en.sourceTargetSpec)).toBeTruthy()
+    expect(within(detail).getByText(makeTranslate(en)('sourceTargetSpec'))).toBeTruthy()
     expect(within(detail).getAllByText(spec).every(element => element.tagName === 'CODE')).toBe(true)
     expect(within(detail).queryByRole('button', { name: en.updateLabel.replace('{name}', title) }) !== null).toBe(expected)
   })
@@ -2896,14 +2892,14 @@ describe('registry versions and updates', () => {
   it.each([
     ['checking', { phase: 'checking' }, en.versionsChecking],
     ['up to date', listed([]), en.versionsLatest],
-    ['blocked', listed([v('2.0.0', { incompatible: incompatible('2.0.0') })]), en.versionsBlocked],
+    ['blocked', listed([v('2.0.0', { incompatible: incompatible('2.0.0') })]), makeTranslate(en)('versionsBlocked')],
     ['not installable', listed([v('1.0.0', { deprecated: 'old' })]), en.versionsNoneInstallable],
   ] as const)('summarizes a %s check', (_name, check, title) => {
     const { navigation } = renderTab({ packages: [updatable()], versions: { 'dsh-better-sidebar': check } })
     open(navigation)
     expect(within(section()).getByText(title)).toBeTruthy()
     expect(within(detail()).queryByRole('button', { name: /^Update to / })).toBeNull()
-    if (title === en.versionsBlocked) expect(within(section()).getByText(`2.0.0 needs @deepseek-ai/dsh >=0.9.0; this DSH is ${runtime}`)).toBeTruthy()
+    if (title === makeTranslate(en)('versionsBlocked')) expect(within(section()).getByText(`2.0.0 needs @deepseek-ai/dsh >=0.9.0; this Mindeck is ${runtime}`)).toBeTruthy()
   })
 
   it('reports a refused check with the registries asked and a retry', () => {

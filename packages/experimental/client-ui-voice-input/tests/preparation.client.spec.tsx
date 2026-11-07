@@ -92,7 +92,7 @@ it('explains download failures on the Host machine and retains an actionable ret
   } })
   const alert = screen.getByRole('alert')
   expect(alert.textContent).toContain('无法下载 model.int8.onnx：无法解析下载地址。')
-  expect(alert.textContent).toContain('运行 DSH 的机器的 DNS 和代理设置')
+  expect(alert.textContent).toContain('运行 Mindeck 的机器的 DNS 和代理设置')
   expect(alert.textContent).toContain('下载来源：https://mirror.example')
   expect(alert.textContent).toContain('错误码：ENOTFOUND')
   expect(alert.textContent).not.toContain('fetch failed')
@@ -153,12 +153,12 @@ it('shows provider-specific installation estimates before preparation and remove
     recommendedDiskBytes: 5_000_000_000, expectedMemoryBytes: 2_000_000_000, minimumMinutes: 5, maximumMinutes: 30,
   } }
   b.rerender(<PreparationCard {...b.props} provider={provider} />)
-  expect(screen.getByText(zh['setup.local'])).toBeTruthy()
+  expect(screen.getByText(t('setup.local'))).toBeTruthy()
   expect(screen.getByText(/建议预留约 5 GB/)).toBeTruthy()
   expect(screen.getByText(/模型加载后约 2 GB/)).toBeTruthy()
   expect(screen.getByText(/参考 5–30 分钟/)).toBeTruthy()
   b.rerender(<PreparationCard {...b.props} provider={{ ...provider, preparation: { phase: 'checking', startedAt: Date.now() } }} />)
-  expect(screen.queryByText(zh['setup.local'])).toBeNull()
+  expect(screen.queryByText(t('setup.local'))).toBeNull()
 })
 
 it('offers Host sources, submits a manual choice, and retains it for retry', async () => {

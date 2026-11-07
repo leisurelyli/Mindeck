@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for isolation.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/mindeck/isolation.md
+/:
+  en: 758d7818f227dee9
+  zh: 42f0ce6bedf25a64
+/mindeck-installation-isolation:
+  en: 350a972a2447b726
+  zh: f98dc3757d1faa48
+/mindeck-installation-isolation/summary:
+  en: 1129905561595a16
+  zh: 82e5660fbe10419e
+/mindeck-installation-isolation/table-of-contents:
+  en: c9c394a16d150d06
+  zh: 58ee54b2de452d6d
+/mindeck-installation-isolation/identity-and-state:
+  en: e5a956b2d0e2fe5b
+  zh: c451fcb10f7ebd0c
+/mindeck-installation-isolation/development-entry-points:
+  en: 537df1f8c1e3354e
+  zh: 80e40fc89a79a501
+/mindeck-installation-isolation/external-services-and-distribution:
+  en: 8a3ee1f01197f453
+  zh: bd0e453ab75f68db
+/mindeck-installation-isolation/acceptance:
+  en: 046be929e2735a02
+  zh: 30e4daf2a3b6d19e
