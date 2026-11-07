@@ -36,7 +36,7 @@ export const fr = {
   'subtitle.expand': 'Développer la description de {name}',
   'subtitle.collapse': 'Réduire la description de {name}',
   'back': 'Retour',
-  'brand.localBuild': 'Version locale de {productName}',
+  'brand.localBuild': 'Version locale de {productShortName}',
   'brand.productTitle': '{productTitle}',
   'workspace.defaultName': 'Espace de travail par défaut',
   'unknown': 'Inconnu',

@@ -12,7 +12,7 @@ it.each([
 ] as const)('assembles $product with $name without rewriting dictionaries', async ({ product, name, title, selected }) => {
   const scaffold = await launchWebScaffold({
     product,
-    localeParameters: { productName: name, productTitle: title },
+    ...product === 'upstream' ? {} : { localeParameters: { productName: name, productTitle: title } },
     developerTools: false,
   })
   const browser = await chromium.launch({ headless: true })

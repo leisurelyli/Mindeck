@@ -36,7 +36,7 @@ export const pt = {
   'subtitle.expand': 'Expandir descrição de {name}',
   'subtitle.collapse': 'Recolher descrição de {name}',
   'back': 'Voltar',
-  'brand.localBuild': 'Versão local do {productName}',
+  'brand.localBuild': 'Versão local do {productShortName}',
   'brand.productTitle': '{productTitle}',
   'workspace.defaultName': 'Espaço de trabalho padrão',
   'unknown': 'Desconhecido',

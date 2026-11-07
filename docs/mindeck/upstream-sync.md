@@ -31,6 +31,10 @@ Select checks using [dsh-pre-push-checks](../../.agents/skills/dsh-pre-push-chec
 
 This fork's default development and distribution identity is Mindeck. Keep brand assets and business behavior in their owning plugins and resources. Keep product-specific build and launcher implementations in Mindeck-owned modules, with small integration calls in shared files. Prefer existing configuration and extension points, and isolate required shared-code edits in focused commits. Link each customization to its package documentation or decision owner. When upstream changes an extension point, update the Mindeck consumer and its verification together.
 
+Generic unit and Web fixtures retain upstream composition and locale defaults. Product-branding acceptance selects Mindeck explicitly and also exercises upstream and alternate-product configurations. Keep branded expectations in product-specific cases; do not inject Mindeck globally into the test runner or rewrite unrelated upstream snapshots.
+
+Track platform fixes separately from branding: Windows package preparation uses archive basenames with an explicit working directory, and documentation fixtures use directory junctions where file symlinks require elevated privileges. Review these patches independently during synchronization and retire them when upstream provides equivalent behavior.
+
 Review workflow changes before enabling or running them on this fork. Record runner availability, required credentials, and any publication or deployment side effects. A successful upstream run does not establish that the fork's workflow configuration is usable.
 
 <a id="synchronization-record"></a>

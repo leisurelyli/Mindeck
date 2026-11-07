@@ -28,7 +28,6 @@ function mount(step: DesktopOnboardingState['progress']['step'] = 'welcome', bal
   })
   let changeStatus: (value: DesktopOnboardingState['status']) => void = () => {}
   const update = vi.fn(async (_change: Parameters<DesktopOnboardingProps['update']>[0]) => true)
-  // These copy snapshots describe the Mindeck deployment.
   const translate = makeTranslate(copy)
   function App() {
     const [state, setState] = useState<DesktopOnboardingState>({
@@ -37,7 +36,7 @@ function mount(step: DesktopOnboardingState['progress']['step'] = 'welcome', bal
     })
     changeStatus = (value) => { setState(current => ({ ...current, status: value })) }
     return <DesktopOnboarding {...emptySlots} track={track} locale={copy === zh ? 'zh' : 'en'} state={state}
-      t={key => translate(key, { productName: 'Mindeck', productTitle: 'Mindeck' })} complete={complete} retry={retry}
+      t={translate} complete={complete} retry={retry}
       update={async (change) => {
         setState(current => ({ ...current, status: 'saving' }))
         const saved = await update(change)

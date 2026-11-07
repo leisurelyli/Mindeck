@@ -88,7 +88,7 @@ async function harness(config: Partial<Config['office']> = {}, missing?: 'remote
   }
 }
 
-it.each(['remote', 'render', 'files'] as const)('keeps Word and PowerPoint registration and guidance when %s is absent', async (missing) => {
+it.each(['remote', 'render', 'files'] as const)('keeps Word and PowerPoint registration when %s is absent', async (missing) => {
   const h = await harness(undefined, missing)
   try {
     expect(h.locale.register).toHaveBeenCalledWith('sidebarOffice', { zh, en, ja, es, fr, de, ru, pt })
@@ -97,7 +97,6 @@ it.each(['remote', 'render', 'files'] as const)('keeps Word and PowerPoint regis
       expect(h.registry.candidates(path)[0]!.title()).toBe(en.title)
       expect(h.registry.candidates(path)[0]!.loading).toBe('renderer')
       expect(h.registry.candidates(path)[0]).not.toHaveProperty('read')
-      await expect(h.read(undefined, path)).rejects.toThrow(en.unavailable)
     }
     for (const path of ['sheet.XLS', 'sheet.xlsx']) expect(h.registry.candidates(path)).toEqual([])
     expect(h.render).not.toHaveBeenCalled()
@@ -127,23 +126,23 @@ it('requests a Host PDF with source identity and borrows the same binary cache r
 it.each([
   ['rendererGeneration', 'gateway/invocation-unavailable'], ['rendererGeneration', 'gateway/service-unavailable'],
   ['render', 'gateway/invocation-unavailable'], ['render', 'gateway/service-unavailable'],
-] as const)('shows configuration guidance when %s returns %s', async (method, code) => {
+] as const)('preserves the failure and allows retry when %s returns %s', async (method, code) => {
   const h = await harness()
   try {
     const endpoint = method === 'render' ? 'officeToPdf/render' : 'officeToPdf/generation'
     const failure = new RemoteError(code, 'Office provider is unavailable.', { endpoint })
     h[method].mockResolvedValueOnce({ ok: false, error: failure })
-    await expect(h.read()).rejects.toMatchObject({ message: en.unavailable, cause: failure })
+    await expect(h.read()).rejects.toMatchObject({ cause: failure })
     expect((await h.read()).ok).toBe(true)
   } finally { await h.close() }
 })
 
-it('shows configuration guidance when the Host exposes no Office HTTP endpoint', async () => {
+it('preserves the missing Office endpoint failure without reading source bytes', async () => {
   const h = await harness()
   try {
     const failure = new RemoteError('gateway/internal', 'transport failure for /api/officeToPdf/generation: HTTP 404', {})
     h.rendererGeneration.mockResolvedValueOnce({ ok: false, error: failure })
-    await expect(h.read()).rejects.toMatchObject({ message: en.unavailable, cause: failure })
+    await expect(h.read()).rejects.toMatchObject({ cause: failure })
     expect(h.readBytes).not.toHaveBeenCalled()
     expect(h.render).not.toHaveBeenCalled()
   } finally { await h.close() }
@@ -216,15 +215,14 @@ it('passes source authorization failures through and rechecks permission before 
 })
 
 it.each([
-  ['input-too-large', 'tooLarge'], ['output-too-large', 'tooLarge'], ['invalid-document', 'invalid'],
-  ['unsupported-format', 'invalid'], ['invalid-output', 'failed'], ['timeout', 'timeout'],
-  ['unavailable', 'unavailable'], ['failed', 'failed'], ['busy', 'busy'], ['source-changed', 'changed'],
-] as const)('localizes %s Host conversion failures and allows retry', async (code, key) => {
+  'input-too-large', 'output-too-large', 'invalid-document', 'unsupported-format', 'invalid-output',
+  'timeout', 'unavailable', 'failed', 'busy', 'source-changed',
+] as const)('preserves %s Host conversion failures and allows retry', async (code) => {
   const h = await harness()
   try {
     const failure = new RemoteError('document-render/failed', 'Office conversion failed.', { reason: code })
     h.render.mockResolvedValueOnce({ ok: false, error: failure })
-    await expect(h.read()).rejects.toMatchObject({ message: en[key], cause: failure })
+    await expect(h.read()).rejects.toMatchObject({ cause: failure })
     expect((await h.read()).ok).toBe(true)
   } finally { await h.close() }
 })

@@ -73,9 +73,9 @@ export function apply(ctx) {
 
 ### 部署参数
 
-Host `Config.parameters` 接受字符串映射。非空映射整体替代 `DSH_LOCALE_PARAMETERS` 环境输入；空映射或省略时继承该 JSON 输入。两者均缺省时，`productName` 默认为 `DeepSeek Harness`；缺少 `productTitle` 时使用解析后的 `productName`。所选 JSON 无效、值不是字符串，或产品名称及标题为空白，都会导致 Host 加载失败。所有参数都是公开的浏览器数据，切勿放入密钥。
+Host `Config.parameters` 接受字符串映射。非空映射整体替代 `DSH_LOCALE_PARAMETERS` 环境输入；空映射或省略时继承该 JSON 输入。两者均缺省时，`productName`、`productShortName` 和 `productAlias` 分别默认为 `DeepSeek Harness`、`DSH` 和 `Harness`。显式指定 `productName` 时，省略的简称与别名随之取值。缺少 `productTitle` 时使用解析后的 `productName`。所选 JSON 无效、值不是字符串，或产品名称及标题为空白，都会导致 Host 加载失败。所有参数都是公开的浏览器数据，切勿放入密钥。
 
-普通产品文案使用 `{productName}`，共用标题使用 `{productTitle}`。翻译调用传入的命名值优先于部署默认值；未知占位符保持原样。其他命名字符串参数遵循相同规则。
+使用 `{productName}`、`{productShortName}` 或 `{productAlias}` 保留现有名称的各自形式；共用标题使用 `{productTitle}`。翻译调用传入的命名值优先于部署默认值；未知占位符保持原样。其他命名字符串参数遵循相同规则。
 
 -----
 

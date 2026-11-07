@@ -36,7 +36,7 @@ export const ru = {
   'subtitle.expand': 'Развернуть описание {name}',
   'subtitle.collapse': 'Свернуть описание {name}',
   'back': 'Назад',
-  'brand.localBuild': 'Локальная сборка {productName}',
+  'brand.localBuild': 'Локальная сборка {productShortName}',
   'brand.productTitle': '{productTitle}',
   'workspace.defaultName': 'Рабочая область по умолчанию',
   'unknown': 'Неизвестно',

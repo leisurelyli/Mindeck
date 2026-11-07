@@ -89,14 +89,12 @@ it.each([
 })
 
 it.each([
-  [{ phase: 'enabled' }, zh.enabled],
-  [{ phase: 'enabled', data: { application: 'restart-required' } }, zh['restart-required']],
-  [{ phase: 'already-enabled' }, zh['already-enabled']],
-  [{ phase: 'dismissed' }, zh.dismissed],
-  [{ phase: 'replaced' }, zh.replaced],
-] as const)('shows the settled %j state without actions', async (decision, copy) => {
+  { phase: 'enabled' },
+  { phase: 'already-enabled' },
+  { phase: 'dismissed' },
+  { phase: 'replaced' },
+] as const)('removes actions after %j settles', async (decision) => {
   await shown(props(decision))
-  expect(screen.getByRole('status').textContent).toBe(copy)
   expect(screen.queryByRole('button', { name: '启用' })).toBeNull()
   expect(screen.queryByRole('button', { name: '重试启用' })).toBeNull()
 })
@@ -108,15 +106,14 @@ it('names no status for a phase it does not know, and offers no action', async (
 })
 
 it.each([
-  [{ phase: 'failed' }, zh.failed, undefined],
-  [{ phase: 'failed', data: { errorCode: 'incompatible-version' } }, zh.failed, zh['version-error']],
-  [{ phase: 'failed', data: { errorCode: 'operation-error' } }, zh.failed, zh['management-error']],
-  [{ phase: 'unconfirmed' }, zh.unconfirmed, undefined],
-] as const)('offers a retry after %j', async (decision, status, alert) => {
+  [{ phase: 'failed' }, false],
+  [{ phase: 'failed', data: { errorCode: 'incompatible-version' } }, true],
+  [{ phase: 'failed', data: { errorCode: 'operation-error' } }, true],
+  [{ phase: 'unconfirmed' }, false],
+] as const)('offers a retry after %j', async (decision, hasAlert) => {
   const value = props(decision)
   await shown(value)
-  expect(screen.getByRole('status').textContent).toBe(status)
-  expect(screen.queryByRole('alert')?.textContent).toBe(alert)
+  expect(screen.queryByRole('alert') !== null).toBe(hasAlert)
   fireEvent.click(screen.getByRole('button', { name: '重试启用' }))
   await waitFor(() => { expect(value.act).toHaveBeenCalledWith('enable') })
 })

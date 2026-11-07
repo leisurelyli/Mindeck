@@ -31,7 +31,7 @@ usePinnedBrowserLanguages('en')
 
 const SID = 'session-1' as SessionId
 const NOTICE = 'Request quota exhausted.'
-const backToHarness = makeTranslate(en)('backToHarness', { productName: 'Mindeck', productTitle: 'Mindeck' })
+const backToHarness = makeTranslate(en)('backToHarness')
 const disposers: Array<() => Promise<void>> = []
 const references: SessionReference[] = []
 
@@ -109,7 +109,7 @@ async function bench() {
     openSession: () => {},
   } as never)
   runtime.remote.provideNamespaces({ session: { openWorkspacePath: async () => ({ ok: true, value: { opened: true } }) } })
-  const locale = new LocaleRuntime(runtime.ctx, undefined, undefined, { productName: 'Mindeck', productTitle: 'Mindeck' })
+  const locale = new LocaleRuntime(runtime.ctx)
   runtime.ctx.provide('locale', locale)
   runtime.ctx.provide('shortcuts', { catalog: createSnapshotStore([]) })
   await runtime.mount({ apply: applyMenus, inject: injectMenus })

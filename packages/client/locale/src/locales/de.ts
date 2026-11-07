@@ -36,7 +36,7 @@ export const de = {
   'subtitle.expand': 'Beschreibung für {name} ausklappen',
   'subtitle.collapse': 'Beschreibung für {name} einklappen',
   'back': 'Zurück',
-  'brand.localBuild': 'Lokaler {productName}-Build',
+  'brand.localBuild': 'Lokaler {productShortName}-Build',
   'brand.productTitle': '{productTitle}',
   'workspace.defaultName': 'Standardarbeitsbereich',
   'unknown': 'Unbekannt',

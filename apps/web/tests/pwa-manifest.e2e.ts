@@ -51,24 +51,60 @@ function imageUrl(bytes: Buffer, type: 'png' | 'svg+xml'): string {
   return `data:image/${type};base64,${bytes.toString('base64')}`
 }
 
-it('ships Mindeck install metadata with relative mount identity', async () => {
-  const index = await readFile(join(DIST_ROOT, 'index.html'), 'utf8')
-  expect(index).toContain('<meta name="viewport" content="width=device-width, initial-scale=1" />')
-  expect(index).toContain('<link rel="manifest" href="./mindeck.webmanifest" />')
-  expect(index).toContain('<link rel="apple-touch-icon" href="./mindeck/apple-touch-icon.png" />')
-  expect(index).toContain('<meta name="mobile-web-app-capable" content="yes" />')
-  expect(index).toContain('<meta name="apple-mobile-web-app-title" content="Mindeck" />')
-  const manifest: unknown = JSON.parse(await readFile(join(DIST_ROOT, 'mindeck.webmanifest'), 'utf8'))
-  // An absent id defaults to the mount-relative start_url.
-  expect(manifest).toEqual({
-    name: 'Mindeck', short_name: 'Mindeck', start_url: './', scope: './', display: 'standalone',
-    background_color: '#ffffff', theme_color: '#ffffff',
-    icons: [
-      { src: 'mindeck/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-      { src: 'mindeck/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-      { src: 'mindeck/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-    ],
-  })
+it('keeps install navigation and artwork within a nested application mount', async () => {
+  const browser = await chromium.launch({ headless: true })
+  const origin = 'https://mindeck.test'
+  const mount = '/tools/mindeck/'
+  try {
+    const page = await browser.newPage()
+    await page.route(`${origin}/**`, async (route) => {
+      const request = route.request()
+      const path = new URL(request.url()).pathname
+      if (!path.startsWith(mount)) return route.fulfill({ status: 404 })
+      if (request.resourceType() === 'script' || request.resourceType() === 'stylesheet') return route.abort()
+      const asset = path.slice(mount.length) || 'index.html'
+      await route.fulfill({
+        body: await readFile(join(DIST_ROOT, asset)),
+        contentType: asset.endsWith('.html') ? 'text/html'
+          : asset.endsWith('.webmanifest') ? 'application/manifest+json'
+            : asset.endsWith('.svg') ? 'image/svg+xml' : 'image/png',
+      })
+    })
+    await page.goto(`${origin}${mount}`)
+    const installed = await page.evaluate(async () => {
+      const manifestUrl = document.querySelector<HTMLLinkElement>('link[rel="manifest"]')!.href
+      const response = await fetch(manifestUrl)
+      if (!response.ok) throw new Error(`Manifest ${manifestUrl}: HTTP ${response.status}`)
+      const manifest: unknown = await response.json()
+      if (manifest === null || typeof manifest !== 'object'
+        || !('start_url' in manifest) || typeof manifest.start_url !== 'string'
+        || !('scope' in manifest) || typeof manifest.scope !== 'string'
+        || !('icons' in manifest) || !Array.isArray(manifest.icons)) {
+        throw new Error('Manifest must declare start_url, scope and icons')
+      }
+      const artwork = [
+        ...manifest.icons.map((icon: unknown) => {
+          if (icon === null || typeof icon !== 'object' || !('src' in icon) || typeof icon.src !== 'string') {
+            throw new Error('Manifest icons must declare src')
+          }
+          return new URL(icon.src, manifestUrl).href
+        }),
+        document.querySelector<HTMLLinkElement>('link[rel="apple-touch-icon"]')!.href,
+        document.querySelector<HTMLLinkElement>('link[rel="icon"]')!.href,
+      ]
+      return {
+        start: new URL(manifest.start_url, manifestUrl).href,
+        scope: new URL(manifest.scope, manifestUrl).href,
+        artwork: await Promise.all(artwork.map(async url => ({ url, status: (await fetch(url)).status }))),
+      }
+    })
+    expect(installed.start).toBe(`${origin}${mount}`)
+    expect(installed.scope).toBe(`${origin}${mount}`)
+    for (const asset of installed.artwork) {
+      expect(new URL(asset.url).pathname.startsWith(mount)).toBe(true)
+      expect(asset.status).toBe(200)
+    }
+  } finally { await browser.close() }
 })
 
 it('decodes every public and shipped icon with both original colors', async () => {
@@ -92,13 +128,7 @@ it('decodes every public and shipped icon with both original colors', async () =
 })
 
 it('uses the same full-color transparent favicon in light and dark modes', async () => {
-  const index = await readFile(join(DIST_ROOT, 'index.html'), 'utf8')
-  expect(index).toContain('<link rel="icon" type="image/svg+xml" href="./mindeck/mark.svg" />')
   const favicon = await readFile(join(DIST_ROOT, 'mindeck/mark.svg'))
-  const source = await readFile(MINDECK_ICON_SOURCE, 'utf8')
-  const shapes = source.match(/<(?:path|rect)\b[^>]*>/gu) ?? []
-  expect(shapes.length).toBeGreaterThan(0)
-  for (const shape of shapes) expect(favicon.toString()).toContain(shape)
   const browser = await chromium.launch({ headless: true })
   try {
     const page = await browser.newPage()

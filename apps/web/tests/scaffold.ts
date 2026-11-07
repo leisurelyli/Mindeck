@@ -23,7 +23,6 @@
 // (the plugin-row path discards the ReplayHandle; the direct install keeps
 // assertConsumed for the teardown fixture-consumption check).
 import productDescription from '../../desktop/src/product.json' with { type: 'json' }
-import { resolveLocaleParameters } from '../../../packages/client/locale/src/parameters.ts'
 import { existsSync, readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises'
@@ -121,7 +120,7 @@ export const WELCOME_NOTICE_VERSION = '2026-09-28.1'
 export const WELCOME_NOTICE_COPY = {
   zh: {
     title: '预览版说明',
-    body: 'Mindeck 目前的 0.2 版本仍处于预览阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者和用户的反馈建议。现在，新的桌面端面向广泛用户，开发者相关的进阶功能可在配置中开启使用。预计 Mindeck 的产品功能以及插件 API 都会继续快速迭代、持续演化，并逐渐趋于稳定。\n\n我们期待与全球用户和开发者一起，在开源、可复用、可组合的基础设施之上，共同探索智能上限。欢迎大家用 Mindeck 将想法变成现实，与社区一起丰富插件生态。',
+    body: 'DeepSeek Harness 目前的 0.2 版本仍处于预览阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者和用户的反馈建议。现在，新的桌面端面向广泛用户，开发者相关的进阶功能可在配置中开启使用。预计 DeepSeek Harness 的产品功能以及插件 API 都会继续快速迭代、持续演化，并逐渐趋于稳定。\n\n我们期待与全球用户和开发者一起，在开源、可复用、可组合的基础设施之上，共同探索智能上限。欢迎大家用 DeepSeek Harness 将想法变成现实，与社区一起丰富插件生态。',
     continueLabel: '继续',
   },
 } as const
@@ -308,7 +307,7 @@ export interface WebScaffold {
 
 /** Options for {@link launchWebScaffold}. */
 export interface LaunchOptions {
-  /** Distribution composition under test; Mindeck is this checkout's application. */
+  /** Distribution composition under test; omission retains the upstream application. */
   product?: 'mindeck' | 'upstream'
   /** Explicit presentation values for alternate-product acceptance cases. */
   localeParameters?: Readonly<Record<string, string>>
@@ -742,18 +741,19 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
     return ordinary
   })
 
-  const localeDefaults = formDefaults.findLast(patch => patch.id === 'locale')
-  const previousLocaleConfig: unknown = localeDefaults?.config
-  if (previousLocaleConfig !== undefined && (typeof previousLocaleConfig !== 'object'
-    || previousLocaleConfig === null || Array.isArray(previousLocaleConfig))) {
-    throw new TypeError('scaffold: locale defaults must be an object')
+  if (options.product === 'mindeck' || options.localeParameters !== undefined) {
+    const localeDefaults = formDefaults.findLast(patch => patch.id === 'locale')
+    const previousLocaleConfig: unknown = localeDefaults?.config
+    if (previousLocaleConfig !== undefined && (typeof previousLocaleConfig !== 'object'
+      || previousLocaleConfig === null || Array.isArray(previousLocaleConfig))) {
+      throw new TypeError('scaffold: locale defaults must be an object')
+    }
+    const parameters = options.localeParameters
+      ?? { productName: productDescription.name, productTitle: productDescription.developmentName }
+    const localeConfig = { ...previousLocaleConfig, parameters }
+    if (localeDefaults) localeDefaults.config = localeConfig
+    else formDefaults.push({ id: 'locale', config: localeConfig })
   }
-  const parameters = options.localeParameters ?? (options.product === 'upstream'
-    ? resolveLocaleParameters()
-    : { productName: productDescription.name, productTitle: productDescription.developmentName })
-  const localeConfig = { ...previousLocaleConfig, parameters }
-  if (localeDefaults) localeDefaults.config = localeConfig
-  else formDefaults.push({ id: 'locale', config: localeConfig })
 
   // Sessions inherit the gateway's process.cwd() default; run the boot from
   // the temp workspace so tool cwd, session cwd, and fixtures agree.
@@ -814,7 +814,7 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
       // installed the way `dsh plugin add` leaves them.
       const dependencies: Record<string, string> = {}
       const bundles = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app',
-        ...options.product === 'upstream' ? [] : ['@deepseek-ai/dsh-mindeck-app'],
+        ...options.product === 'mindeck' ? ['@deepseek-ai/dsh-mindeck-app'] : [],
         ...options.profile?.bundles ?? []]
       for (const entry of options.profile?.packages ?? []) {
         const manifest = JSON.parse(await readFile(join(entry.dir, 'package.json'), 'utf8')) as { name: string }

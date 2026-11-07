@@ -196,7 +196,6 @@ describe('AppFrame', () => {
   })
 
   it('follows the selected durable Session title', () => {
-
     selectedSessionTitle = 'First'
     const { rerenderFrame } = mountFrame()
     expect(document.title).toBe('First — Product')

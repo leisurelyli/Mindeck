@@ -18,6 +18,7 @@ import { documentLocaleParameters, formatLocaleTemplate } from '@deepseek-ai/dsh
 export function makeTranslate(
   ...dicts: readonly Record<string, string>[]
 ): (key: string, params?: Record<string, unknown>) => string {
+  const parameters = documentLocaleParameters()
   return (key, params) => {
     let template = key
     for (const dict of dicts) {
@@ -27,6 +28,6 @@ export function makeTranslate(
         break
       }
     }
-    return formatLocaleTemplate(template, documentLocaleParameters(), params)
+    return formatLocaleTemplate(template, parameters, params)
   }
 }

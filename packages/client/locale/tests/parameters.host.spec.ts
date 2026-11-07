@@ -15,7 +15,7 @@ it('uses public launch parameters and lets explicit configuration take precedenc
   const first: IndexInjection[] = []
   ctx.emit('webserver/index-inject', first, PAGE_PEER)
   expect(first).toContainEqual({ kind: 'global', name: LOCALE_PARAMETERS_GLOBAL, value: {
-    productName: 'Launch Desk', productTitle: 'Launch Desk',
+    productName: 'Launch Desk', productShortName: 'Launch Desk', productAlias: 'Launch Desk', productTitle: 'Launch Desk',
   } })
   await inherited.dispose()
   vi.stubEnv('DSH_LOCALE_PARAMETERS', 'invalid JSON')
@@ -23,7 +23,7 @@ it('uses public launch parameters and lets explicit configuration take precedenc
   const second: IndexInjection[] = []
   ctx.emit('webserver/index-inject', second, PAGE_PEER)
   expect(second).toContainEqual({ kind: 'global', name: LOCALE_PARAMETERS_GLOBAL, value: {
-    productName: 'Configured Desk', productTitle: 'Configured Desk',
+    productName: 'Configured Desk', productShortName: 'Configured Desk', productAlias: 'Configured Desk', productTitle: 'Configured Desk',
   } })
 })
 
@@ -34,7 +34,7 @@ it('projects configured presentation before client boot and removes it on unload
   const rows: IndexInjection[] = []
   ctx.emit('webserver/index-inject', rows, PAGE_PEER)
   expect(rows).toEqual([{ kind: 'global', name: LOCALE_PARAMETERS_GLOBAL, value: {
-    productName: 'Acme Desk', productTitle: 'Acme Desk Dev',
+    productName: 'Acme Desk', productShortName: 'Acme Desk', productAlias: 'Acme Desk', productTitle: 'Acme Desk Dev',
   } }])
   await ctx.fiber.dispose()
   const after: IndexInjection[] = []

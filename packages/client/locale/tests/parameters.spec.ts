@@ -11,6 +11,16 @@ describe('locale presentation parameters', () => {
       .toBe('Acme Desk: 0 {missing}')
   })
 
+  it('retains each upstream name and lets an alternate product replace all forms', () => {
+    const template = '{productName} / {productShortName} / {productAlias}'
+    expect(formatLocaleTemplate(template, resolveLocaleParameters())).toBe('DeepSeek Harness / DSH / Harness')
+    expect(formatLocaleTemplate(template, resolveLocaleParameters({ productName: 'Mindeck' })))
+      .toBe('Mindeck / Mindeck / Mindeck')
+    expect(formatLocaleTemplate(template, resolveLocaleParameters({
+      productName: 'Acme Desktop', productShortName: 'Acme', productAlias: 'Desk',
+    }))).toBe('Acme Desktop / Acme / Desk')
+  })
+
   it('detaches the configured map and derives the title when only the name changes', () => {
     const input = { productName: 'Acme Desk' }
     const parameters = resolveLocaleParameters(input)
@@ -20,7 +30,7 @@ describe('locale presentation parameters', () => {
     expect(Object.isFrozen(parameters)).toBe(true)
   })
 
-  it.each([null, [], { productName: 1 }, { productName: ' ' }, { productTitle: '' }])
+  it.each([null, [], { productName: 1 }, { productName: ' ' }, { productShortName: '' }, { productAlias: ' ' }, { productTitle: '' }])
   ('rejects malformed parameters from the document carrier: %j', (wire) => {
     expect(() => parseLocaleParameters(wire)).toThrow()
   })

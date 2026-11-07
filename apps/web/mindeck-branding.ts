@@ -8,7 +8,7 @@ function escapeHtml(value: string): string {
 
 /**
  * Apply the product descriptor after the upstream document-title hook.
- * @returns Vite plugin that selects Mindeck titles and installable Web artwork.
+ * @returns Vite plugin that selects Mindeck titles and mount-relative installable Web artwork.
  */
 export function mindeckBranding(): Plugin {
   return {
@@ -20,11 +20,11 @@ export function mindeckBranding(): Plugin {
         : profile === 'local'
           ? product.developmentName
           : process.env.DSH_CLIENT_TITLE ?? product.developmentName
-      const assetBase = escapeHtml(`/${product.branding.webDirectory}`)
+      const assetBase = escapeHtml(`./${product.branding.webDirectory}`)
       let faviconWritten = false
       return html
         .replace(/<title>[^]*?<\/title>/i, () => `<title>${escapeHtml(title)}</title>`)
-        .replace(/<link\b[^>]*\brel="manifest"[^>]*>/gi, () => `<link rel="manifest" href="${escapeHtml(`/${product.branding.webManifest}`)}" />`)
+        .replace(/<link\b[^>]*\brel="manifest"[^>]*>/gi, () => `<link rel="manifest" href="${escapeHtml(`./${product.branding.webManifest}`)}" />`)
         .replace(/<link\b[^>]*\brel="apple-touch-icon"[^>]*>/gi, () => `<link rel="apple-touch-icon" href="${assetBase}/apple-touch-icon.png" />`)
         .replace(/<meta\b[^>]*\bname="apple-mobile-web-app-title"[^>]*>/gi, () => `<meta name="apple-mobile-web-app-title" content="${escapeHtml(product.name)}" />`)
         .replace(/<link\b[^>]*\brel="icon"[^>]*>/gi, () => {

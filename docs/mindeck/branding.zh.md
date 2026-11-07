@@ -41,7 +41,9 @@ corepack pnpm run render:mindeck-icons
 
 [Mindeck 展示组合包](../../packages/bundle/mindeck-app/README.zh.md)在原版 Web 组合包之后应用，禁用 `ui-brand-official`，并选择 [Mindeck 品牌插件](../../packages/client/ui-brand-mindeck/README.zh.md)。原版 Web 组合包没有 Mindeck 依赖或配置项。插件通过 slot 提供侧栏图标、名称和空白会话标识；操作系统图标和安装身份仍由构建及启动器负责。
 
-Mindeck 启动器通过 `DSH_LOCALE_PARAMETERS` 公开 `productName` 和 `productTitle`。普通文案使用 `{productName}`，共用标题使用 `{productTitle}`。[语言包](../../packages/client/locale/README.zh.md#use-this-package)负责优先级与插值；[Web 启动包](../../packages/client/web/README.zh.md#use-this-package)负责加载名称和标题的更新时间。[Mindeck Web 构建插件](../../apps/web/mindeck-branding.ts)设置初始 HTML 标题、图标和 manifest 链接。具名 `official` 与 `local` 构建分别使用 Mindeck 和 Mindeck Dev；未指定 profile 的构建遵循 `DSH_CLIENT_TITLE`，默认为 Mindeck Dev。共享构建环境 helper 保留上游 profile 值。源码 Web 启动器也将显式标题覆盖值用作 `productTitle`。[安装隔离](isolation.zh.md)文档负责应用标识和数据目录约定。
+Mindeck 启动器通过 `DSH_LOCALE_PARAMETERS` 公开 `productName` 和 `productTitle`。产品文案使用语言包提供的名称参数，共用标题使用 `{productTitle}`。[语言包](../../packages/client/locale/README.zh.md#use-this-package)负责优先级与插值；[Web 启动包](../../packages/client/web/README.zh.md#use-this-package)负责加载名称和标题的更新时间。[Mindeck Web 构建插件](../../apps/web/mindeck-branding.ts)设置初始 HTML 标题、图标和 manifest 链接。具名 `official` 与 `local` 构建分别使用 Mindeck 和 Mindeck Dev；未指定 profile 的构建遵循 `DSH_CLIENT_TITLE`，默认为 Mindeck Dev。共享构建环境 helper 保留上游 profile 值。源码 Web 启动器也将显式标题覆盖值用作 `productTitle`。[安装隔离](isolation.zh.md)文档负责应用标识和数据目录约定。
+
+构建插件使 manifest、favicon 和触摸图标 URL 相对于页面目录。反向代理通过嵌套路径提供应用时，这些请求与 manifest 的安装作用域都保留在应用挂载路径内。
 
 Web 产品文案使用公开的语言参数。原生菜单、对话框和安装器提示使用同一产品描述中的名称。DeepSeek 账号、模型和充值说明保留服务商名称。上游署名、许可证、包名与兼容标识保留原名。
 

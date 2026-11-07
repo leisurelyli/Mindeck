@@ -20,10 +20,7 @@ const MODE = webSnapshotMode()
 const EXPECTED = fileURLToPath(new URL('./expected/desktop-onboarding', import.meta.url))
 const NS = 'ui-settings-account'
 const INITIAL = { version: 1, step: 'welcome', purpose: null, process: null, completion: null, usage: 'compact', developerTools: false }
-const ACCOUNT_ASSET = new RegExp(
-  '/plugins/@deepseek-ai/dsh-client-(?:ui-settings-account/assets/onboarding-|'
-  + 'ui-brand-mindeck/assets/mindeck-onboarding-)[a-z-]+-[0-9a-f]{12}\\.(?:svg|webp)$',
-)
+const ACCOUNT_ASSET = /\/plugins\/@deepseek-ai\/dsh-client-ui-settings-account\/assets\/onboarding-[a-z-]+-[0-9a-f]{12}\.(?:svg|webp)$/
 
 describe.skipIf(MODE === 'record')('web e2e: App-only desktop onboarding', () => {
   let root: string
@@ -284,11 +281,11 @@ describe.skipIf(MODE === 'record')('web e2e: App-only desktop onboarding', () =>
     expect(await page.locator('[data-desktop-onboarding]').evaluate(element => getComputedStyle(element).filter)).toBe('none')
     expect(await page.getByRole('dialog').evaluate(element => getComputedStyle(element.previousElementSibling!).backdropFilter)).toBe('none')
     await page.getByRole('button', { name: '前往充值', exact: true }).click()
-    await page.getByRole('button', { name: '返回 Mindeck', exact: true }).waitFor()
+    await page.getByRole('button', { name: '返回 DeepSeek Harness', exact: true }).waitFor()
     expect((scaffold.ctx.settings.describe().find(row => row.ns === NS)?.value as { step: string }).step).toBe('credit')
     balanceFailure = true
     const readsBefore = balanceReads
-    await page.getByRole('button', { name: '返回 Mindeck', exact: true }).click()
+    await page.getByRole('button', { name: '返回 DeepSeek Harness', exact: true }).click()
     await page.getByRole('heading', { name: '准备可用额度', exact: true }).waitFor()
     await expect.poll(() => balanceReads).toBeGreaterThan(readsBefore)
     await expect.poll(() => page.getByRole('button', { name: '下一步', exact: true }).isEnabled()).toBe(true)

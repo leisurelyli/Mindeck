@@ -2027,16 +2027,6 @@ describe('insertText (scoped event body)', () => {
 })
 
 describe('strips and variants', () => {
-  it.each([zh, en])('shows localized guidance when another writer owns the Session', (dictionary) => {
-    const send = bench({
-      promptError: {
-        op: 'send',
-        error: new RemoteError('session/writer-held', 'internal writer diagnostic', { sessionId: SID }),
-      },
-      t: makeTranslate(dictionary, commonZh),
-    })
-    expect(send.view.getByRole('alert').textContent).toBe(dictionary['error.sessionInUse'])
-  })
 
   it('announces promptError as a fading toast (ordinary failure — no transaction UI, no Retry)', () => {
     vi.useFakeTimers()

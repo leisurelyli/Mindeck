@@ -6,6 +6,8 @@ export const LOCALE_PARAMETERS_GLOBAL = '__DSH_LOCALE_PARAMETERS__'
 /** Resolved presentation values, including application identity. */
 export interface LocaleParameters extends Readonly<Record<string, string>> {
   readonly productName: string
+  readonly productShortName: string
+  readonly productAlias: string
   readonly productTitle: string
 }
 
@@ -18,11 +20,13 @@ const DEFAULT_PRODUCT_NAME = 'DeepSeek Harness'
  */
 export function resolveLocaleParameters(input: Readonly<Record<string, string>> = {}): LocaleParameters {
   const productName = input.productName ?? DEFAULT_PRODUCT_NAME
+  const productShortName = input.productShortName ?? (input.productName === undefined ? 'DSH' : productName)
+  const productAlias = input.productAlias ?? (input.productName === undefined ? 'Harness' : productName)
   const productTitle = input.productTitle ?? productName
-  if (productName.trim() === '' || productTitle.trim() === '') {
-    throw new TypeError('locale: productName and productTitle must be nonempty text')
+  if (productName.trim() === '' || productShortName.trim() === '' || productAlias.trim() === '' || productTitle.trim() === '') {
+    throw new TypeError('locale: product names and titles must be nonempty text')
   }
-  return Object.freeze({ ...input, productName, productTitle })
+  return Object.freeze({ ...input, productName, productShortName, productAlias, productTitle })
 }
 
 /**

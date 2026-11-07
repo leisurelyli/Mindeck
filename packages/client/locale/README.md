@@ -73,9 +73,9 @@ Every authenticated browser persists the preference through the Host settings se
 
 ### Deployment parameters
 
-Host `Config.parameters` accepts a string map. A nonempty map replaces the entire `DSH_LOCALE_PARAMETERS` environment input; an empty or omitted map inherits that JSON input. Without either input, `productName` defaults to `DeepSeek Harness`; a missing `productTitle` defaults to the resolved `productName`. Invalid selected JSON, non-string values, or blank product names or titles fail Host loading. Every parameter is public browser data: never put secrets here.
+Host `Config.parameters` accepts a string map. A nonempty map replaces the entire `DSH_LOCALE_PARAMETERS` environment input; an empty or omitted map inherits that JSON input. Without either input, `productName`, `productShortName` and `productAlias` default to `DeepSeek Harness`, `DSH` and `Harness`. When `productName` is explicit, omitted short names and aliases follow it. A missing `productTitle` uses the resolved `productName`. Invalid selected JSON, non-string values, or blank product names or titles fail Host loading. Every parameter is public browser data: never put secrets here.
 
-Use `{productName}` in ordinary product copy and `{productTitle}` in shared titles. Named values passed to a translation call override the deployment defaults; unknown placeholders remain unchanged. Other named string parameters follow the same rules.
+Use `{productName}`, `{productShortName}` or `{productAlias}` to retain each existing name form; shared titles use `{productTitle}`. Named values passed to a translation call override the deployment defaults; unknown placeholders remain unchanged. Other named string parameters follow the same rules.
 
 -----
 

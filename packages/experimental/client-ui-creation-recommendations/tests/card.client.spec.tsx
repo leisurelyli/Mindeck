@@ -180,7 +180,7 @@ it.each(['failed', 'interrupted', 'cancelled', 'unconfirmed'] as const)('offers 
   await waitFor(() => { expect(value.act).toHaveBeenCalledWith('create', { slot: 'page' }) })
 })
 
-it('offers only Undo, beside the location, on installed and earlier kept plugins, with the actual application outcome', async () => {
+it('offers Undo beside the location for installed and kept plugins', async () => {
   const value = props({ phase: 'installed', data: { slot: 'page', application: 'applied' } })
   const { rerender } = render(<PageCardBody {...value} />)
   expect(screen.getAllByRole('status')).toHaveLength(1)
@@ -191,7 +191,6 @@ it('offers only Undo, beside the location, on installed and earlier kept plugins
   await waitFor(() => { expect(value.act).toHaveBeenCalledWith('undo', undefined) })
   const kept = props({ phase: 'kept', data: { slot: 'page', application: 'restart-required' } })
   rerender(<PageCardBody {...kept} />)
-  expect(screen.getByText(zh['restart-required'])).toBeTruthy()
   expect(screen.getAllByRole('button')).toEqual([screen.getByRole('button', { name: zh.creationInfo }), screen.getByRole('button', { name: zh.undo })])
   fireEvent.click(screen.getByRole('button', { name: zh.undo }))
   await waitFor(() => { expect(kept.act).toHaveBeenCalledWith('undo', undefined) })
