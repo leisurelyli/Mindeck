@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { afterEach, expect, it, vi } from 'vitest'
-import product from '../src/product.json' with { type: 'json' }
+import { mindeckProduct as product } from '@deepseek-ai/dsh-mindeck-app'
 import { renderMindeckWebManifest } from '../scripts/render-mindeck-icons.ts'
 import { mindeckBranding } from '../../web/mindeck-branding.ts'
 
@@ -25,11 +25,11 @@ it.each([
   vi.stubEnv('DSH_CLIENT_TITLE', title)
   const html = await brandedDocument()
   expect(html).toContain(`<title>${expectedTitle}</title>`)
-  expect(html).toContain(`<link rel="manifest" href="/${product.branding.webManifest}" />`)
-  expect(html).toContain(`<link rel="apple-touch-icon" href="/${product.branding.webDirectory}/apple-touch-icon.png" />`)
+  expect(html).toContain(`<link rel="manifest" href="./${product.branding.webManifest}" />`)
+  expect(html).toContain(`<link rel="apple-touch-icon" href="./${product.branding.webDirectory}/apple-touch-icon.png" />`)
   expect(html).toContain(`<meta name="apple-mobile-web-app-title" content="${product.name}" />`)
   expect(html.match(/<link\b[^>]*\brel="icon"[^>]*>/g)).toEqual([
-    `<link rel="icon" type="image/svg+xml" href="/${product.branding.webDirectory}/mark.svg" />`,
+    `<link rel="icon" type="image/svg+xml" href="./${product.branding.webDirectory}/mark.svg" />`,
   ])
 })
 

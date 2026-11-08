@@ -1,6 +1,6 @@
 /** Mindeck document branding applied after the upstream Web build hooks. */
 import type { Plugin } from 'vite'
-import product from '../desktop/src/product.json' with { type: 'json' }
+import product from '@deepseek-ai/dsh-mindeck-app/src/product.json' with { type: 'json' }
 
 function escapeHtml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')

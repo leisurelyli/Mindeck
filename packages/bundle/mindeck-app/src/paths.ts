@@ -1,21 +1,8 @@
-/** Mindeck installation identity and state directories, resolved before Electron or Host state is opened. */
+/** Mindeck installation state directories, resolved before Electron or Host state is opened. */
 import { realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
-import description from './product.json' with { type: 'json' }
-
-/** Stable Mindeck identity shared by the runtime and installer. */
-export const mindeckProduct = Object.freeze(description)
-
-/**
- * Resolve public presentation values before the Host or browser starts.
- * @param development - Select the development window title.
- * @returns Non-secret locale defaults derived from the installation descriptor.
- */
-export function mindeckPresentation(development: boolean): Readonly<Record<string, string>> {
-  return { productName: mindeckProduct.name, productTitle: development
-    ? mindeckProduct.developmentName : mindeckProduct.name }
-}
+import { mindeckProduct } from './product.ts'
 
 /** Inputs for one installation's state selection; generic Harness environment overrides are not consumed. */
 export interface MindeckPathRequest {

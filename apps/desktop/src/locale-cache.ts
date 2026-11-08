@@ -1,7 +1,7 @@
 /** Last confirmed shell language, available even when the Host cannot start. */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { resolveDesktopLocale, type DesktopLocale } from './locale.ts'
+import { desktopLocaleId, type DesktopLocale } from './locale.ts'
 
 /**
  * Read the last confirmed language without requiring Host settings.
@@ -11,8 +11,8 @@ import { resolveDesktopLocale, type DesktopLocale } from './locale.ts'
 export function readDesktopLocaleCache(userData: string): DesktopLocale['id'] | undefined {
   try {
     const value = readFileSync(join(userData, 'desktop', 'locale-cache'), 'utf8').trim()
-    const locale = resolveDesktopLocale(value)
-    if (locale.id === value) return locale.id
+    const id = desktopLocaleId(value)
+    if (id === value) return id
     throw new Error('expected a canonical Desktop locale id')
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {

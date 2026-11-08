@@ -2,7 +2,7 @@
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
-import product from '../src/product.json' with { type: 'json' }
+import product from '@deepseek-ai/dsh-mindeck-app/src/product.json' with { type: 'json' }
 
 const require = createRequire(import.meta.url)
 const templates = join(dirname(require.resolve('app-builder-lib/package.json')), 'templates/nsis')

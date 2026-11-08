@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import type { MessageBoxOptions, MessageBoxReturnValue } from 'electron'
 import { afterEach, expect, it, vi } from 'vitest'
 import { DesktopBackgroundNotice } from '../src/background-notice.ts'
+import { mindeckProduct as product } from '@deepseek-ai/dsh-mindeck-app'
 import { resolveDesktopLocale } from '../src/locale.ts'
 
 const roots: string[] = []
@@ -20,7 +21,7 @@ function setup() {
   const show = vi.fn<(options: MessageBoxOptions) => Promise<MessageBoxReturnValue>>(() => response.promise)
   const focus = vi.fn()
   const hide = vi.fn()
-  const options = { markerPath, locale: () => resolveDesktopLocale('zh'), show, focus }
+  const options = { markerPath, locale: () => resolveDesktopLocale('zh', product.name), show, focus }
   return { root, markerPath, response, show, focus, hide, options, notice: new DesktopBackgroundNotice(options) }
 }
 

@@ -2,6 +2,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import type { MessageBoxOptions } from 'electron'
 import { CRASH_REPORT_WAIT_MS, DesktopFatalRecovery } from '../src/fatal-recovery.ts'
 import type { CrashReportSource } from '../src/crash-report.ts'
+import { mindeckProduct as product } from '@deepseek-ai/dsh-mindeck-app'
 import { resolveDesktopLocale } from '../src/locale.ts'
 
 function fixture(
@@ -11,7 +12,7 @@ function fixture(
   const choice = Promise.withResolvers<{ response: number; checkboxChecked: boolean }>()
   const stopped = Promise.withResolvers<undefined>()
   const operations = {
-    messages: () => resolveDesktopLocale(locale).messages,
+    messages: () => resolveDesktopLocale(locale, product.name).messages,
     show: vi.fn((_options: MessageBoxOptions) => choice.promise),
     stop: vi.fn(() => stopped.promise),
     disablePlugins: vi.fn(async () => {}),

@@ -1,5 +1,6 @@
 import type { MenuItemConstructorOptions } from 'electron'
 import { afterEach, expect, it, vi } from 'vitest'
+import { mindeckProduct as product } from '@deepseek-ai/dsh-mindeck-app'
 import { resolveDesktopLocale } from '../src/locale.ts'
 import { DesktopTray } from '../src/tray.ts'
 
@@ -28,11 +29,11 @@ vi.mock('electron', () => ({
 afterEach(() => { native.trays.length = 0; native.menus.length = 0; vi.clearAllMocks() })
 
 function setup(locale = 'en') {
-  let current = resolveDesktopLocale(locale)
+  let current = resolveDesktopLocale(locale, product.name)
   const open = vi.fn()
   const quit = vi.fn()
   const tray = new DesktopTray({ iconPath: 'C:/app/resources/tray.ico', locale: () => current, open, quit })
-  return { tray, open, quit, native: native.trays[0]!, setLocale: (next: string) => { current = resolveDesktopLocale(next) } }
+  return { tray, open, quit, native: native.trays[0]!, setLocale: (next: string) => { current = resolveDesktopLocale(next, product.name) } }
 }
 
 function labels(menu: MenuItemConstructorOptions[]): (string | undefined)[] {

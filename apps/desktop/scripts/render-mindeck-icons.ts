@@ -1,5 +1,5 @@
 /** Generate Mindeck platform icons from the client brand plugin's master SVG. */
-import product from '../src/product.json' with { type: 'json' }
+import product from '@deepseek-ai/dsh-mindeck-app/src/product.json' with { type: 'json' }
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'

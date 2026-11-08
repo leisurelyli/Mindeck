@@ -1,6 +1,7 @@
 import type { MessageBoxOptions, MessageBoxReturnValue, NativeImage } from 'electron'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { DesktopQuitInspection } from '../src/host-process.ts'
+import { mindeckProduct as product } from '@deepseek-ai/dsh-mindeck-app'
 import { resolveDesktopLocale } from '../src/locale.ts'
 import { DesktopQuitConfirmation, resolveDesktopQuitPrompt } from '../src/quit-confirmation.ts'
 
@@ -12,7 +13,7 @@ function setup(platform: NodeJS.Platform, inspect: () => Promise<DesktopQuitInsp
   const focus = vi.fn()
   const icon: NativeImage = { isEmpty: () => false } as never
   const confirmation = new DesktopQuitConfirmation({
-    locale: () => resolveDesktopLocale(locale), inspect, focus, platform, icon,
+    locale: () => resolveDesktopLocale(locale, product.name), inspect, focus, platform, icon,
     show: async (options) => { shown.push(options); return answer },
   })
   return { confirmation, shown, focus, icon, answer: (value: number) => { answer = { response: value, checkboxChecked: false } } }
@@ -101,7 +102,7 @@ describe('DesktopQuitConfirmation', () => {
   it('does not approve a quit from a box answered after disposal', async () => {
     const answered = Promise.withResolvers<MessageBoxReturnValue>()
     const confirmation = new DesktopQuitConfirmation({
-      locale: () => resolveDesktopLocale('en'), inspect: async () => ({ activeTasks: true, scheduledTasks: false }),
+      locale: () => resolveDesktopLocale('en', product.name), inspect: async () => ({ activeTasks: true, scheduledTasks: false }),
       focus: () => {}, platform: 'darwin', show: () => answered.promise,
     })
     const pending = confirmation.confirm()

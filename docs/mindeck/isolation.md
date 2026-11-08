@@ -8,7 +8,7 @@ English | [中文](isolation.zh.md)
 
 ## Summary
 
-This reference describes how Mindeck separates its installation and local state from official Harness and an existing application named Mindeck. The desktop [product description](../../apps/desktop/src/product.json) owns the stable identity. Isolation does not migrate existing accounts, credentials, plugins, or sessions, and does not change the Agent or Session format.
+This reference describes how Mindeck separates its installation and local state from official Harness and an existing application named Mindeck. The desktop [product description](../../packages/bundle/mindeck-app/src/product.json) owns the stable identity. Isolation does not migrate existing accounts, credentials, plugins, or sessions, and does not change the Agent or Session format.
 
 ## Table of Contents
 
@@ -44,6 +44,8 @@ Installed and development defaults separate saved sessions, settings, credential
 ## Development entry points
 
 The root `dev:desktop` and `start:desktop` scripts launch the development identity. The root `dev:web` and `start:web` scripts preload the same Mindeck development environment, use the supported `dsh web` profile with `--patch packages/bundle/mindeck-app/cordis.patch.yml`, and default to port 3081. Web and Desktop development share product data deliberately; their profiles remain distinct. Use explicit Mindeck overrides for independent checkouts or test runs.
+
+`start:web:stock` and `dev:web:stock` boot the unmodified upstream composition: neither the Mindeck environment nor its patch applies, and the launcher uses the default `$DSH_HOME` (`~/.dsh`) and port 3080. Point `DSH_HOME` at a temporary directory when checking upstream behavior without touching local Mindeck state.
 
 Desktop owns a profile ordered as base, stock Web, then Mindeck presentation, followed by user extension bundles. During preparation, the [Mindeck profile helper](../../apps/desktop/src/mindeck-profile.ts) fills in these required layers for an older profile and preserves user dependencies and `cordis.patch.yml`. Before changing an existing `package.json`, it copies the original bytes to `package.before-mindeck-UUID.json` in that profile directory. Repeated preparation leaves an already-correct bundle order unchanged.
 

@@ -19,12 +19,17 @@
       "default": "./lib/index.js"
     },
     "./cordis.patch.yml": "./cordis.patch.yml",
+    "./paths": {
+      "types": "./lib/types/paths.d.ts",
+      "default": "./lib/paths.js"
+    },
     "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
   "files": [
     "lib/index.js",
     "cordis.patch.yml",
+    "lib/paths.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",

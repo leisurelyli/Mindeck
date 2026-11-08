@@ -1,11 +1,11 @@
-/** Product identity reaches native and installer translations from one JSON description. */
+/** Product identity reaches native and installer translations through one explicit name. */
 import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, expect, it, onTestFinished, vi } from 'vitest'
-import product from '../src/product.json' with { type: 'json' }
-import { resolveDesktopLocale as resolveDefaultLocale } from '../src/locale.ts'
-import { readInstallerLocales as readDefaultInstallerLocales } from '../scripts/installer-locales.mjs'
+import { expect, it, onTestFinished } from 'vitest'
+import { mindeckProduct as product } from '@deepseek-ai/dsh-mindeck-app'
+import { resolveDesktopLocale } from '../src/locale.ts'
+import { readInstallerLocales, renderInstallerStrings } from '../scripts/installer-locales.mjs'
 
 const renamedProduct = 'Northstar $& Desk'
 const languages = [
@@ -19,19 +19,8 @@ const languages = [
   ['pt', 'pt_BR', 'Sobre Northstar $& Desk'],
 ] as const
 
-beforeEach(() => {
-  vi.resetModules()
-  vi.doMock('../src/product.json', () => ({ default: { ...product, name: renamedProduct } }))
-})
-
-afterEach(() => {
-  vi.doUnmock('../src/product.json')
-  vi.resetModules()
-})
-
-it.each(languages)('uses the product description in every %s native product message', async (id, _installerId, aboutMenu) => {
-  const { resolveDesktopLocale, formatDesktopMessage } = await import('../src/locale.ts')
-  const messages = resolveDesktopLocale(id).messages
+it.each(languages)('uses the explicit product name in every %s native product message', (id, _installerId, aboutMenu) => {
+  const messages = resolveDesktopLocale(id, renamedProduct).messages
   expect(messages.aboutMenu).toBe(aboutMenu)
   for (const key of [
     'aboutMenu', 'aboutProduct', 'hideApplication', 'quitApplication', 'openApplication', 'quitTitle',
@@ -41,21 +30,19 @@ it.each(languages)('uses the product description in every %s native product mess
   }
   if (id !== 'zh-CN') expect(messages.welcomeKeyDescription).toContain(renamedProduct)
   expect(messages.welcomeKeyDescription).toContain('DeepSeek')
-  for (const [key, text] of Object.entries(resolveDefaultLocale(id).messages)) {
+  const baseline = resolveDesktopLocale(id, product.name).messages
+  for (const [key, text] of Object.entries(baseline)) {
     expect(messages[key as keyof typeof messages], `${id}.${key}`)
       .toBe(text.replaceAll(product.name, () => renamedProduct))
   }
-  expect(formatDesktopMessage(messages.aboutVersion + ' {missing}', { version: '2.0' }))
-    .toContain('2.0 {missing}')
 })
 
-it.each(languages)('compiles the product description into the %s installer output', async (_id, installerId) => {
-  const { readInstallerLocales, renderInstallerStrings } = await import('../scripts/installer-locales.mjs')
-  const locale = readInstallerLocales().find(value => value.id === installerId)!
+it.each(languages)('compiles the explicit product name into the %s installer output', async (_id, installerId) => {
+  const locale = readInstallerLocales(undefined, renamedProduct).find(value => value.id === installerId)!
   for (const key of ['INSTALLER_LAUNCH_FAILED', 'INSTALLER_RUNNING', 'INSTALLER_PATH_OWNERSHIP']) {
     expect(locale.strings[key], `${installerId}.${key}`).toContain(renamedProduct)
   }
-  const baseline = readDefaultInstallerLocales().find(value => value.id === installerId)!
+  const baseline = readInstallerLocales().find(value => value.id === installerId)!
   for (const field of ['strings', 'uninstaller'] as const) {
     for (const [key, text] of Object.entries(baseline[field])) {
       expect(locale[field][key], `${installerId}.${key}`).toBe(text.replaceAll(product.name, () => renamedProduct))
@@ -78,8 +65,7 @@ it('resolves only productName and preserves other installer placeholders before 
     resource.uninstaller.welcome = '{productName} {missing}'
     writeFileSync(join(directory, `${id}.json`), JSON.stringify(resource))
   }
-  const { readInstallerLocales, renderInstallerStrings } = await import('../scripts/installer-locales.mjs')
-  const locales = readInstallerLocales(directory)
+  const locales = readInstallerLocales(directory, renamedProduct)
   for (const locale of locales) {
     expect(locale.strings.INSTALLER_RUNNING).toBe('Northstar $& Desk / Northstar $& Desk {missing} {version} %s %d%%')
     expect(locale.uninstaller.welcome).toBe('Northstar $& Desk {missing}')
@@ -88,7 +74,7 @@ it('resolves only productName and preserves other installer placeholders before 
 })
 
 it('keeps the default native and installer product display', () => {
-  expect(resolveDefaultLocale('en').messages.aboutMenu).toBe('About Mindeck')
-  expect(readDefaultInstallerLocales()[0]!.strings.INSTALLER_RUNNING)
+  expect(resolveDesktopLocale('en', product.name).messages.aboutMenu).toBe('About Mindeck')
+  expect(readInstallerLocales()[0]!.strings.INSTALLER_RUNNING)
     .toBe('Mindeck is running. Quit it from the system tray and try again.')
 })

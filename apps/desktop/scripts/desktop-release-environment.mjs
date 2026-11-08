@@ -1,5 +1,5 @@
 /** Resolve public release identifiers supplied by the packaging environment. */
-import product from '../src/product.json' with { type: 'json' }
+import product from '@deepseek-ai/dsh-mindeck-app/src/product.json' with { type: 'json' }
 
 /** Environment variable that supplies the Electron application identifier. */
 export const DESKTOP_APP_ID_ENV = 'DSH_DESKTOP_APP_ID'

@@ -7,7 +7,7 @@ import { prepareInstalledUpdateBootstrap } from './prepare-installed-update-boot
 import { prepareInstalledUpdateRuntime } from './prepare-installed-update-runtime.ts'
 import { planInstalledUpdateDistribution } from './installed-update-distribution.ts'
 import { prepareInstalledUpdateApplication } from './prepare-installed-update-application.ts'
-import { mindeckProduct } from '../src/product.ts'
+import { mindeckProduct } from '@deepseek-ai/dsh-mindeck-app'
 
 const repository = resolve(import.meta.dirname, '../../..')
 

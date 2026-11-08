@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Use this layer to display Mindeck artwork over the stock Web application. Mindeck Desktop includes it in its owned profile; source Web launchers select its patch through `--patch`. It changes presentation while installation identity and state paths remain controlled by the Mindeck launcher.
+Use this layer to display Mindeck artwork over the stock Web application. Mindeck Desktop includes it in its owned profile; source Web launchers select its patch through `--patch`. It changes presentation while installation identity and state paths remain controlled by the Mindeck launcher. This package also owns the shared product descriptor at `src/product.json`, which the Desktop and Web launchers read for product names and build assets; the descriptor adds no runtime service.
 
 ## Table of Contents
 

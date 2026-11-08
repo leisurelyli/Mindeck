@@ -25,7 +25,7 @@ description: "Mindeck 的 fork 开发约束、上游复用参考与架构设计�
 
 [安装隔离](isolation.zh.md)负责 Mindeck 的应用身份、启动路径与更新策略。
 
-展示层按 `dsh-base` → 原版 `dsh-web-app` → [dsh-mindeck-app](../../packages/bundle/mindeck-app/README.zh.md) 组合。Mindeck 层选择品牌图稿，原版 Web 层保持独立。[产品描述](../../apps/desktop/src/product.json)提供启动时名称与构建资源，共享[语言包](../../packages/client/locale/README.zh.md)将公开的插值默认值投射到初始文档。[品牌资源](branding.zh.md)负责说明这项接入。运行时图稿 provider 不负责操作系统身份或状态隔离。
+展示层按 `dsh-base` → 原版 `dsh-web-app` → [dsh-mindeck-app](../../packages/bundle/mindeck-app/README.zh.md) 组合。Mindeck 层选择品牌图稿，原版 Web 层保持独立。[产品描述](../../packages/bundle/mindeck-app/src/product.json)提供启动时名称与构建资源，共享[语言包](../../packages/client/locale/README.zh.md)将公开的插值默认值投射到初始文档。[品牌资源](branding.zh.md)负责说明这项接入。运行时图稿 provider 不负责操作系统身份或状态隔离。
 
 <a id="reuse-references"></a>
 

@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CommandInstallationError, inspectFileCommand, installFileCommand, removeFileCommand } from './command-installation.ts'
-import { mindeckProduct } from './product.ts'
+import { mindeckProduct } from '@deepseek-ai/dsh-mindeck-app'
 
 const [operation, expected] = process.argv.slice(2)
 const fingerprint = expected ?? ''

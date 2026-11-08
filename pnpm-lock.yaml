@@ -724,6 +724,9 @@ importers:
       '@deepseek-ai/dsh-api-gateway':
         specifier: workspace:*
         version: link:../../packages/api/gateway
+      '@deepseek-ai/dsh-mindeck-app':
+        specifier: workspace:*
+        version: link:../../packages/bundle/mindeck-app
       electron-updater:
         specifier: ^6.8.9
         version: 6.8.9(supports-color@9.4.0)
@@ -1040,6 +1043,9 @@ importers:
       '@deepseek-ai/dsh-llm-mock-server':
         specifier: workspace:*
         version: link:../../packages/test-support/llm-mock-server
+      '@deepseek-ai/dsh-mindeck-app':
+        specifier: workspace:*
+        version: link:../../packages/bundle/mindeck-app
       '@deepseek-ai/dsh-pwsh-local':
         specifier: workspace:*
         version: link:../../packages/shell/pwsh-local

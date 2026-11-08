@@ -17,7 +17,7 @@ import {
 import { verifyMacOSAppUpdateConfig } from './macos-app-update-config.mjs'
 import { verifyMacOSNotarizedApplication, verifyMacOSSignature } from './verify-macos-signature.mjs'
 import { desktopApplicationPaths } from './mindeck-application-paths.mjs'
-import { mindeckProduct } from '../src/product.ts'
+import { mindeckProduct } from '@deepseek-ai/dsh-mindeck-app'
 
 const execute = promisify(execFile)
 

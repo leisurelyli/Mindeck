@@ -1,5 +1,5 @@
 import { readInstallerLocales, renderInstallerStrings } from './installer-locales.mjs'
-import product from '../src/product.json' with { type: 'json' }
+import product from '@deepseek-ai/dsh-mindeck-app/src/product.json' with { type: 'json' }
 import { officePackageDirectories } from '../../../scripts/libreoffice-packages.mjs'
 import { X509Certificate } from 'node:crypto'
 import { readFileSync } from 'node:fs'

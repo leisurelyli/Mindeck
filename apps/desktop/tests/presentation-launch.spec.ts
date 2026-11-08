@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, it, onTestFinished } from 'vitest'
-import product from '../src/product.json' with { type: 'json' }
+import { mindeckProduct as product } from '@deepseek-ai/dsh-mindeck-app'
 
 it.each([undefined, 'Explicit window title'])('publishes source-launch presentation with title %s', (title) => {
   const root = mkdtempSync(join(tmpdir(), 'mindeck-presentation-'))

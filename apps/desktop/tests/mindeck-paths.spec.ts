@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { resolveMindeckPaths } from '../src/product.ts'
+import { resolveMindeckPaths } from '@deepseek-ai/dsh-mindeck-app/paths'
 
 const directories: string[] = []
 afterEach(async () => { await Promise.all(directories.splice(0).map(path => rm(path, { recursive: true, force: true }))) })

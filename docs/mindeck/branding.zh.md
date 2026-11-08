@@ -21,7 +21,7 @@ Mindeck 使用一份用户提供的 SVG 生成应用图标和客户端品牌标�
 
 ## 源图稿
 
-[产品描述](../../apps/desktop/src/product.json)负责产品名称，以及 `branding` 中的主 SVG、桌面、安装器、Web 图标和 PWA manifest（元数据清单）路径。[主 SVG](../../packages/client/ui-brand-mindeck/src/client/assets/mindeck.svg) 保留原图的形状、蓝青配色和透明背景。修改标识时调整这一份源文件，再重新生成平台产物，不逐个手动修改。开发版和正式版使用相同图稿，不加 Dev 角标。
+[产品描述](../../packages/bundle/mindeck-app/src/product.json)负责产品名称，以及 `branding` 中的主 SVG、桌面、安装器、Web 图标和 PWA manifest（元数据清单）路径。[主 SVG](../../packages/client/ui-brand-mindeck/src/client/assets/mindeck.svg) 保留原图的形状、蓝青配色和透明背景。修改标识时调整这一份源文件，再重新生成平台产物，不逐个手动修改。开发版和正式版使用相同图稿，不加 Dev 角标。
 
 <a id="generate-icons"></a>
 

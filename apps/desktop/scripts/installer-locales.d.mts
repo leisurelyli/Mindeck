@@ -13,9 +13,10 @@ export interface InstallerLocale {
 /**
  * Read complete per-language JSON resources and reject inconsistent keys or placeholders.
  * @param directory - Resource directory, defaulting to Desktop installer/locales.
+ * @param productName - Display name substituted for `{productName}`.
  * @returns Validated resources, ordered by filename.
  */
-export function readInstallerLocales(directory?: string): InstallerLocale[]
+export function readInstallerLocales(directory?: string, productName?: string): InstallerLocale[]
 
 /**
  * Generate NSIS LangString declarations from validated resources.

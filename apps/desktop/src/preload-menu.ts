@@ -1,5 +1,6 @@
 /** Windows caption menu labels and native popup anchors, isolated from the Web client. */
 import { ipcRenderer } from 'electron'
+import { mindeckProduct as product } from '@deepseek-ai/dsh-mindeck-app'
 import { DESKTOP_IPC } from './ipc.ts'
 import { resolveDesktopLocale } from './locale.ts'
 
@@ -96,7 +97,7 @@ export function installWindowsMenu(): { update(): void; dispose(): void } {
   observer.observe(document.body, { childList: true, subtree: true })
   mount()
   const update = (): void => {
-    const { messages } = resolveDesktopLocale(document.documentElement.lang)
+    const { messages } = resolveDesktopLocale(document.documentElement.lang, product.name)
     bar.setAttribute('aria-label', messages.menuBar)
     buttons[0].textContent = messages.application
     buttons[1].textContent = messages.edit

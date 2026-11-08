@@ -2,7 +2,8 @@
 import { mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { app } from 'electron'
-import { mindeckPresentation, mindeckProduct, resolveMindeckPaths } from './product.ts'
+import { mindeckPresentation, mindeckProduct } from '@deepseek-ai/dsh-mindeck-app'
+import { resolveMindeckPaths } from '@deepseek-ai/dsh-mindeck-app/paths'
 
 const development = !app.isPackaged
 const paths = resolveMindeckPaths({ home: homedir(), appData: app.getPath('appData'), development, environment: process.env })

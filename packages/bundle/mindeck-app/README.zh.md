@@ -9,7 +9,7 @@ kind: "package-bundle"
 
 ## 概述
 
-此层在原版 Web 应用上展示 Mindeck 图稿。Mindeck Desktop 的自有 profile 包含此层；源码 Web 启动器通过 `--patch` 选择其补丁。它修改展示，安装身份和状态路径仍由 Mindeck 启动器控制。
+此层在原版 Web 应用上展示 Mindeck 图稿。Mindeck Desktop 的自有 profile 包含此层；源码 Web 启动器通过 `--patch` 选择其补丁。它修改展示，安装身份和状态路径仍由 Mindeck 启动器控制。该包同时拥有共享产品描述 `src/product.json`，Desktop 与 Web 启动器从中读取产品名称和构建资源；该描述不提供运行时服务。
 
 ## 目录
 

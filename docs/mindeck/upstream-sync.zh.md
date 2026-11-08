@@ -33,6 +33,8 @@ description: "Mindeck 上游集成约定，以及经过评审的同步工作记�
 
 通用单元测试与 Web fixture 保留上游组合及语言默认值。产品品牌验收显式选择 Mindeck，同时覆盖上游和其他产品配置。品牌预期保留在产品专属用例中；不要向测试运行器全局注入 Mindeck，也不要改写无关的上游快照。
 
+同步前后运行 `pnpm run start:web:stock --dump-config`，确认原版 profile 仍能在不含 Mindeck 行的情况下组合；`start:web` 只用于 Mindeck 品牌验收。
+
 平台修复与品牌定制分开跟踪：Windows 打包预备使用归档文件名及显式工作目录，文档 fixture 在文件符号链接需要提升权限的环境中使用目录 junction。同步时独立评审这些补丁，上游提供等效行为后撤销。
 
 在此 fork 启用或运行 workflow 前，先评审其变更。记录 runner 可用性、所需凭据，以及发布或部署副作用。上游运行成功不代表 fork 的 workflow 配置可用。

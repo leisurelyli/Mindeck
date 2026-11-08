@@ -25,7 +25,7 @@ Use the [upstream architecture](../architecture.md) as the shared application re
 
 [Installation isolation](isolation.md) owns Mindeck's application identity, startup paths, and update policy.
 
-Presentation follows `dsh-base` → stock `dsh-web-app` → [dsh-mindeck-app](../../packages/bundle/mindeck-app/README.md). The Mindeck layer selects brand artwork while the stock Web layer stays independent. The [product description](../../apps/desktop/src/product.json) supplies launch-time names and build assets; the shared [locale package](../../packages/client/locale/README.md) projects public interpolation defaults to the initial document. [Brand assets](branding.md) owns this integration. Runtime artwork providers do not own operating-system identity or state isolation.
+Presentation follows `dsh-base` → stock `dsh-web-app` → [dsh-mindeck-app](../../packages/bundle/mindeck-app/README.md). The Mindeck layer selects brand artwork while the stock Web layer stays independent. The [product description](../../packages/bundle/mindeck-app/src/product.json) supplies launch-time names and build assets; the shared [locale package](../../packages/client/locale/README.md) projects public interpolation defaults to the initial document. [Brand assets](branding.md) owns this integration. Runtime artwork providers do not own operating-system identity or state isolation.
 
 <a id="reuse-references"></a>
 

@@ -1,7 +1,7 @@
 /** Select local test defaults or platform release settings without changing the caller's environment. */
 
 import { accessSync, constants, statSync } from 'node:fs'
-import product from '../src/product.json' with { type: 'json' }
+import product from '@deepseek-ai/dsh-mindeck-app/src/product.json' with { type: 'json' }
 import { dirname, isAbsolute, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readDesktopPackageSettings as readSettings } from './desktop-file-settings.mjs'

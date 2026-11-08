@@ -22,7 +22,7 @@
 // llm seam post-boot with installLlmReplay on the settled root ctx
 // (the plugin-row path discards the ReplayHandle; the direct install keeps
 // assertConsumed for the teardown fixture-consumption check).
-import productDescription from '../../desktop/src/product.json' with { type: 'json' }
+import productDescription from '@deepseek-ai/dsh-mindeck-app/src/product.json' with { type: 'json' }
 import { existsSync, readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises'

@@ -21,7 +21,7 @@ Mindeck uses one supplied SVG for its application icons and client brand marks. 
 
 ## Source artwork
 
-The [product description](../../apps/desktop/src/product.json) owns the product name and the `branding` paths for the master SVG, Desktop, installer, Web icons and PWA manifest. The [master SVG](../../packages/client/ui-brand-mindeck/src/client/assets/mindeck.svg) preserves the supplied geometry, blue/cyan colors and transparent background. Change this source when revising the mark; regenerate its platform derivatives rather than editing them individually. Development and release builds use the same artwork without a Dev badge.
+The [product description](../../packages/bundle/mindeck-app/src/product.json) owns the product name and the `branding` paths for the master SVG, Desktop, installer, Web icons and PWA manifest. The [master SVG](../../packages/client/ui-brand-mindeck/src/client/assets/mindeck.svg) preserves the supplied geometry, blue/cyan colors and transparent background. Change this source when revising the mark; regenerate its platform derivatives rather than editing them individually. Development and release builds use the same artwork without a Dev badge.
 
 <a id="generate-icons"></a>
 

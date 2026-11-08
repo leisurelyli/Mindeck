@@ -48,6 +48,9 @@
     },
     {
       "path": "../../packages/client/ui-file-actions"
+    },
+    {
+      "path": "../../packages/bundle/mindeck-app"
     }
   ],
   "exclude": [

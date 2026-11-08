@@ -215,6 +215,8 @@
     "mock:llm": "node --import tsx packages/test-support/llm-mock-server/src/bin.ts",
     "start:web": "node --import ./scripts/mindeck-environment.ts --import tsx/esm apps/cli/src/bin.ts web --patch packages/bundle/mindeck-app/cordis.patch.yml --port 3081",
     "dev:web": "node --import ./scripts/mindeck-environment.ts --import tsx/esm scripts/dev-web.ts --poll --patch packages/bundle/mindeck-app/cordis.patch.yml --port 3081",
+    "start:web:stock": "node --import tsx/esm apps/cli/src/bin.ts web",
+    "dev:web:stock": "node --import tsx/esm scripts/dev-web.ts --poll",
     "dev:bundle-registry": "tsx scripts/dev-bundle-registry.ts",
     "postinstall": "node scripts/install-lefthook.mjs",
     "gen-official-bundle-catalog": "tsx scripts/gen-official-bundle-catalog.ts",

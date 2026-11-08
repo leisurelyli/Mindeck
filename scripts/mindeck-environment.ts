@@ -1,5 +1,6 @@
 /** Set the Mindeck source-launch environment before the supported Web profile starts. */
-import { mindeckPresentation, mindeckProduct, resolveMindeckDevelopmentPaths } from '../apps/desktop/src/product.ts'
+import { mindeckPresentation, mindeckProduct } from '../packages/bundle/mindeck-app/src/product.ts'
+import { resolveMindeckDevelopmentPaths } from '../packages/bundle/mindeck-app/src/paths.ts'
 
 const paths = resolveMindeckDevelopmentPaths()
 process.env.DSH_HOME = paths.home

@@ -1,6 +1,6 @@
 /** Locate assembled Mindeck applications using the installation's product identity. */
 import { join } from 'node:path'
-import product from '../src/product.json' with { type: 'json' }
+import product from '@deepseek-ai/dsh-mindeck-app/src/product.json' with { type: 'json' }
 
 /**
  * Locate the assembled Mindeck application for one target without consulting installed applications.

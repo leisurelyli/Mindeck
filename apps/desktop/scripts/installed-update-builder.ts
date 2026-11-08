@@ -4,7 +4,7 @@ import { createElectronBuilderConfig } from './electron-builder-config.mjs'
 import { readInstalledUpdateRun } from './installed-update-qualification.ts'
 import { verifyInstalledUpdateApplication } from './prepare-installed-update-application.ts'
 import { verifyDesktopRuntime } from '../src/runtime-tree.ts'
-import { mindeckProduct } from '../src/product.ts'
+import { mindeckProduct } from '@deepseek-ai/dsh-mindeck-app'
 
 /**
  * Validate one version and construct its signed-only, test-only builder configuration.

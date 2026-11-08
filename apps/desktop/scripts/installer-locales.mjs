@@ -1,7 +1,7 @@
 /** Per-language JSON resources shared by NSIS packaging, native UI tests and the i18n check. */
 import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import product from '../src/product.json' with { type: 'json' }
+import product from '@deepseek-ai/dsh-mindeck-app/src/product.json' with { type: 'json' }
 
 const defaultDirectory = fileURLToPath(new URL('../installer/locales/', import.meta.url))
 
@@ -9,9 +9,10 @@ const defaultDirectory = fileURLToPath(new URL('../installer/locales/', import.m
  * Read and validate installer translations before generating compiler input.
  * Resolve {productName} from the product description, preserving other placeholders.
  * @param {string} directory - Directory containing one JSON file per installer language.
+ * @param {string} productName - Display name substituted for `{productName}`.
  * @returns {{id: string, nsisLanguage: string, strings: Record<string, string>, uninstaller: Record<string, string>}[]} Complete language resources.
  */
-export function readInstallerLocales(directory = defaultDirectory) {
+export function readInstallerLocales(directory = defaultDirectory, productName = product.name) {
   const locales = readdirSync(directory).filter(name => name.endsWith('.json')).sort((a, b) =>
     a === 'en_US.json' ? -1 : b === 'en_US.json' ? 1 : a.localeCompare(b)).map(name => {
     if (!/^[a-z]{2}_[A-Z]{2}\.json$/u.test(name)) throw new Error(`${name}: invalid installer language filename`)
@@ -29,7 +30,7 @@ export function readInstallerLocales(directory = defaultDirectory) {
       for (const [key, text] of Object.entries(value)) {
         if (typeof text !== 'string' || text.trim() === '') throw new Error(`${name}: ${key} must be nonempty text`)
         if (/[\u200b\ufeff]/u.test(text)) throw new Error(`${name}: ${key} contains an invisible locale character`)
-        result[key] = text.replaceAll('{productName}', () => product.name)
+        result[key] = text.replaceAll('{productName}', () => productName)
       }
       return result
     }

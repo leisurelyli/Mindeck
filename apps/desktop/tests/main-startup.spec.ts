@@ -11,7 +11,11 @@ import type { MenuItemConstructorOptions, MessageBoxOptions } from 'electron'
 import { DESKTOP_IPC, type DesktopUpdateState } from '../src/ipc.ts'
 import { MANDATORY_IPC } from '../src/mandatory-update-ipc.ts'
 import { DesktopHostFatalError, DesktopHostUncleanExitError } from '../src/host-process.ts'
-import { en, zh } from '../src/locale.ts'
+import { mindeckProduct as product } from '@deepseek-ai/dsh-mindeck-app'
+import { resolveDesktopLocale } from '../src/locale.ts'
+
+const en = resolveDesktopLocale('en', product.name).messages
+const zh = resolveDesktopLocale('zh', product.name).messages
 import { DesktopUpdatePreparationError } from '../src/update-error.ts'
 import { writeCrashReport } from '../src/crash-report.ts'
 import { runOperationReportJob } from '../src/operation-report-job.ts'
@@ -23,8 +27,8 @@ const productConfiguration = vi.hoisted(() => ({
   globalTerminalCommand: true,
   updaterEnabled: (): boolean => false,
 }))
-vi.mock('../src/product.ts', async (importOriginal) => {
-  const product = await importOriginal<typeof import('../src/product.ts')>()
+vi.mock('@deepseek-ai/dsh-mindeck-app', async (importOriginal) => {
+  const product = await importOriginal<typeof import('@deepseek-ai/dsh-mindeck-app')>()
   return { ...product, mindeckProduct: {
     ...product.mindeckProduct,
     get automaticUpdates() { return productConfiguration.automaticUpdates },
