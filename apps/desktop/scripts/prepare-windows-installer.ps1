@@ -1,9 +1,9 @@
-<# Compile the x86 DWM helper and raster assets embedded in the NSIS installer. #>
+﻿<# Compile the x86 DWM helper and raster assets embedded in the NSIS installer. #>
 [CmdletBinding()]
 param([string]$OutputDirectory, [switch]$TestProgress, [switch]$CompileProgressOnly)
 $ErrorActionPreference = 'Stop'
 $installerRoot = Join-Path $PSScriptRoot '../installer'
-$brandingProduct = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../src/product.json') -Raw | ConvertFrom-Json
+$brandingProduct = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../../../packages/bundle/mindeck-app/src/product.json') -Raw | ConvertFrom-Json
 $brandingAssets = Join-Path (Join-Path $PSScriptRoot '..') $brandingProduct.branding.installerDirectory
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $PSScriptRoot '../.desktop-build/targets/win-x64/installer-ui' }
 $output = [IO.Path]::GetFullPath($OutputDirectory)
