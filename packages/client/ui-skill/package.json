@@ -63,6 +63,7 @@
     "@deepseek-ai/dsh-client-ui-tool": "workspace:*",
     "@deepseek-ai/dsh-plugin-manager": "workspace:*",
     "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-skill": "workspace:*",
     "@testing-library/react": "^16.3.3",
     "@deepseek-ai/cordis": "workspace:~",
     "react": "^18.2.0",

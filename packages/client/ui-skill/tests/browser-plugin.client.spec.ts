@@ -6,7 +6,7 @@ import { es, fr, de, ru, pt } from '../src/client/locales.ts'
  * the source behavior contract driven directly on the captured source with
  * real ClientSessionContext projections — sessionId addressing, the
  * session-keyed catalog cache (single-flight per key, scope-birth warm
- * prewarm, plugin-manager/changed and connection/reset clears), shared fuzzy
+ * prewarm, plugin-manager/changed, skills/change and connection/reset clears), shared fuzzy
  * name ranking, RPC-failure
  * rejection, pick → plain-text outcome (the plain-text-reference decision:
  * .agents/notes/archived/architecture/2026-07-25-web-input-machine-and-slash-pipeline.md),
@@ -397,6 +397,19 @@ describe('catalog cache', () => {
     expect(payloads).toHaveLength(2)
     // A switched plugin may register into the global layer every session reads.
     remote.emit('plugin-manager/changed', [{ reason: 'bundle' }])
+    await source.candidates(proj('s1'), req(''))
+    await source.candidates(proj('s2'), req(''))
+    expect(payloads).toHaveLength(4)
+  })
+
+  it('skills/change clears every cached session', async () => {
+    const { list, payloads } = countingList()
+    const { source, remote } = await bench(list)
+    await source.candidates(proj('s1'), req(''))
+    await source.candidates(proj('s2'), req(''))
+    expect(payloads).toHaveLength(2)
+    // A provider refreshed its skills, such as a company catalog synchronized after sign-in.
+    remote.emit('skills/change', [])
     await source.candidates(proj('s1'), req(''))
     await source.candidates(proj('s2'), req(''))
     expect(payloads).toHaveLength(4)

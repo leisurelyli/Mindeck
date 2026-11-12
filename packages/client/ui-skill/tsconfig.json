@@ -18,6 +18,9 @@
       "path": "../../boot/plugin-manager"
     },
     {
+      "path": "../../skill/skill"
+    },
+    {
       "path": "../../core/session"
     },
     {

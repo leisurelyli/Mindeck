@@ -20,7 +20,9 @@
  * prewarms the session's key; a preset switch drops that one key (the
  * catalog is the preset's, and a blank session may switch after the warm);
  * plugin-manager/changed clears everything — a manager operation may add or
- * remove providers any session's catalog reads; connection/reset clears
+ * remove providers any session's catalog reads; skills/change clears
+ * everything — a provider's own skills changed, such as files on disk or a
+ * synchronized company catalog; connection/reset clears
  * everything — the host catalog may differ across generations. A shared
  * in-flight fetch deliberately outlives any single menu interaction: closing
  * the menu must not kill the prewarm other consumers will hit, so it carries
@@ -39,6 +41,8 @@ import type { SkillEntry } from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 // Type-only: the forwarded `plugin-manager/changed` declaration.
 import type {} from '@deepseek-ai/dsh-plugin-manager/types'
+// Type-only: the forwarded `skills/change` declaration.
+import type {} from '@deepseek-ai/dsh-skill'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { InputTriggerServiceContract, InputTriggerSource } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 import { fileAddressFor } from '@deepseek-ai/dsh-util-workspace-path'
@@ -253,6 +257,8 @@ export function apply(ctx: ClientContext): void {
   // naming what changed, and a switched plugin may register providers in the
   // global layer every session reads, so each one drops every cached catalog.
   ctx.remote.$on('plugin-manager/changed', clearAll)
+  // The Host names no session: a provider may serve any session's catalog.
+  ctx.remote.$on('skills/change', clearAll)
   ctx.on('connection/reset', clearAll)
   ctx.effect(() => {
     const unregister = inputTriggers.registerSource(source)
