@@ -60,5 +60,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'mindeck-account/signed-in': Record<string, never>
     /** The local credential store could not be read or written. */
     'mindeck-account/storage': Record<string, never>
+    /** The Cloud address could not be written to the profile settings. */
+    'mindeck-account/settings': Record<string, never>
   }
 }

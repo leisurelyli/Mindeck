@@ -1,6 +1,6 @@
 /** Settings page with the signed-in member, the company, and sign-out. */
 import { useState } from 'react'
-import { Button, IconRightUpOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, IconRightUpOutlineRegular, IconUserOutlineMedium } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { initial, type MindeckAccountInjected } from './operations.ts'
 import { SignInPanel } from './SignInPanel.tsx'
@@ -10,6 +10,11 @@ import css from './Account.module.css'
 /** Composed settings section props. */
 export type AccountSectionProps =
   PropsRuntime<'settings.section'> & PropsLocale<'mindeckAccount'> & InjectFace<MindeckAccountInjected>
+
+/** @param props - requested edge. @returns the account glyph for the settings navigation. */
+export function AccountSectionIcon({ size }: PropsRuntime<'settings.section.icon'>) {
+  return <IconUserOutlineMedium size={size} />
+}
 
 /** @param props - localized copy, account state, and operations. @returns the account settings page. */
 export function AccountSection({ t, useAccount, connect, startSignIn, cancelSignIn, signOut }: AccountSectionProps) {

@@ -187,8 +187,13 @@ export default class MindeckAccount extends TypertRemoteService {
       throw new RemoteError('mindeck-account/invalid-cloud-url', error.message, { reason }, { cause: error })
     }
     const settings = this.ctx.get('settings')
-    if (settings === undefined) throw new Error('mindeck-account: the settings service is required to store the Cloud address')
-    await settings.update(this.settingsNs, { cloudUrl })
+    try {
+      if (settings === undefined) throw new Error('the settings service is not mounted')
+      await settings.update(this.settingsNs, { cloudUrl })
+    } catch (error) {
+      this.ctx.logger.warn('mindeck-account: could not save the Cloud address', error)
+      throw new RemoteError('mindeck-account/settings', 'the Cloud address could not be saved', {}, { cause: error })
+    }
     this.changed()
     return await this.getState()
   }

@@ -64,6 +64,8 @@ async function fixture() {
     'shell.overlay': { kind: 'list', scope: 'root' },
     'settings.launcher': { kind: 'single', scope: 'root' },
     'settings.section': { kind: 'list', scope: 'root' },
+    'settings.section.icon': { kind: 'list', scope: 'root', inline: true },
+    'shell.quota-notice': { kind: 'chain', scope: 'root' },
   } } as never, () => null)
   return { ctx, frames, remote, unmount }
 }
@@ -73,13 +75,18 @@ function operations(entry: { inject?: unknown } | undefined): MindeckAccountInje
   return (entry.inject as () => MindeckAccountInjected)()
 }
 
-it('registers the gate, launcher, and section, then withdraws them before the Remote', async () => {
+it('registers the gate, launcher, section, its icon, and the quota notice, then withdraws them before the Remote', async () => {
   const f = await fixture()
   try {
     const dispose = await mountAccount(f.ctx, contribution)
     expect(f.ctx.slots.entries('shell.overlay')).toHaveLength(1)
     expect(f.ctx.slots.entries('settings.launcher')).toHaveLength(1)
     expect(f.ctx.slots.entries('settings.section')).toHaveLength(1)
+    expect(f.ctx.slots.entries('settings.section.icon').map(entry => entry.options.id)).toEqual(['mindeck-account'])
+    const [quota] = f.ctx.slots.entries('shell.quota-notice')
+    const notice = { message: 'm', dismiss: () => {}, keepOpen: () => () => {} }
+    expect(quota?.select?.({ ...notice, code: 'QUOTA' } as never)).toMatchObject({ code: 'QUOTA' })
+    expect(quota?.select?.({ ...notice, code: 'ACCOUNT_QUOTA' } as never)).toBeNull()
     const face = operations(f.ctx.slots.entries('settings.section')[0])
     expect(face.hooks.account.getSnapshot()).toEqual({ view: undefined, failed: false })
     f.frames.push(signedOut)
@@ -89,6 +96,8 @@ it('registers the gate, launcher, and section, then withdraws them before the Re
     expect(f.ctx.slots.entries('shell.overlay')).toHaveLength(0)
     expect(f.ctx.slots.entries('settings.launcher')).toHaveLength(0)
     expect(f.ctx.slots.entries('settings.section')).toHaveLength(0)
+    expect(f.ctx.slots.entries('settings.section.icon')).toHaveLength(0)
+    expect(f.ctx.slots.entries('shell.quota-notice')).toHaveLength(0)
     expect(face.hooks.account.getSnapshot()).toEqual({ view: undefined, failed: false })
     expect(f.unmount).toHaveBeenCalledOnce()
   } finally { await f.ctx.fiber.dispose() }

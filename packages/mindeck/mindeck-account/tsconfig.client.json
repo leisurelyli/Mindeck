@@ -16,6 +16,7 @@
     { "path": "../../api/remotes/tsconfig.client.json" },
     { "path": "../../client/locale/tsconfig.client.json" },
     { "path": "../../client/store" },
+    { "path": "../../client/ui-chat/tsconfig.client.json" },
     { "path": "../../client/ui-layout" },
     { "path": "../../client/ui-primitives" },
     { "path": "../../client/ui-renderer" },

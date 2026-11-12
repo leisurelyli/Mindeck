@@ -10,6 +10,7 @@ import { en } from '../src/client/locales.ts'
 import type { MindeckAccountSnapshot, OperationOutcome } from '../src/client/operations.ts'
 import { SignInGate, type SignInGateProps } from '../src/client/SignInGate.tsx'
 import { AccountSection, type AccountSectionProps } from '../src/client/AccountSection.tsx'
+import { QuotaNotice, type QuotaNoticeProps } from '../src/client/QuotaNotice.tsx'
 
 afterEach(cleanup)
 
@@ -34,7 +35,7 @@ function fixture(view: MindeckAccountView | undefined, failed = false) {
   // Global standard hooks are unused by these components; the renderer supplies them in production.
   const props = {
     t: makeTranslate(en), useAccount: bindSnapshotSelector(account), close: () => {}, ...operations,
-  } as SignInGateProps & AccountSectionProps
+  } as SignInGateProps & AccountSectionProps & Omit<QuotaNoticeProps, 'matched'>
   const set = (next: MindeckAccountView) => { act(() => { account.set({ view: next, failed: false }) }) }
   return { props, operations, set }
 }
@@ -76,12 +77,12 @@ it('asks for the Cloud address, keeps the input on failure, and starts sign-in w
 it('shows the code to confirm in the browser and cancels the attempt', async () => {
   const f = fixture({
     ...signedOut, cloudUrl: 'https://cloud.example.com',
-    attempt: { id: attemptId, phase: 'waiting', userCode: 'ABCD-EFGH', verificationUrl: 'https://cloud.example.com/device?user_code=ABCD-EFGH' },
+    attempt: { id: attemptId, phase: 'waiting', userCode: 'ABCDEFGH', verificationUrl: 'https://cloud.example.com/device?user_code=ABCDEFGH' },
   })
   const view = render(<SignInGate {...f.props} />)
   expect(view.getByText('ABCD-EFGH')).toBeTruthy()
   const open = view.getByRole('link', { name: en.openBrowser })
-  expect(open.getAttribute('href')).toBe('https://cloud.example.com/device?user_code=ABCD-EFGH')
+  expect(open.getAttribute('href')).toBe('https://cloud.example.com/device?user_code=ABCDEFGH')
   expect(open.getAttribute('target')).toBe('_blank')
   fireEvent.click(view.getByRole('button', { name: en.cancel }))
   await vi.waitFor(() => { expect(f.operations.cancelSignIn).toHaveBeenCalledWith(attemptId) })
@@ -124,4 +125,23 @@ it('shows the member and company in Settings and keeps the dialog open when sign
   expect(f.operations.signOut).toHaveBeenCalledTimes(2)
   f.set(signedOut)
   expect(view.getByLabelText(en.cloudUrlLabel)).toBeTruthy()
+})
+
+it('explains a used-up company quota with a link to the member usage page, and keeps the generic warning while signed out', () => {
+  const notice = (dismiss: () => void) => ({ code: 'QUOTA' as const, message: 'Quota used up', dismiss, keepOpen: () => () => {} })
+  const member = fixture(signedIn)
+  const dismiss = vi.fn()
+  const view = render(<QuotaNotice {...member.props} matched={notice(dismiss)} />)
+  const dialog = view.getByRole('dialog', { name: en.quotaTitle })
+  expect(within(dialog).getByText(en.quotaDescription)).toBeTruthy()
+  const usage = within(dialog).getByRole('link', { name: en.quotaUsage })
+  expect(usage.getAttribute('href')).toBe('https://cloud.example.com/usage')
+  expect(usage.getAttribute('target')).toBe('_blank')
+  fireEvent.click(within(dialog).getByRole('button', { name: en.quotaDismiss }))
+  expect(dismiss).toHaveBeenCalledOnce()
+  cleanup()
+  const visitor = fixture(signedOut)
+  const generic = render(<QuotaNotice {...visitor.props} matched={notice(vi.fn())} />)
+  expect(generic.queryByRole('dialog')).toBeNull()
+  expect(generic.getByText('Quota used up')).toBeTruthy()
 })

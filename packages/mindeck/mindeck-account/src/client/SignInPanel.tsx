@@ -6,6 +6,11 @@ import type { MindeckAccountKey } from './locales.ts'
 import { attemptErrorKey, type MindeckAccountInjected } from './operations.ts'
 import css from './Account.module.css'
 
+/** Groups an eight-character code as `XXXX-XXXX`, the way the Mindeck Cloud confirmation page shows it. */
+function displayUserCode(code: string): string {
+  return /^[A-Z0-9]{8}$/i.test(code) ? `${code.slice(0, 4)}-${code.slice(4)}`.toUpperCase() : code
+}
+
 /** Props of {@link SignInPanel}. */
 export interface SignInPanelProps extends Pick<MindeckAccountInjected, 'connect' | 'startSignIn' | 'cancelSignIn'> {
   /** Signed-out account state. */
@@ -75,7 +80,7 @@ export function SignInPanel({ view, t, connect, startSignIn, cancelSignIn }: Sig
           <span className={css.stepTitle}>{t('waitingTitle')}</span>
           <span className={css.secondary}>{t('waitingDescription')}</span>
         </div>
-        <output className={css.code} aria-label={t('waitingTitle')}>{attempt.userCode}</output>
+        <output className={css.code} aria-label={t('waitingTitle')}>{displayUserCode(attempt.userCode)}</output>
         <div className={css.actions}>
           <Button variant="outline" disabled={busy} onClick={cancel}>{t('cancel')}</Button>
           <Button variant="outline" onClick={() => { void copyLink(url) }}>{t(copied ?? 'copyLink')}</Button>

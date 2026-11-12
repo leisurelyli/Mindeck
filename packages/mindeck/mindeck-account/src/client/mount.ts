@@ -3,6 +3,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-api-remote-access/client'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
+import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
@@ -11,7 +12,8 @@ import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { RemoteFailure, TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
 import type { MindeckAccountView } from '../types.ts'
 import { AccountMenu } from './AccountMenu.tsx'
-import { AccountSection } from './AccountSection.tsx'
+import { AccountSection, AccountSectionIcon } from './AccountSection.tsx'
+import { QuotaNotice } from './QuotaNotice.tsx'
 import { SignInGate } from './SignInGate.tsx'
 import { en, NS, zh, type MindeckAccountKey } from './locales.ts'
 import type { MindeckAccountInjected, MindeckAccountSnapshot, OperationOutcome } from './operations.ts'
@@ -31,6 +33,7 @@ function failureReason(error: RemoteFailure): MindeckAccountKey {
     }
     case 'mindeck-account/signed-in': return 'cloudLocked'
     case 'mindeck-account/storage': return 'storage'
+    case 'mindeck-account/settings': return 'settingsFailed'
     default: return 'failed'
   }
 }
@@ -85,6 +88,13 @@ function registerUi(ctx: Context): void {
   ctx.remoteAccess.whenAccess('mindeckAccount/watch', () => ctx.slots.inject('settings.section', () => ctx.slots.register({
     name: 'settings.section', id: 'mindeck-account', order: -10, label: () => t('nav'), locale: NS, inject: () => operations,
   }, AccountSection)))
+  // Every model request goes through the Mindeck Cloud gateway, so a quota failure is the company quota.
+  ctx.remoteAccess.whenAccess('mindeckAccount/watch', () => ctx.slots.inject('shell.quota-notice', () => ctx.slots.register({
+    name: 'shell.quota-notice', locale: NS, select: owner => owner.code === 'QUOTA' ? owner : null, inject: () => operations,
+  }, QuotaNotice)))
+  ctx.remoteAccess.whenAccess('mindeckAccount/watch', () => ctx.slots.inject('settings.section.icon', () => ctx.slots.register({
+    name: 'settings.section.icon', id: 'mindeck-account',
+  }, AccountSectionIcon)))
 }
 
 /**

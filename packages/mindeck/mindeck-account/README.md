@@ -31,6 +31,8 @@ The sign-in dialog first asks for the Cloud address that the administrator provi
 
 Signing out removes the local session at once and ends it on Mindeck Cloud in the background. When Mindeck Cloud rejects the session, for example after an administrator disables the member or signs the device out, the session ends and the dialog asks the member to sign in again.
 
+When Mindeck Cloud refuses a model request because the member's or the department's monthly quota is used up, a dialog explains it and links to the member's usage page in Mindeck Cloud.
+
 Other Host plugins call `ctx.mindeckAccount.session()` for the Cloud address, the bearer token, and the bootstrap endpoints, re-read it on `mindeck-account/changed`, and report an HTTP 401 with `rejectToken(token)`. The token never reaches a Client.
 
 -----
@@ -45,7 +47,7 @@ The Host service extends `TypertRemoteService` under the `mindeckAccount` Remote
 
 At startup the Host reads the bootstrap again: a 401 ends the session, changed details replace the cached ones, and an unreachable Cloud keeps the session for offline use. `rejectToken` removes the session only when it still holds the rejected token, so a late rejection never ends a newer sign-in.
 
-The Client mounts the generated Remote and follows the `watch` stream through `remoteAccess.whenAccess('mindeckAccount/watch')`, so a Client without account access renders none of the account UI. It registers the sign-in dialog in `shell.overlay`, the launcher in `settings.launcher`, and the page in `settings.section`.
+The Client mounts the generated Remote and follows the `watch` stream through `remoteAccess.whenAccess('mindeckAccount/watch')`, so a Client without account access renders none of the account UI. It registers the sign-in dialog in `shell.overlay`, the launcher in `settings.launcher`, the page in `settings.section` with its icon in `settings.section.icon`, and the quota dialog in `shell.quota-notice` for the `QUOTA` failure code.
 
 </details>
 

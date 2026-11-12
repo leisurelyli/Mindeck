@@ -38,6 +38,7 @@ export const en = {
   accountUnavailable: 'This account is disabled, or its password must be changed on the web first.',
   protocol: 'Mindeck Cloud returned an unexpected response. Try again later or contact your administrator.',
   storage: 'Could not save the sign-in on this device. Try again.',
+  settingsFailed: 'Could not save the address on this device. Try again.',
   failed: 'Something went wrong. Try again.',
   streamFailed: 'Could not read the account state. Restart Mindeck.',
   loading: 'Loading…',
@@ -53,6 +54,10 @@ export const en = {
   signOut: 'Sign out',
   signOutTitle: 'Sign out?',
   signOutDescription: 'This device will stop using your company models, and running tasks may stop. Local sessions and files stay on this device.',
+  quotaTitle: 'Model quota used up',
+  quotaDescription: 'You have used this month\'s model quota that your company set for you or your department. Ask your administrator if you need more.',
+  quotaUsage: 'View my usage',
+  quotaDismiss: 'Got it',
 } as const
 
 /** Account locale keys. */
@@ -96,6 +101,7 @@ export const zh: Record<MindeckAccountKey, string> = {
   accountUnavailable: '账号已停用，或需要先在网页上修改密码。',
   protocol: 'Mindeck Cloud 返回了无法识别的响应，请稍后重试或联系管理员。',
   storage: '无法在本机保存登录信息，请重试。',
+  settingsFailed: '无法在本机保存地址，请重试。',
   failed: '操作失败，请重试。',
   streamFailed: '无法读取账号状态，请重启 Mindeck。',
   loading: '正在加载…',
@@ -111,4 +117,8 @@ export const zh: Record<MindeckAccountKey, string> = {
   signOut: '退出登录',
   signOutTitle: '退出登录？',
   signOutDescription: '退出后，本机将无法使用公司模型，正在运行的任务可能会中断。本机的会话和文件会保留。',
+  quotaTitle: '模型额度已用完',
+  quotaDescription: '公司为你或你所在部门设置的本月模型额度已经用完。如需更多额度，请联系管理员。',
+  quotaUsage: '查看我的用量',
+  quotaDismiss: '知道了',
 }

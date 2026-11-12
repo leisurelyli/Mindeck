@@ -31,6 +31,8 @@ kind: "package-reference"
 
 退出登录会立即删除本机会话，并在后台结束其在 Mindeck Cloud 上的会话。当 Mindeck Cloud 拒绝该会话时，例如管理员停用成员或让设备退出登录后，会话结束，对话框请成员重新登录。
 
+当 Mindeck Cloud 因成员或部门的本月额度用完而拒绝模型请求时，对话框说明原因，并链接到成员在 Mindeck Cloud 的用量页。
+
 其他 Host 插件调用 `ctx.mindeckAccount.session()` 获取云端地址、Bearer 令牌和 bootstrap 端点，在 `mindeck-account/changed` 时重新读取，并用 `rejectToken(token)` 报告 HTTP 401。令牌不会到达任何客户端。
 
 -----
@@ -45,7 +47,7 @@ Host 服务继承 `TypertRemoteService`，Remote 命名空间为 `mindeckAccount
 
 启动时 Host 会重新读取 bootstrap：401 结束会话，变化的信息替换缓存，云端不可达时保留会话以便离线使用。`rejectToken` 只在会话仍持有被拒绝的令牌时才删除会话，因此迟到的拒绝不会结束较新的登录。
 
-客户端挂载生成的 Remote，并通过 `remoteAccess.whenAccess('mindeckAccount/watch')` 跟随 `watch` 流，没有账号访问权限的客户端不会渲染任何账号界面。它在 `shell.overlay` 注册登录对话框，在 `settings.launcher` 注册侧栏入口，在 `settings.section` 注册设置页。
+客户端挂载生成的 Remote，并通过 `remoteAccess.whenAccess('mindeckAccount/watch')` 跟随 `watch` 流，没有账号访问权限的客户端不会渲染任何账号界面。它在 `shell.overlay` 注册登录对话框，在 `settings.launcher` 注册侧栏入口，在 `settings.section` 注册设置页并在 `settings.section.icon` 注册其图标，并为 `QUOTA` 失败码在 `shell.quota-notice` 注册额度对话框。
 
 </details>
 
