@@ -32,6 +32,7 @@ description: "Mindeck 应用身份、独立数据位置，以及源码开发隔�
 | Harness 状态 | `~/.mindeck-workspace` | `~/.mindeck-workspace-dev` |
 | 共享 agent（智能体）配置 | 所选状态根目录下的 `agents/` | 所选状态根目录下的 `agents/` |
 | Electron 用户数据 | Electron appData 下的 `MindeckWorkspace` | Electron appData 下的 `MindeckWorkspaceDev` |
+| 首次使用的默认工作区 | `<Documents>/Mindeck/default-workspace` | `<Documents>/Mindeck/default-workspace` |
 
 使用 `MINDECK_HOME`、`MINDECK_AGENTS_HOME` 和 `MINDECK_USER_DATA_DIR` 指定绝对路径。继承的 `DSH_HOME`、`DSH_AGENTS_HOME` 和 `DSH_DESKTOP_USER_DATA_DIR` 不用于选择桌面状态。启动器向自己的 Host 提供已解析目录。检查会解析现有目录别名，并在创建 Mindeck 状态前拒绝与官方 `.dsh`、共享 `.agents`、官方 Electron 数据或现有 Mindeck 数据重叠的路径。该检查防止误用，不是抵御并发文件系统修改的操作系统沙箱。
 

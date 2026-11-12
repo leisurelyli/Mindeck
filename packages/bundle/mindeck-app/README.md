@@ -29,7 +29,7 @@ Apply this bundle after `@deepseek-ai/dsh-base` and `@deepseek-ai/dsh-web-app`. 
 
 The layer disables `ui-brand-official` and selects the [Mindeck brand plugin](../../client/ui-brand-mindeck/README.md) for the sidebar, empty conversation and onboarding artwork. The stock Web bundle remains independent of Mindeck. The Mindeck launchers supply public product names through the [locale parameters](../../client/locale/README.md#use-this-package); this patch does not configure them.
 
-Members sign in with a Mindeck Cloud account and use the models, skills, and file library their company configures there. The layer adds the [account](../../mindeck/mindeck-account/README.md), [company models](../../mindeck/mindeck-models/README.md), [company skills](../../mindeck/mindeck-skills/README.md), and [file library](../../mindeck/mindeck-files/README.md) plugins. It disables the DeepSeek account and its sign-in UI, the DeepSeek model providers and web search, the `llm-pi-ai` routes from personal settings, and the Models settings page with personal API keys. Every model request therefore goes through the Mindeck Cloud gateway, which meters it against the company quotas.
+Members sign in with a Mindeck Cloud account and use the models, skills, and file library their company configures there. The layer adds the [account](../../mindeck/mindeck-account/README.md), [company models](../../mindeck/mindeck-models/README.md), [company skills](../../mindeck/mindeck-skills/README.md), and [file library](../../mindeck/mindeck-files/README.md) plugins. It disables the DeepSeek account and its sign-in UI, the DeepSeek model providers and web search, the `llm-pi-ai` routes from personal settings, and the Models settings page with personal API keys. Every model request therefore goes through the Mindeck Cloud gateway, which meters it against the company quotas. A first-use default Workspace is created under `<Documents>/Mindeck`, apart from the folder of an official DeepSeek Harness installation.
 
 -----
 
@@ -39,7 +39,7 @@ Members sign in with a Mindeck Cloud account and use the models, skills, and fil
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-The manifest declares `dsh.bundle.patch` as [`cordis.patch.yml`](cordis.patch.yml). That patch disables the official brand and the replaced rows by id and inserts the Mindeck plugins. It adds no service or mutable runtime state; the selected plugin owns registration and cleanup. Later patches follow normal profile precedence.
+The manifest declares `dsh.bundle.patch` as [`cordis.patch.yml`](cordis.patch.yml). That patch disables the official brand and the replaced rows by id, inserts the Mindeck plugins, and sets the Workspace controller's `documentsFolder`. It adds no service or mutable runtime state; the selected plugin owns registration and cleanup. Later patches follow normal profile precedence.
 
 </details>
 

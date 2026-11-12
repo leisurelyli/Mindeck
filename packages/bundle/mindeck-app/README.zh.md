@@ -29,7 +29,7 @@ kind: "package-bundle"
 
 此层禁用 `ui-brand-official`，选择 [Mindeck 品牌插件](../../client/ui-brand-mindeck/README.zh.md)提供侧栏、空白会话和首次引导图稿。原版 Web 组合包保持独立于 Mindeck。Mindeck 启动器通过[语言参数](../../client/locale/README.zh.md#use-this-package)提供公开的产品名称；此补丁不配置这些值。
 
-成员使用 Mindeck Cloud 账号登录，并使用公司在 Mindeck Cloud 中配置的模型、技能和资源库。此层加入[账号](../../mindeck/mindeck-account/README.zh.md)、[公司模型](../../mindeck/mindeck-models/README.zh.md)、[公司技能](../../mindeck/mindeck-skills/README.zh.md)和[资源库](../../mindeck/mindeck-files/README.zh.md)插件。它禁用 DeepSeek 账号及其登录界面、DeepSeek 模型提供商与联网搜索、来自个人设置的 `llm-pi-ai` 路由，以及填写个人 API Key 的模型设置页。因此每个模型请求都经过 Mindeck Cloud 网关，并按公司额度计量。
+成员使用 Mindeck Cloud 账号登录，并使用公司在 Mindeck Cloud 中配置的模型、技能和资源库。此层加入[账号](../../mindeck/mindeck-account/README.zh.md)、[公司模型](../../mindeck/mindeck-models/README.zh.md)、[公司技能](../../mindeck/mindeck-skills/README.zh.md)和[资源库](../../mindeck/mindeck-files/README.zh.md)插件。它禁用 DeepSeek 账号及其登录界面、DeepSeek 模型提供商与联网搜索、来自个人设置的 `llm-pi-ai` 路由，以及填写个人 API Key 的模型设置页。因此每个模型请求都经过 Mindeck Cloud 网关，并按公司额度计量。首次使用时创建的默认工作区位于 `<Documents>/Mindeck`，与官方 DeepSeek Harness 安装的文件夹分开。
 
 -----
 
@@ -39,7 +39,7 @@ kind: "package-bundle"
 <details>
 <summary>实现细节——点击展开</summary>
 
-manifest（元数据清单）将 `dsh.bundle.patch` 声明为 [`cordis.patch.yml`](cordis.patch.yml)。该补丁按 id 禁用官方品牌和被替换的行，并插入 Mindeck 插件。它不添加服务或可变运行时状态；所选插件负责注册与清理。后续补丁遵循普通 profile 优先级。
+manifest（元数据清单）将 `dsh.bundle.patch` 声明为 [`cordis.patch.yml`](cordis.patch.yml)。该补丁按 id 禁用官方品牌和被替换的行，插入 Mindeck 插件，并设置工作区控制器的 `documentsFolder`。它不添加服务或可变运行时状态；所选插件负责注册与清理。后续补丁遵循普通 profile 优先级。
 
 </details>
 

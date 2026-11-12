@@ -28,14 +28,29 @@ export function validateDocumentsDirectory(directory: string, platform: NodeJS.P
 }
 
 /**
+ * Validate the product folder name placed under Documents.
+ * @param folder - configured folder name.
+ * @returns the folder name, unchanged.
+ */
+export function validateDocumentsFolder(folder: string): string {
+  // A name valid on Windows is also valid on macOS and Linux; a trailing dot also rejects `.` and `..`.
+  if (folder === '' || /[<>:"/\\|?*\u0000-\u001f]|[. ]$/u.test(folder) || /^(con|prn|aux|nul|com\d|lpt\d)(\.|$)/iu.test(folder)) {
+    throw new Error(`Documents folder must be one file name valid on every platform: '${folder}'`)
+  }
+  return folder
+}
+
+/**
  * Resolve the first-use directory on the Host without creating files.
  * @param documentsDirectory - explicit deployment override for the system Documents directory.
+ * @param folder - validated product folder under Documents.
  * @param signal - caller lifetime and lookup deadline.
  * @param internals - platform facts and native command runner.
  * @returns the absolute candidate path.
  */
 export async function defaultWorkspaceDirectory(
   documentsDirectory: string | undefined,
+  folder: string,
   signal: AbortSignal,
   internals: DocumentsDirectoryInternals = {},
 ): Promise<string> {
@@ -74,5 +89,5 @@ export async function defaultWorkspaceDirectory(
   }
   directory = validateDocumentsDirectory(directory, platform)
   signal.throwIfAborted()
-  return paths.join(directory, 'deepseek-harness', DEFAULT_WORKSPACE_DIRECTORY)
+  return paths.join(directory, folder, DEFAULT_WORKSPACE_DIRECTORY)
 }

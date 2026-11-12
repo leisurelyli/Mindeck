@@ -51,7 +51,7 @@ function deferred<T>(): Deferred<T> {
   return { promise, resolve }
 }
 
-async function harness(options: { systemDocuments?: boolean } = {}) {
+async function harness(options: { systemDocuments?: boolean; documentsFolder?: string } = {}) {
   const root = realpathSync.native(mkdtempSync(join(tmpdir(), 'dsh-workspace-controller-')))
   tempDirs.push(root)
   const ctx = new Context()
@@ -71,7 +71,8 @@ async function harness(options: { systemDocuments?: boolean } = {}) {
     resources: { register: vi.fn(() => dispose) },
   } as never)
   new RemoteAccessService(ctx)
-  const controller = new WorkspaceController(ctx, options.systemDocuments === true ? {} : { documentsDirectory: root })
+  const folder = options.documentsFolder === undefined ? {} : { documentsFolder: options.documentsFolder }
+  const controller = new WorkspaceController(ctx, options.systemDocuments === true ? folder : { documentsDirectory: root, ...folder })
   return { controller, ctx, root, storageDomain }
 }
 
@@ -599,6 +600,13 @@ describe('first-use Remote', () => {
     expect(existsSync(result!.workspace.path)).toBe(true)
     expect(ctx.sessions.list()).toEqual([])
     expect(await controller.initializeDefault(signal)).toEqual(result)
+  })
+
+  it('places the default Workspace under the configured product folder and rejects an invalid folder at load', async () => {
+    const { controller, root } = await harness({ documentsFolder: 'Mindeck' })
+    const result = await controller.initializeDefault(new AbortController().signal)
+    expect(result!.workspace.path).toBe(join(root, 'Mindeck', DEFAULT_WORKSPACE_DIRECTORY))
+    await expect(harness({ documentsFolder: '../Mindeck' })).rejects.toThrow('one file name')
   })
 
   it('skips ineligible first use and propagates preparation failures', async () => {

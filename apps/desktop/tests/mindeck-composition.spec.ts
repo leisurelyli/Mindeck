@@ -8,7 +8,7 @@ import { expect, it } from 'vitest'
 import { composeEntries, loadProfileDirectory } from '@deepseek-ai/dsh-app-boot'
 import { createPluginProfile } from '../src/project-manager.ts'
 
-it('replaces the DeepSeek account, providers, and personal model settings with the Mindeck Cloud plugins', () => {
+it('replaces the DeepSeek account, providers, and personal model settings with the Mindeck Cloud plugins and uses its own Documents folder', () => {
   const home = mkdtempSync(join(tmpdir(), 'dsh-desktop-mindeck-composition-'))
   try {
     const profileDir = join(home, 'profiles', 'desktop')
@@ -38,6 +38,7 @@ it('replaces the DeepSeek account, providers, and personal model settings with t
     }
     expect(row('llm')?.disabled).not.toBe(true)
     expect(row('skill')?.disabled).not.toBe(true)
+    expect(row('workspace-controller')?.config).toEqual({ documentsFolder: 'Mindeck' })
     expect(warnings).toEqual([])
   } finally {
     rmSync(home, { recursive: true, force: true })

@@ -41,3 +41,9 @@
       name: '@deepseek-ai/dsh-mindeck-skills'
     - id: mindeck-files
       name: '@deepseek-ai/dsh-mindeck-files'
+
+# A first-use default Workspace goes to <Documents>/Mindeck, apart from the
+# DeepSeek Harness folder of an official installation on the same account.
+- id: workspace-controller
+  config:
+    documentsFolder: Mindeck

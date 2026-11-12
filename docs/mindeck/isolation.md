@@ -32,6 +32,7 @@ Desktop resolves these locations before reading Electron settings, acquiring the
 | Harness state | `~/.mindeck-workspace` | `~/.mindeck-workspace-dev` |
 | Shared agent configuration | `agents/` under the selected state root | `agents/` under the selected state root |
 | Electron user data | `MindeckWorkspace` under Electron appData | `MindeckWorkspaceDev` under Electron appData |
+| First-use default Workspace | `<Documents>/Mindeck/default-workspace` | `<Documents>/Mindeck/default-workspace` |
 
 Use `MINDECK_HOME`, `MINDECK_AGENTS_HOME`, and `MINDECK_USER_DATA_DIR` for explicit absolute locations. Inherited `DSH_HOME`, `DSH_AGENTS_HOME`, and `DSH_DESKTOP_USER_DATA_DIR` do not select Desktop state. The launcher supplies the resolved directories to its own Host. Existing directory aliases are resolved, and paths overlapping the official `.dsh`, shared `.agents`, official Electron data, or existing Mindeck data are refused before creating Mindeck state. This check prevents accidental reuse; it is not an operating-system sandbox against concurrent filesystem changes.
 
