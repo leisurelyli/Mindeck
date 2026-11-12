@@ -43,9 +43,9 @@ description: "Mindeck 应用身份、独立数据位置，以及源码开发隔�
 
 ## 开发入口
 
-根 `dev:desktop` 与 `start:desktop` 脚本启动开发身份。根 `dev:web` 与 `start:web` 脚本预加载同一 Mindeck 开发环境，使用受支持的 `dsh web` profile 并附加 `--patch packages/bundle/mindeck-app/cordis.patch.yml`，默认端口为 3081。Web 与 Desktop 开发有意共享产品数据，其 profile 保持独立。独立 checkout 或测试运行应显式指定 Mindeck 路径覆盖。
+根 `dev:desktop` 与 `start:desktop` 脚本启动开发身份。根 `dev:web` 与 `start:web` 脚本预加载同一 Mindeck 开发环境，像 Desktop 一样把 Mindeck 组合包加入开发 Web profile 的组合包列表，使其中各行可通过设置修改，默认端口为 3081。Web 与 Desktop 开发有意共享产品数据，其 profile 保持独立。独立 checkout 或测试运行应显式指定 Mindeck 路径覆盖。
 
-`start:web:stock` 与 `dev:web:stock` 启动未修改的上游组合：不加载 Mindeck 环境，也不附加其 patch，启动器使用默认 `$DSH_HOME`（`~/.dsh`）和 3080 端口。检查上游行为且不想触及本地 Mindeck 状态时，将 `DSH_HOME` 指向临时目录。
+`start:web:stock` 与 `dev:web:stock` 启动未修改的上游组合：不加载 Mindeck 环境，也不加入其组合包，启动器使用默认 `$DSH_HOME`（`~/.dsh`）和 3080 端口。检查上游行为且不想触及本地 Mindeck 状态时，将 `DSH_HOME` 指向临时目录。
 
 Desktop 自有 profile 依次包含 base、原版 Web 和 Mindeck 展示层，之后保留用户扩展组合包。准备时，[Mindeck profile helper](../../apps/desktop/src/mindeck-profile.ts) 为旧 profile 补齐这些必需层，并保留用户依赖与 `cordis.patch.yml`。修改已有 `package.json` 前，它将原字节复制到同一 profile 目录中的 `package.before-mindeck-UUID.json`。重复准备不会改写已经正确的组合包顺序。
 
