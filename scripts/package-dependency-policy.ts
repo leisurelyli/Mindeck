@@ -93,6 +93,9 @@ const PEER_REQUIRED_HOST_EXPORTS = {
   '@deepseek-ai/dsh-session-persistence': ['SessionPersistenceNotFoundError'],
   // Readers recognize a deadline's TimeoutReason only by `instanceof` against their own copy.
   '@deepseek-ai/dsh-timeout': ['deadline'],
+  // The Mindeck file library registers tools with the Host's tool runtime and stores downloads under the Host's home.
+  '@deepseek-ai/dsh-tools': ['defineTool'],
+  '@deepseek-ai/dsh-home-paths': ['resolveDshHome'],
 } as const satisfies HostDependencyExports
 
 /** Exact import specifier to reviewed runtime exports. */

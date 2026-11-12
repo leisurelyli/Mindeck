@@ -1,0 +1,46 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/mindeck/mindeck-files/README.md
+/:
+  en: 9074864cd2f05730
+  zh: 90d02e003e4c305a
+/deepseek-ai-dsh-mindeck-files:
+  en: 5c3e65208abe991f
+  zh: 63fa87ca2fd9e2b3
+/deepseek-ai-dsh-mindeck-files/summary:
+  en: 649e9d516f77bdeb
+  zh: c1ab9f1568a4203e
+/deepseek-ai-dsh-mindeck-files/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: ce40cab8e7534137
+/deepseek-ai-dsh-mindeck-files/use-this-package:
+  en: 56803b270648ce3f
+  zh: 8135ad84575bb6f4
+/deepseek-ai-dsh-mindeck-files/understand-the-implementation:
+  en: 0a57cc00e4853188
+  zh: 400066a85b4cef51
+/deepseek-ai-dsh-mindeck-files/further-exploration:
+  en: 4b906f831f52c640
+  zh: e0de4378053bf0bb
+/deepseek-ai-dsh-mindeck-files/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-mindeck-files/model-experience/file-library-tools:
+  en: bf8dbbcc04ca72ef
+  zh: 2f5f25086b59bffa
+/deepseek-ai-dsh-mindeck-files/model-experience/file-library-tools/what-the-model-sees:
+  en: e2004209c7d30319
+  zh: a460ffd0205da5cd
+/deepseek-ai-dsh-mindeck-files/model-experience/file-library-tools/token-effect:
+  en: 2a68e5742dbd22b7
+  zh: 21d66668b42ddba7
+/deepseek-ai-dsh-mindeck-files/model-experience/file-library-tools/kv-cache-effect:
+  en: 3a9d8f9cf9bf8f84
+  zh: 4f739e789435f5c2
+/deepseek-ai-dsh-mindeck-files/known-limitations-and-deferred-work:
+  en: de8ec9fd1cc92487
+  zh: 492b914ecf501993
+/deepseek-ai-dsh-mindeck-files/known-limitations-and-deferred-work/dev-note:
+  en: 0225ba087c5266f3
+  zh: 9c1d441532d6e9e6

@@ -420,6 +420,8 @@
       "@deepseek-ai/dsh-mindeck-app/src/*": ["./packages/bundle/mindeck-app/src/*"],
       "@deepseek-ai/dsh-mindeck-account/types": ["./packages/mindeck/mindeck-account/src/types.ts"],
       "@deepseek-ai/dsh-mindeck-account/client": ["./packages/mindeck/mindeck-account/src/client/index.ts"],
+      "@deepseek-ai/dsh-mindeck-files/types": ["./packages/mindeck/mindeck-files/src/types.ts"],
+      "@deepseek-ai/dsh-mindeck-files/client": ["./packages/mindeck/mindeck-files/src/client/index.ts"],
       // BEGIN generated package aliases — pnpm run gen-tsconfig-paths
       "@deepseek-ai/dsh-acp": ["./packages/acp/acp/src"],
       "@deepseek-ai/dsh-acp-app": ["./packages/bundle/acp-app/src"],
@@ -497,6 +499,7 @@
       "@deepseek-ai/dsh-message-quotes": ["./packages/session/message-quotes/src"],
       "@deepseek-ai/dsh-mindeck-account": ["./packages/mindeck/mindeck-account/src"],
       "@deepseek-ai/dsh-mindeck-app": ["./packages/bundle/mindeck-app/src"],
+      "@deepseek-ai/dsh-mindeck-files": ["./packages/mindeck/mindeck-files/src"],
       "@deepseek-ai/dsh-mindeck-models": ["./packages/mindeck/mindeck-models/src"],
       "@deepseek-ai/dsh-mindeck-skills": ["./packages/mindeck/mindeck-skills/src"],
       "@deepseek-ai/dsh-native-command": ["./packages/util/native-command/src"],

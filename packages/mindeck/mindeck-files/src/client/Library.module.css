@@ -1,0 +1,54 @@
+/* The library page: toolbar, search, then the scrolling list. */
+.page {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  color: var(--dsw-alias-label-primary);
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  line-height: 1.5;
+}
+
+.toolbar { display: flex; flex: none; align-items: center; gap: 2px; min-width: 0; padding: 8px 8px 4px 10px; }
+.crumbs { display: flex; flex: 1 1 auto; align-items: center; min-width: 0; overflow: hidden; white-space: nowrap; }
+.crumbItem { display: inline-flex; align-items: center; min-width: 0; }
+.separator { flex: none; padding: 0 2px; color: var(--dsw-alias-label-tertiary); }
+.crumb { min-width: 0; max-width: 160px; overflow: hidden; padding: 2px 4px; border: 0; border-radius: var(--dsw-radius-sm); background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.crumb[aria-current='page'] { color: var(--dsw-alias-label-primary); font-weight: 500; }
+.crumbItem:last-child { flex-shrink: 0; }
+
+.iconButton { box-sizing: border-box; display: inline-flex; flex: none; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 6px; border: 0; border-radius: var(--dsw-radius-sm); background: transparent; color: var(--dsw-alias-label-secondary); cursor: pointer; }
+
+.search { flex: none; padding: 4px 10px 8px; }
+.searchInput { box-sizing: border-box; width: 100%; }
+
+.body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 6px 8px; }
+.list { margin: 0; padding: 0; list-style: none; }
+.row { display: flex; align-items: center; min-width: 0; border-radius: var(--dsw-radius-md); }
+.action { display: flex; flex: 1; align-items: center; gap: 8px; min-width: 0; padding: 6px 8px; border: 0; border-radius: var(--dsw-radius-md); background: transparent; color: inherit; font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+.text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meta { overflow: hidden; color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
+.action > .meta { flex: none; margin-left: auto; }
+.accessory { display: flex; flex: none; align-items: center; padding-right: 4px; opacity: 0; }
+.row:focus-within .accessory { opacity: 1; }
+
+.state { margin: 0; padding: 24px 12px; color: var(--dsw-alias-label-secondary); text-align: center; }
+.state p { margin: 0 0 8px; }
+.textButton { padding: 2px 6px; border: 0; border-radius: var(--dsw-radius-sm); background: transparent; color: var(--dsw-alias-state-business-primary, var(--dsw-alias-label-primary)); font: inherit; cursor: pointer; }
+.notice { flex: none; min-height: 18px; margin: 0; padding: 0 12px 8px; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; }
+
+@media (hover: hover) {
+  .row:hover { background: var(--dsw-alias-interactive-bg-hover); }
+  .row:hover .accessory { opacity: 1; }
+  .iconButton:hover, .crumb:hover, .textButton:hover { background: var(--dsw-alias-interactive-bg-hover); }
+}
+
+/* Touch screens have no hover, so row actions stay visible. */
+@media (hover: none) {
+  .accessory { opacity: 1; }
+}
+
+.iconButton:focus-visible, .crumb:focus-visible, .action:focus-visible, .textButton:focus-visible { outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: -2px; }

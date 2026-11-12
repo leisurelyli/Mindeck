@@ -26,6 +26,7 @@ it('replaces the DeepSeek account, providers, and personal model settings with t
       ['mindeck-account', '@deepseek-ai/dsh-mindeck-account'],
       ['mindeck-models', '@deepseek-ai/dsh-mindeck-models'],
       ['mindeck-skills', '@deepseek-ai/dsh-mindeck-skills'],
+      ['mindeck-files', '@deepseek-ai/dsh-mindeck-files'],
     ] as const) {
       expect(row(id)).toEqual({ id, name })
     }

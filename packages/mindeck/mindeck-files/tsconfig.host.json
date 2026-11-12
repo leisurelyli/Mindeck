@@ -1,0 +1,44 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types",
+    "tsBuildInfoFile": "lib/tsconfig.host.tsbuildinfo"
+  },
+  "files": [
+    "src/index.ts",
+    "src/access.ts",
+    "src/library.ts",
+    "src/library-service.ts",
+    "src/opencloud.ts",
+    "src/reference.ts",
+    "src/tools.ts",
+    "src/types.ts"
+  ],
+  "references": [
+    {
+      "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../../../vendor/schemastery"
+    },
+    {
+      "path": "../../core/tools"
+    },
+    {
+      "path": "../../fs/fs"
+    },
+    {
+      "path": "../../session/working-directory"
+    },
+    {
+      "path": "../../typert/protocol"
+    },
+    {
+      "path": "../../util/home-paths"
+    },
+    {
+      "path": "../mindeck-account/tsconfig.host.json"
+    }
+  ]
+}

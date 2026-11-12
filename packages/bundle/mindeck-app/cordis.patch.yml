@@ -6,9 +6,10 @@
     - id: ui-brand-mindeck
       name: '@deepseek-ai/dsh-client-ui-brand-mindeck'
 
-# Mindeck Enterprise: the Mindeck Cloud account, company models, and company
-# skills replace the DeepSeek account, its model providers, its sign-in UI, and
-# the DeepSeek web search that requires a DeepSeek credential. Members sign in
+# Mindeck Enterprise: the Mindeck Cloud account, company models, company skills,
+# and the company file library replace the DeepSeek account, its model
+# providers, its sign-in UI, and the DeepSeek web search that requires a
+# DeepSeek credential. Members sign in
 # through the Mindeck account dialog and use the models the company configures
 # in Mindeck Cloud, so personal pi-ai routes and the Models page with personal
 # API keys, its first-run dialogs, and its preview notice are left out; every
@@ -38,3 +39,5 @@
       name: '@deepseek-ai/dsh-mindeck-models'
     - id: mindeck-skills
       name: '@deepseek-ai/dsh-mindeck-skills'
+    - id: mindeck-files
+      name: '@deepseek-ai/dsh-mindeck-files'
