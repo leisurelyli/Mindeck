@@ -45,6 +45,8 @@ it('reads the gateway message from either SDK format', () => {
   expect(readGatewayFailure('402 {"type":"error","error":{"type":"billing_error","message":"本月额度已用完。"}}'))
     .toEqual({ status: 402, text: '本月额度已用完。' })
   expect(readGatewayFailure('401 请先登录。')).toEqual({ status: 401, text: '请先登录。' })
+  expect(readGatewayFailure('{"message":"模型不存在。","type":"model_not_found","code":"model_not_found"}'))
+    .toEqual({ text: '模型不存在。' })
   expect(readGatewayFailure('socket hang up')).toEqual({})
   expect(readGatewayFailure('502 {not json')).toEqual({ status: 502 })
 })

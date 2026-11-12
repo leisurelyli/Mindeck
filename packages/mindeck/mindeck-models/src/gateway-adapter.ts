@@ -20,8 +20,8 @@ export interface GatewayHooks {
 }
 
 /**
- * Read the gateway's own message from a provider failure. The client SDKs report the HTTP status and
- * either the gateway's JSON error body or its `error.message`.
+ * Read the gateway's own message from a provider failure. The client SDKs report the gateway's JSON
+ * error body, the error object inside it, or its message, with or without the HTTP status.
  * @param message - failure text from the client SDK.
  * @returns the HTTP status and the gateway message, when the text carries them.
  */
@@ -32,7 +32,8 @@ export function readGatewayFailure(message: string): { status?: number; text?: s
   if (json >= 0) {
     try {
       const body: unknown = JSON.parse(message.slice(json))
-      const error = typeof body === 'object' && body !== null && 'error' in body ? body.error : undefined
+      // Anthropic reports the whole body (`{ error: { message } }`); OpenAI reports the error object itself.
+      const error = typeof body === 'object' && body !== null && 'error' in body ? body.error : body
       const inner = typeof error === 'object' && error !== null && 'message' in error ? error.message : undefined
       if (typeof inner === 'string' && inner.length > 0) text = inner
     } catch (_error) {
