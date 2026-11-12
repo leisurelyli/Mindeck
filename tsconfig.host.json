@@ -298,6 +298,7 @@
     { "path": "./packages/experimental/api-speech-to-text" },
     { "path": "./packages/mindeck/mindeck-account/tsconfig.host.json" },
     { "path": "./packages/mindeck/mindeck-models" },
+    { "path": "./packages/mindeck/mindeck-skills" },
     { "path": "./packages/experimental/voice-input-bundle" },
     { "path": "./packages/experimental/plugin-market-bundle" },
     { "path": "./packages/client/locale/tsconfig.host.json" },

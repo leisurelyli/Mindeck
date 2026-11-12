@@ -48,6 +48,7 @@ export const PRODUCT_PACKAGE_POLICY: Readonly<Record<string, ProductPackagePolic
   'packages/client/ui-brand-mindeck': { category: 'optional', reason: 'Brand provider selected by the Mindeck presentation layer.' },
   'packages/mindeck/mindeck-account': { category: 'optional', reason: 'Mindeck Cloud account mounted by the Mindeck presentation layer.' },
   'packages/mindeck/mindeck-models': { category: 'optional', reason: 'Mindeck Cloud company models mounted by the Mindeck presentation layer.' },
+  'packages/mindeck/mindeck-skills': { category: 'optional', reason: 'Mindeck Cloud company skills mounted by the Mindeck presentation layer.' },
   'packages/client/web': { category: 'web-distribution', reason: 'Browser boot kernel bundled into the Web distribution.' },
   'packages/client/ui-dockkit': { category: 'web-distribution', reason: 'Layout library bundled into the Web distribution.' },
   'packages/util/package-manifest': { category: 'declarations', reason: 'Shared package metadata declarations have no runtime mount.' },
