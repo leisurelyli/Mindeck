@@ -1,0 +1,122 @@
+/** The account UI follows the Host stream, maps Remote failures, and leaves with the plugin. */
+import { Context, Service } from '@deepseek-ai/cordis'
+import { expect, it, vi } from 'vitest'
+import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
+import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
+import { StaticRemoteAccess } from '@deepseek-ai/dsh-client-test-runtime'
+import { RemoteError, type RemoteResult, type TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
+import type { MindeckAccountView } from '../src/types.ts'
+import type { MindeckAccountInjected } from '../src/client/operations.ts'
+import { mountAccount } from '../src/client/mount.ts'
+
+const contribution: TypertRemoteContribution = { package: '@deepseek-ai/dsh-mindeck-account', descriptors: [] }
+const signedOut: MindeckAccountView = {
+  cloudUrl: 'https://cloud.example.com', status: 'signed-out', user: null, companyName: null, notice: null, attempt: null,
+}
+
+/** Host state frames the fake `watch` stream delivers in order. */
+class Frames {
+  private readonly queue: MindeckAccountView[] = []
+  private wake: (() => void) | undefined
+  push(view: MindeckAccountView): void { this.queue.push(view); this.wake?.() }
+  async *stream(signal: AbortSignal): AsyncIterable<MindeckAccountView> {
+    while (!signal.aborted) {
+      const next = this.queue.shift()
+      if (next !== undefined) { yield next; continue }
+      await new Promise<void>((resolve) => {
+        this.wake = resolve
+        signal.addEventListener('abort', () => { resolve() }, { once: true })
+      })
+    }
+  }
+}
+
+async function fixture() {
+  const ctx = new Context()
+  const frames = new Frames()
+  const unmount = vi.fn(async () => {})
+  class TestRemote extends Service {
+    constructor() { super(ctx, 'remote') }
+    async $mount(value: TypertRemoteContribution) { expect(value).toBe(contribution); return unmount }
+    $stream<T>(spec: { open: (signal: AbortSignal) => AsyncIterable<T> }) {
+      const lifetime = new AbortController()
+      const source = spec.open(lifetime.signal)
+      return {
+        async *[Symbol.asyncIterator]() { for await (const value of source) yield { value, accept: () => {} } },
+        dispose: async () => { lifetime.abort() },
+      }
+    }
+  }
+  new TestRemote()
+  const ok = <T>(value: T): RemoteResult<T> => ({ ok: true, value })
+  const remote = {
+    watch: (signal: AbortSignal) => frames.stream(signal),
+    setCloudUrl: vi.fn(async (_input: string): Promise<RemoteResult<MindeckAccountView>> => ok(signedOut)),
+    startSignIn: vi.fn(async (_version: string): Promise<RemoteResult<MindeckAccountView>> => ok(signedOut)),
+    cancelSignIn: vi.fn(async (): Promise<RemoteResult<MindeckAccountView>> => ok(signedOut)),
+    signOut: vi.fn(async (): Promise<RemoteResult<MindeckAccountView>> => ok(signedOut)),
+  }
+  ctx.provide('remote.mindeckAccount', remote as never)
+  ctx.provide('locale', new LocaleRuntime(ctx))
+  new StaticRemoteAccess(ctx)
+  await ctx.plugin(SlotRegistry)
+  ctx.slots.register({ name: 'root', children: {
+    'shell.overlay': { kind: 'list', scope: 'root' },
+    'settings.launcher': { kind: 'single', scope: 'root' },
+    'settings.section': { kind: 'list', scope: 'root' },
+  } } as never, () => null)
+  return { ctx, frames, remote, unmount }
+}
+
+function operations(entry: { inject?: unknown } | undefined): MindeckAccountInjected {
+  if (typeof entry?.inject !== 'function') throw new Error('Expected an injected account face')
+  return (entry.inject as () => MindeckAccountInjected)()
+}
+
+it('registers the gate, launcher, and section, then withdraws them before the Remote', async () => {
+  const f = await fixture()
+  try {
+    const dispose = await mountAccount(f.ctx, contribution)
+    expect(f.ctx.slots.entries('shell.overlay')).toHaveLength(1)
+    expect(f.ctx.slots.entries('settings.launcher')).toHaveLength(1)
+    expect(f.ctx.slots.entries('settings.section')).toHaveLength(1)
+    const face = operations(f.ctx.slots.entries('settings.section')[0])
+    expect(face.hooks.account.getSnapshot()).toEqual({ view: undefined, failed: false })
+    f.frames.push(signedOut)
+    await vi.waitFor(() => { expect(face.hooks.account.getSnapshot().view).toEqual(signedOut) })
+
+    await dispose()
+    expect(f.ctx.slots.entries('shell.overlay')).toHaveLength(0)
+    expect(f.ctx.slots.entries('settings.launcher')).toHaveLength(0)
+    expect(f.ctx.slots.entries('settings.section')).toHaveLength(0)
+    expect(face.hooks.account.getSnapshot()).toEqual({ view: undefined, failed: false })
+    expect(f.unmount).toHaveBeenCalledOnce()
+  } finally { await f.ctx.fiber.dispose() }
+})
+
+it('starts sign-in only after the address is accepted and names each refusal', async () => {
+  const f = await fixture()
+  try {
+    await mountAccount(f.ctx, contribution)
+    const face = operations(f.ctx.slots.entries('shell.overlay')[0])
+    const refuse = (reason: 'format' | 'unreachable' | 'not-mindeck-cloud') => ({
+      ok: false as const, error: new RemoteError('mindeck-account/invalid-cloud-url', 'refused', { reason }),
+    })
+    f.remote.setCloudUrl.mockResolvedValueOnce(refuse('format'))
+    expect(await face.connect('ftp://x')).toEqual({ ok: false, reason: 'invalidFormat' })
+    f.remote.setCloudUrl.mockResolvedValueOnce(refuse('unreachable'))
+    expect(await face.connect('cloud.example.com')).toEqual({ ok: false, reason: 'unreachable' })
+    f.remote.setCloudUrl.mockResolvedValueOnce(refuse('not-mindeck-cloud'))
+    expect(await face.connect('example.com')).toEqual({ ok: false, reason: 'notMindeckCloud' })
+    f.remote.setCloudUrl.mockResolvedValueOnce({ ok: false, error: new RemoteError('mindeck-account/signed-in', 'signed in', {}) })
+    expect(await face.connect('cloud.example.com')).toEqual({ ok: false, reason: 'cloudLocked' })
+    expect(f.remote.startSignIn).not.toHaveBeenCalled()
+
+    expect(await face.connect('cloud.example.com')).toEqual({ ok: true })
+    expect(f.remote.setCloudUrl).toHaveBeenLastCalledWith('cloud.example.com')
+    expect(f.remote.startSignIn).toHaveBeenCalledOnce()
+    f.remote.signOut.mockResolvedValueOnce({ ok: false, error: new RemoteError('mindeck-account/storage', 'store failed', {}) })
+    expect(await face.signOut()).toEqual({ ok: false, reason: 'storage' })
+    expect(await face.signOut()).toEqual({ ok: true })
+  } finally { await f.ctx.fiber.dispose() }
+})

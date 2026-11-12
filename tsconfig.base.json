@@ -418,6 +418,8 @@
       "@deepseek-ai/dsh-ptc-runtime-node/configuration": ["./packages/ptc-runtime/ptc-runtime-node/src/configuration.ts"],
       "@deepseek-ai/dsh-mindeck-app/paths": ["./packages/bundle/mindeck-app/src/paths.ts"],
       "@deepseek-ai/dsh-mindeck-app/src/*": ["./packages/bundle/mindeck-app/src/*"],
+      "@deepseek-ai/dsh-mindeck-account/types": ["./packages/mindeck/mindeck-account/src/types.ts"],
+      "@deepseek-ai/dsh-mindeck-account/client": ["./packages/mindeck/mindeck-account/src/client/index.ts"],
       // BEGIN generated package aliases — pnpm run gen-tsconfig-paths
       "@deepseek-ai/dsh-acp": ["./packages/acp/acp/src"],
       "@deepseek-ai/dsh-acp-app": ["./packages/bundle/acp-app/src"],
@@ -493,6 +495,7 @@
       "@deepseek-ai/dsh-mcp-resources": ["./packages/mcp/mcp-resources/src"],
       "@deepseek-ai/dsh-message-feedback": ["./packages/feedback/message-feedback/src"],
       "@deepseek-ai/dsh-message-quotes": ["./packages/session/message-quotes/src"],
+      "@deepseek-ai/dsh-mindeck-account": ["./packages/mindeck/mindeck-account/src"],
       "@deepseek-ai/dsh-mindeck-app": ["./packages/bundle/mindeck-app/src"],
       "@deepseek-ai/dsh-native-command": ["./packages/util/native-command/src"],
       "@deepseek-ai/dsh-office-to-pdf": ["./packages/document/office-to-pdf/src"],

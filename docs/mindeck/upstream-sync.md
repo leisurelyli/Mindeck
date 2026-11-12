@@ -14,6 +14,7 @@ This reference defines how maintainers review upstream changes for Mindeck. The 
 
 - [Integration policy](#integration-policy)
 - [Customization maintenance](#customization-maintenance)
+- [Shared-code changes](#shared-code-changes)
 - [Synchronization record](#synchronization-record)
 - [Dev Note](#dev-note)
 
@@ -38,6 +39,19 @@ Run `pnpm run start:web:stock --dump-config` before and after a synchronization 
 Track platform fixes separately from branding: Windows package preparation uses archive basenames with an explicit working directory, and documentation fixtures use directory junctions where file symlinks require elevated privileges. Review these patches independently during synchronization and retire them when upstream provides equivalent behavior.
 
 Review workflow changes before enabling or running them on this fork. Record runner availability, required credentials, and any publication or deployment side effects. A successful upstream run does not establish that the fork's workflow configuration is usable.
+
+<a id="shared-code-changes"></a>
+
+## Shared-code changes
+
+Mindeck Enterprise plugins live in `packages/mindeck/`. The following shared files carry Mindeck changes; review each one when an upstream revision touches it.
+
+| Path | Mindeck change | Reason |
+|---|---|---|
+| `tsconfig.base.json`, `tsconfig.host.json`, `tsconfig.client.json` | Path aliases and project references for `packages/mindeck/*`. | The aggregate builds and checks include Mindeck packages. |
+| `scripts/product-package-policy.ts` | Optional classification for Mindeck packages that only the Mindeck bundle mounts; no entry for `mindeck-app`, which Desktop main imports. | The product-use gate otherwise rejects packages outside the stock profiles. |
+| `scripts/verify-package-readme-model-experience.ts` | Short Model Experience entry for `mindeck-account`. | The account adds no model input. |
+| `packages/client/locale/package.json`, `packages/client/locale/tsdown.config.ts`, `scripts/check-workspace-constraints.ts` | Builds and publishes `lib/parameters.js` for the `./parameters` entry. | Web boot and the Client test runtime import the locale parameters without the Client bundle. |
 
 <a id="synchronization-record"></a>
 

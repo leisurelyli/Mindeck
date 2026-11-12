@@ -1,0 +1,61 @@
+/* Shared Mindeck account surfaces: the sign-in gate, the settings page, and the sidebar launcher. */
+.section { display: flex; flex-direction: column; gap: 16px; padding: 8px 0; font-size: 13px; line-height: 22px; color: var(--dsw-alias-label-primary); }
+.card { margin: 0; padding: 12px 16px; border: 0.5px solid var(--dsw-alias-settings-card-stroke); border-radius: var(--dsw-radius-xl); background: var(--dsw-alias-settings-card-fill); }
+.identity { display: flex; align-items: center; gap: 12px; min-height: 44px; min-width: 0; }
+.avatar, .smallAvatar { flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; corner-shape: round; background: var(--dsw-alias-bg-skeleton); color: var(--dsw-alias-label-secondary); font-weight: 500; }
+.avatar { width: 36px; height: 36px; font-size: 15px; }
+.smallAvatar { width: 24px; height: 24px; font-size: 12px; }
+.copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; margin: 0; }
+.name { font-size: 14px; font-weight: 500; }
+.secondary { color: var(--dsw-alias-label-tertiary); }
+.error { margin: 0; color: var(--dsw-alias-state-error-primary); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 40px; padding: 6px 0; box-sizing: border-box; }
+.row + .row { border-top: 0.5px solid var(--dsw-alias-border-l2); }
+.row dt { flex: none; color: var(--dsw-alias-label-secondary); }
+.row dd { margin: 0; min-width: 0; text-align: end; }
+.row dd.copy { align-items: flex-end; }
+.address { overflow-wrap: anywhere; font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 12px; }
+.actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* One sign-in step: copy, the field or code, then actions. */
+.panel { display: flex; flex-direction: column; gap: 16px; margin: 0; font-size: 14px; line-height: 22px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > span:nth-child(2) { width: 100%; height: 36px; box-sizing: border-box; }
+.field [aria-invalid='true'] { color: var(--dsw-alias-label-primary); }
+.field:has([aria-invalid='true']) > span:nth-child(2) { border-color: var(--dsw-alias-state-error-primary); }
+.label { color: var(--dsw-alias-label-secondary); font-size: 13px; }
+.stepTitle { font-weight: 500; }
+.addressRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: var(--dsw-radius-md); background: var(--dsw-alias-bg-skeleton); }
+.code { display: block; padding: 14px 0; border-radius: var(--dsw-radius-lg); background: var(--dsw-alias-bg-skeleton); text-align: center; font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 26px; line-height: 34px; font-weight: 600; letter-spacing: 0.12em; user-select: all; }
+.progress { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--dsw-alias-label-secondary); }
+.spinner { flex: none; width: 16px; height: 16px; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+.textButton { flex: none; padding: 0; border: 0; background: transparent; color: var(--dsw-alias-state-business-primary); font: inherit; font-size: 13px; cursor: pointer; }
+.textButton:disabled { cursor: not-allowed; opacity: 0.4; }
+.primaryLink, .outlineLink { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 36px; padding: 0 14px; border-radius: var(--dsw-radius-md); font-size: 14px; line-height: 22px; text-decoration: none; white-space: nowrap; }
+.primaryLink { background: var(--dsw-alias-button-primary-fill); color: var(--dsw-alias-label-primary-foreground); font-weight: 500; }
+.outlineLink { color: var(--dsw-alias-label-primary); box-shadow: inset 0 0 0 var(--dsh-hairline-width, 0.5px) var(--dsw-alias-border-l3); }
+@media (hover: hover) {
+  .primaryLink:hover { background: var(--dsw-alias-button-primary-hover); }
+  .outlineLink:hover, .trigger:hover, .close:hover { background-color: var(--dsw-alias-interactive-bg-hover); }
+}
+.primaryLink:focus-visible, .outlineLink:focus-visible, .textButton:focus-visible { outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 2px; }
+
+/* Gate and confirmation dialogs. */
+.gate, .dialog { box-sizing: border-box; border: 0.5px solid var(--dsw-alias-border-inverted); }
+.gate { width: min(440px, calc(100vw - 32px)); }
+.gateContent { display: flex; flex-direction: column; gap: 20px; padding: 28px; }
+.gateTitle { margin: 0 0 4px; font-size: 18px; line-height: 26px; font-weight: 600; color: var(--dsw-alias-label-primary); }
+.dialogHeader { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 22px 24px 12px; }
+.dialogTitle { margin: 0; font-size: 16px; line-height: 24px; font-weight: 500; color: var(--dsw-alias-label-primary); }
+.dialogText { margin: 0 0 8px; padding: 0 24px; font-size: 14px; line-height: 22px; color: var(--dsw-alias-label-primary); }
+.dialogActions { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 24px 0; }
+.close { box-sizing: border-box; display: inline-flex; flex: none; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 6px; border: 0; border-radius: var(--dsw-radius-sm); background: transparent; color: var(--dsw-alias-label-primary); cursor: pointer; }
+
+/* Sidebar launcher. */
+.launcher { flex: 1; min-width: 0; }
+.launcherAnchor { width: 100%; }
+.trigger { user-select: none; display: flex; align-items: center; width: 100%; height: 40px; gap: 8px; padding: 6px; border: 0; box-sizing: border-box; border-radius: var(--dsw-radius-md); background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 14px; cursor: pointer; }
+.trigger[data-collapsed='true'] { width: 36px; height: 36px; justify-content: center; gap: 0; padding: 0; }
+.triggerLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

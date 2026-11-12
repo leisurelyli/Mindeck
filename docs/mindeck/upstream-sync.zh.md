@@ -14,6 +14,7 @@ description: "Mindeck 上游集成约定，以及经过评审的同步工作记�
 
 - [集成约定](#integration-policy)
 - [定制维护](#customization-maintenance)
+- [共享代码改动](#shared-code-changes)
 - [同步记录](#synchronization-record)
 - [开发备注](#dev-note)
 
@@ -38,6 +39,19 @@ description: "Mindeck 上游集成约定，以及经过评审的同步工作记�
 平台修复与品牌定制分开跟踪：Windows 打包预备使用归档文件名及显式工作目录，文档 fixture 在文件符号链接需要提升权限的环境中使用目录 junction。同步时独立评审这些补丁，上游提供等效行为后撤销。
 
 在此 fork 启用或运行 workflow 前，先评审其变更。记录 runner 可用性、所需凭据，以及发布或部署副作用。上游运行成功不代表 fork 的 workflow 配置可用。
+
+<a id="shared-code-changes"></a>
+
+## 共享代码改动
+
+Mindeck 企业版插件位于 `packages/mindeck/`。下列共享文件带有 Mindeck 改动；上游版本涉及这些文件时逐一评审。
+
+| 路径 | Mindeck 改动 | 原因 |
+|---|---|---|
+| `tsconfig.base.json`、`tsconfig.host.json`、`tsconfig.client.json` | `packages/mindeck/*` 的路径别名和项目引用。 | 汇总构建与检查需要包含 Mindeck 包。 |
+| `scripts/product-package-policy.ts` | 只由 Mindeck 组合包挂载的 Mindeck 包登记为可选；`mindeck-app` 由桌面端主进程导入，不再登记。 | 否则产品使用检查会拒绝不在原版 profile 中的包。 |
+| `scripts/verify-package-readme-model-experience.ts` | 为 `mindeck-account` 登记简短的模型体验说明。 | 账号不增加模型输入。 |
+| `packages/client/locale/package.json`、`packages/client/locale/tsdown.config.ts`、`scripts/check-workspace-constraints.ts` | 为 `./parameters` 入口构建并发布 `lib/parameters.js`。 | Web 启动和客户端测试运行时不经客户端包即可导入语言参数。 |
 
 <a id="synchronization-record"></a>
 

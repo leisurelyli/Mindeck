@@ -1,0 +1,37 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/mindeck/mindeck-account/README.md
+/:
+  en: a7fc855d6156e4d0
+  zh: 5b0901316d81976a
+/deepseek-ai-dsh-mindeck-account:
+  en: 765c78af966e15e9
+  zh: 0c243e18333b7e4d
+/deepseek-ai-dsh-mindeck-account/summary:
+  en: 93e0c9da28b768dd
+  zh: f34811116e6e82cc
+/deepseek-ai-dsh-mindeck-account/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: ce40cab8e7534137
+/deepseek-ai-dsh-mindeck-account/use-this-package:
+  en: 20c361c2b5d3dee3
+  zh: d9f317e0ef661408
+/deepseek-ai-dsh-mindeck-account/understand-the-implementation:
+  en: a56232ef76ebe7b5
+  zh: 473cf88218dabf85
+/deepseek-ai-dsh-mindeck-account/further-exploration:
+  en: d9ff2fd7a16dc781
+  zh: 8d057def3852db75
+/deepseek-ai-dsh-mindeck-account/model-experience:
+  en: 4fa032d95b572d66
+  zh: 1c0802c7ad63be43
+/deepseek-ai-dsh-mindeck-account/model-experience/kv-cache-effect:
+  en: 08a3e409ebff476a
+  zh: ee6f1d9fa12e6a69
+/deepseek-ai-dsh-mindeck-account/known-limitations-and-deferred-work:
+  en: a9a72917b45fd9d8
+  zh: c09cedc1c40bfcd3
+/deepseek-ai-dsh-mindeck-account/known-limitations-and-deferred-work/dev-note:
+  en: 0225ba087c5266f3
+  zh: 0400e21a2683a23c

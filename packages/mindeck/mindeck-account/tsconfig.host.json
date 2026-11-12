@@ -1,0 +1,19 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types",
+    "tsBuildInfoFile": "lib/tsconfig.host.tsbuildinfo"
+  },
+  "files": ["src/index.ts", "src/cloud.ts", "src/types.ts"],
+  "references": [
+    { "path": "../../../vendor/cordis" },
+    { "path": "../../../vendor/schemastery" },
+    { "path": "../../../vendor/loader" },
+    { "path": "../../util/brand" },
+    { "path": "../../credentials/credentials" },
+    { "path": "../../settings/settings" },
+    { "path": "../../util/timeout" },
+    { "path": "../../typert/protocol" }
+  ]
+}
