@@ -43,6 +43,7 @@ const ATTEMPT_ERROR_KEYS: Record<MindeckAccountErrorCode, MindeckAccountKey> = {
 }
 
 /**
+ * Choose the copy that explains a failed sign-in attempt.
  * @param code - failure code of a sign-in attempt.
  * @returns the copy that explains it.
  */
@@ -51,6 +52,7 @@ export function attemptErrorKey(code: MindeckAccountErrorCode | undefined): Mind
 }
 
 /**
+ * Pick the letter shown in a member's avatar.
  * @param name - member display name.
  * @returns the first character shown in the avatar.
  */

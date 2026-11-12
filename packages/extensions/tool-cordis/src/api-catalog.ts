@@ -2123,6 +2123,97 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'mindeckAccount',
+    summary: 'Mindeck Cloud account service and its Remote namespace.',
+    description: 'Mindeck Cloud account service and its Remote namespace.',
+    methods: [
+      {
+        signature: '@Remote async getState(): Promise<MindeckAccountView>',
+        description: 'Read the account state.',
+        parameters: [],
+        returns: 'configured address, signed-in member, and the latest sign-in attempt; never the token.',
+      },
+      {
+        signature: '@Remote({ mode: \'stream\' }) async *watch(signal: AbortSignal): AsyncIterable<MindeckAccountView>',
+        description: 'Stream account state.',
+        parameters: [{ name: 'signal', description: 'stream lifetime; ending it never cancels a sign-in.' }],
+        returns: 'the current state, then every change.',
+      },
+      {
+        signature: '@Remote async setCloudUrl(input: string, signal: AbortSignal): Promise<MindeckAccountView>',
+        description: 'Set the Mindeck Cloud address after checking that it answers as one. Only while signed out.',
+        parameters: [{ name: 'input', description: 'address typed by the member; a missing scheme means HTTPS.' }, { name: 'signal', description: 'caller cancellation.' }],
+        returns: 'state with the new address.',
+      },
+      {
+        signature: '@Remote async startSignIn(appVersion: string): Promise<MindeckAccountView>',
+        description: 'Join the running sign-in or start device authorization. The Client opens the returned `verificationUrl` in a browser; the attempt finishes after the member approves it there.',
+        parameters: [{ name: 'appVersion', description: 'version of the requesting app, reported with the device.' }],
+        returns: 'state with the attempt, without waiting for approval.',
+      },
+      {
+        signature: '@Remote async cancelSignIn(id: MindeckSignInAttemptId): Promise<MindeckAccountView>',
+        description: 'Cancel the named attempt and wait for it to stop.',
+        parameters: [{ name: 'id', description: 'attempt identity from {@link getState}.' }],
+        returns: 'state after the attempt ended.',
+      },
+      {
+        signature: '@Remote async signOut(): Promise<MindeckAccountView>',
+        description: 'Sign this desktop out: remove the stored session, then end it on Mindeck Cloud in the background.',
+        parameters: [],
+        returns: 'the signed-out state.',
+      },
+      {
+        signature: 'async session(): Promise<MindeckSession | undefined>',
+        description: 'Read the signed-in session for a Host consumer such as the model routes.',
+        parameters: [],
+        returns: 'the session with its token, or undefined while signed out.',
+      },
+      {
+        signature: 'async rejectToken(token: string): Promise<void>',
+        description: 'Report that Mindeck Cloud rejected a session token (HTTP 401). The stored session is removed only when it still holds that token, so a newer sign-in survives a late rejection.',
+        parameters: [{ name: 'token', description: 'the token the rejected request carried.' }],
+      },
+    ],
+  },
+  {
+    key: 'mindeckFiles',
+    summary: 'File-library tools and the panel\'s Remote for the signed-in member.',
+    description: 'File-library tools and the panel\'s Remote for the signed-in member.',
+    methods: [
+      {
+        signature: '@Remote async getAvailability(): Promise<LibraryAvailability>',
+        description: 'Read the current availability after refreshing it from the account and Mindeck Cloud.',
+        parameters: [],
+        returns: 'whether the member can use the file library now.',
+      },
+      {
+        signature: '@Remote({ mode: \'stream\' }) async *watch(signal: AbortSignal): AsyncIterable<LibraryAvailability>',
+        description: 'Stream availability.',
+        parameters: [{ name: 'signal', description: 'stream lifetime.' }],
+        returns: 'the current availability, then every change.',
+      },
+      {
+        signature: '@Remote async spaces(signal: AbortSignal): Promise<LibrarySpaceView[]>',
+        description: 'List the spaces the member can open.',
+        parameters: [{ name: 'signal', description: 'caller cancellation.' }],
+        returns: 'the member\'s spaces, personal first.',
+      },
+      {
+        signature: '@Remote async list(path: string, signal: AbortSignal): Promise<LibraryEntryView[]>',
+        description: 'List one space or folder.',
+        parameters: [{ name: 'path', description: 'library path of a space or folder.' }, { name: 'signal', description: 'caller cancellation.' }],
+        returns: 'the folder\'s entries, folders first.',
+      },
+      {
+        signature: '@Remote async search(query: string, signal: AbortSignal): Promise<LibraryEntryView[]>',
+        description: 'Search file and folder names across the member\'s spaces; a blank query returns no entries.',
+        parameters: [{ name: 'query', description: 'text contained in names.' }, { name: 'signal', description: 'caller cancellation.' }],
+        returns: 'matching files and folders, at most `maxSearchResults`.',
+      },
+    ],
+  },
+  {
     key: 'officeToPdf',
     summary: 'A provider lifetime owns all converters, queued calls, and temporary files.',
     description: 'A provider lifetime owns all converters, queued calls, and temporary files.',
@@ -5120,6 +5211,14 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'name', description: 'the configured `servers` key or registered name.' }, { name: 'status', description: 'the status now current for that server.' }],
   },
   {
+    name: 'mindeck-account/changed',
+    mode: 'emit',
+    signature: '\'mindeck-account/changed\'(): void',
+    summary: 'The stored session started, ended, or its cached account details changed.',
+    description: 'The stored session started, ended, or its cached account details changed. Consumers re-read MindeckAccount.session.',
+    parameters: [],
+  },
+  {
     name: 'permission-presets/catalog-changed',
     mode: 'emit',
     signature: '\'permission-presets/catalog-changed\'(): void',
@@ -6940,6 +7039,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface KvUnitDescriptor {\n    readonly name: string;\n    readonly version: number;\n    readonly tables: readonly string[];\n    readonly hasGlobal: boolean;\n    readonly layout?: \'single\' | \'per-record\';\n    readonly compatibleVersions?: readonly number[];\n}',
   },
   {
+    name: 'LibraryAvailability',
+    declaration: 'export type LibraryAvailability = \'ready\' | \'signed-out\' | \'not-configured\';',
+  },
+  {
+    name: 'LibraryEntryView',
+    declaration: 'export interface LibraryEntryView {\n    readonly path: string;\n    readonly name: string;\n    readonly kind: \'folder\' | \'file\';\n    readonly size?: number;\n    readonly modified?: string;\n    readonly writable: boolean;\n    readonly webUrl?: string;\n}',
+  },
+  {
+    name: 'LibrarySpaceView',
+    declaration: 'export interface LibrarySpaceView {\n    readonly path: string;\n    readonly name: string;\n    readonly kind: \'personal\' | \'project\' | \'shares\';\n    readonly webUrl: string;\n    readonly used?: number;\n    readonly total?: number;\n}',
+  },
+  {
     name: 'ListVersionsOptions',
     declaration: 'export interface ListVersionsOptions {\n    readonly registry?: Registry;\n}',
   },
@@ -7326,6 +7437,34 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'MessageSourceMap',
     declaration: 'export interface MessageSourceMap {\n    user: {\n        kind: \'user\';\n    };\n    model: ModelMessageSource;\n    tool: ToolMessageSource;\n    \'system-prompt\': SystemPromptMessageSource;\n}',
+  },
+  {
+    name: 'MindeckAccountErrorCode',
+    declaration: 'export type MindeckAccountErrorCode = \'unreachable\' | \'not-mindeck-cloud\' | \'expired\' | \'denied\' | \'account-unavailable\' | \'protocol\' | \'storage\';',
+  },
+  {
+    name: 'MindeckAccountUser',
+    declaration: 'export interface MindeckAccountUser {\n    readonly id: string;\n    readonly name: string;\n    readonly email: string;\n    readonly role: \'admin\' | \'user\';\n    readonly department: {\n        readonly id: string;\n        readonly name: string;\n    } | null;\n}',
+  },
+  {
+    name: 'MindeckAccountView',
+    declaration: 'export interface MindeckAccountView {\n    readonly cloudUrl: string | null;\n    readonly status: \'signed-out\' | \'signed-in\';\n    readonly user: MindeckAccountUser | null;\n    readonly companyName: string | null;\n    readonly notice: \'session-expired\' | null;\n    readonly attempt: MindeckSignInAttempt | null;\n}',
+  },
+  {
+    name: 'MindeckBootstrap',
+    declaration: 'export type MindeckBootstrap = z.infer<typeof bootstrapSchema>;',
+  },
+  {
+    name: 'MindeckSession',
+    declaration: 'export interface MindeckSession {\n    readonly cloudUrl: string;\n    readonly token: string;\n    readonly bootstrap: MindeckBootstrap;\n}',
+  },
+  {
+    name: 'MindeckSignInAttempt',
+    declaration: 'export interface MindeckSignInAttempt {\n    readonly id: MindeckSignInAttemptId;\n    readonly phase: \'requesting\' | \'waiting\' | \'registering\' | \'succeeded\' | \'cancelled\' | \'failed\';\n    readonly userCode?: string;\n    readonly verificationUrl?: string;\n    readonly expiresAt?: number;\n    readonly errorCode?: MindeckAccountErrorCode;\n}',
+  },
+  {
+    name: 'MindeckSignInAttemptId',
+    declaration: 'export type MindeckSignInAttemptId = Branded<\'MindeckSignInAttemptId\'>;',
   },
   {
     name: 'ModDefinition',
@@ -9082,18 +9221,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SkillRegistration',
     declaration: 'export type SkillRegistration = Omit<SkillDefinition, \'invocation\' | \'provider\'> & {\n    readonly invocation?: SkillInvocationPolicy;\n    readonly provider?: string;\n};',
-  },
-  {
-    name: 'SkillResourceBase',
-    declaration: 'export type SkillResourceBase = {\n    readonly kind: \'directory\';\n    readonly path: string;\n} | {\n    readonly kind: \'url\';\n    readonly url: string;\n} | {\n    readonly kind: \'opaque\';\n    readonly description: string;\n};',
-  },
-  {
-    name: 'SkillSource',
-    declaration: 'export type SkillSource = \'project-dsh\' | \'project-agents\' | \'runtime\' | \'user-dsh\' | \'user-agents\' | \'custom\' | \'bundled\' | (string & {});',
-  },
-  {
-    name: 'SkillSummary',
-    declaration: 'export interface SkillSummary {\n    readonly path?: string;\n    readonly name: string;\n    readonly description: string;\n    readonly whenToUse?: string;\n    readonly invocation: SkillInvocationPolicy;\n    readonly source: SkillSource;\n    readonly provider: string;\n    readonly resourceBase?: SkillResourceBase;\n}',
   },
   {
     name: 'SkillViewOptions',

@@ -37,6 +37,7 @@ export interface CacheLayout {
 }
 
 /**
+ * Name the locations inside the skill cache.
  * @param base - cache directory.
  * @returns the skill root, staging directory, and manifest path inside it.
  */

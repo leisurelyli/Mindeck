@@ -53,6 +53,7 @@ export const Config: z<Config> = z.object({
 })
 
 /**
+ * Resolve the skill cache directory; an empty setting selects `mindeck` under the DSH home.
  * @param config - deployment options.
  * @returns the absolute cache directory.
  */

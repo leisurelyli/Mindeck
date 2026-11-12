@@ -88,6 +88,8 @@ export const SERVICE_PAGE: Record<string, string> = {
   cordisInspect: 'extensions.md',
   authorization: 'credentials.md',
   deepseekAccount: 'credentials.md',
+  mindeckAccount: 'mindeck.md',
+  mindeckFiles: 'mindeck.md',
   credentials: 'credentials.md',
   credentialsController: 'credentials.md',
   settingsController: 'settings.md',
@@ -235,6 +237,7 @@ export const EVENT_SCOPE_PAGE: Record<string, string> = {
   'app-boot': 'boot.md',
   hmr: 'boot.md',
   'plugin-manager': 'boot.md',
+  'mindeck-account': 'mindeck.md',
   'plugin-market': 'boot.md',
   'agent': 'core.md',
   'agent-loop': 'core.md',
@@ -1111,6 +1114,12 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   TerminalFrame: 'Browser terminal stream frames are owned by packages/api/terminal-controller/README.md',
   TerminalRetentionFrame: 'Browser terminal window holds are owned by packages/api/terminal-controller/README.md',
   WebTerminalId: 'Browser terminal identity is owned by packages/api/terminal-controller/README.md',
+  MindeckAccountView: 'Mindeck account state is owned by packages/mindeck/mindeck-account/README.md',
+  MindeckSession: 'Mindeck Cloud sign-in session is owned by packages/mindeck/mindeck-account/README.md',
+  MindeckSignInAttemptId: 'Mindeck device sign-in attempt identity is owned by packages/mindeck/mindeck-account/README.md',
+  LibraryAvailability: 'Mindeck file-library availability is owned by packages/mindeck/mindeck-files/README.md',
+  LibraryEntryView: 'Mindeck file-library entries are owned by packages/mindeck/mindeck-files/README.md',
+  LibrarySpaceView: 'Mindeck file-library spaces are owned by packages/mindeck/mindeck-files/README.md',
 }
 
 /** Repository data policy consumed by the Cordis catalog projector. */

@@ -1,0 +1,13 @@
+# Bilingual-pair consistency record for mindeck.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/subsystems/mindeck.md
+/mindeck-enterprise:
+  en: 88299c156bcfbb1e
+  zh: a7ea32cf02a1b506
+/mindeck-enterprise/ownership:
+  en: 6f06109643410ecf
+  zh: 5e22e2cd472fdb87
+/mindeck-enterprise/account-session:
+  en: 3140604e2b799a4c
+  zh: 07f119705c8dde2e

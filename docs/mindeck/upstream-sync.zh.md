@@ -55,6 +55,8 @@ Mindeck 企业版插件位于 `packages/mindeck/`。下列共享文件带有 Min
 | `packages/client/locale/package.json`、`packages/client/locale/tsdown.config.ts`、`scripts/check-workspace-constraints.ts` | 为 `./parameters` 入口构建并发布 `lib/parameters.js`。 | Web 启动和客户端测试运行时不经客户端包即可导入语言参数。 |
 | `scripts/package-dependency-policy.ts` | 把 `defineTool`（`dsh-tools`）和 `resolveDshHome`（`dsh-home-paths`）登记为需要对等依赖的 Host 导出。 | `mindeck-files` 同时有 Host 与 Client 两面，依赖门禁会审查它的 Host 导入。 |
 | `packages/api/workspace-controller/src/index.ts`、`packages/api/workspace-controller/src/default-directory.ts` | 增加 `documentsFolder` 配置，指定 Documents 下的文件夹，默认 `deepseek-harness`。 | Mindeck 组合包把默认工作区建在 `<Documents>/Mindeck`，而不是官方产品的文件夹。 |
+| `packages/api/remotes/src/remote-events.ts`、`packages/client/ui-skill/src/client/index.ts` | 把 `skills/change` 转发给客户端；`/` 技能菜单收到后丢弃缓存的目录。 | 登录后同步的公司技能无需重启即可出现在已打开会话的 `/` 菜单中。 |
+| `scripts/gen-cordis-catalog.ts`、`scripts/gen-doc-graphs.ts`、`docs/subsystems/README.*` | 为 Mindeck 服务登记子系统页面、类型链接例外和服务角色；生成的目录与关系图包含它们。 | 目录与关系图生成器会拒绝没有文档归属的服务、事件作用域和服务类型。 |
 | `apps/desktop/src/main.ts` | 读取产品描述的 `nativeWelcome`；为 `false` 时，启动只读取语言偏好并打开工作区，不监听 DeepSeek 账号。 | Mindeck 禁用了 DeepSeek 账号，原生欢迎无法读取其状态；成员在工作区内通过 Mindeck 账号登录。 |
 
 <a id="synchronization-record"></a>

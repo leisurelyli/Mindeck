@@ -338,6 +338,15 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-mcp-manager` | yes | MCP server manager: a settings-driven fleet of mcp-client instances with runtime status, restart, and probe |
 | `@deepseek-ai/dsh-mcp-resources` | no | Scoped MCP resource discovery and reading through shared model tools |
 
+## mindeck
+
+| Package | Config | Description |
+|---|---|---|
+| `@deepseek-ai/dsh-mindeck-account` | yes | Mindeck Cloud account for Mindeck Desktop: device sign-in, the desktop session, and its settings UI |
+| `@deepseek-ai/dsh-mindeck-files` | yes | Company file library for Mindeck Desktop: agent tools and the sidebar page over the member's OpenCloud spaces |
+| `@deepseek-ai/dsh-mindeck-models` | yes | Company models from Mindeck Cloud, called through the Cloud gateway with the desktop session |
+| `@deepseek-ai/dsh-mindeck-skills` | yes | Company skills from Mindeck Cloud, cached locally and served as a skill provider |
+
 ## plan
 
 | Package | Config | Description |

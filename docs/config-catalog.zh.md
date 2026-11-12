@@ -352,6 +352,8 @@ export interface Config {
 export interface Config {
   /** Override the system Documents directory with a fully qualified path. */
   documentsDirectory?: string
+  /** Product folder under Documents that holds the default Workspace directory. */
+  documentsFolder?: string
   /** Maximum duration of the operating system's Documents lookup. */
   documentsLookupTimeoutMs?: number
 }
@@ -2550,6 +2552,104 @@ export interface Config {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-message-feedback -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-mindeck-account -->
+<a id="deepseek-aidsh-mindeck-account"></a>
+
+## `@deepseek-ai/dsh-mindeck-account`
+
+- `inject`: `credentials` · `typert`
+- `refs`: `Volatile` (`@deepseek-ai/cordis`)
+- `source`: [`packages/mindeck/mindeck-account/src/index.ts:44`](../packages/mindeck/mindeck-account/src/index.ts)
+
+```ts config-catalog
+/** Deployment options. */
+export interface Config {
+  /**
+   * Mindeck Cloud console address, such as `https://cloud.example.com`. Empty until a deployment or the
+   * member sets it; the account settings write it through the settings service.
+   */
+  cloudUrl: Volatile<string>
+  /** Timeout of each request to Mindeck Cloud in milliseconds. */
+  requestTimeoutMs: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-mindeck-account -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-mindeck-files -->
+<a id="deepseek-aidsh-mindeck-files"></a>
+
+## `@deepseek-ai/dsh-mindeck-files`
+
+- `inject`: `tools` · `fs` · `workingDirectory` · `mindeckAccount` · `typert`
+- `source`: [`packages/mindeck/mindeck-files/src/index.ts:32`](../packages/mindeck/mindeck-files/src/index.ts)
+
+```ts config-catalog
+/** Deployment options. */
+export interface Config {
+  /** Directory of downloaded library files; empty means `mindeck/library-downloads` under the DeepSeek Harness home. */
+  downloadDir: string
+  /** Days a session's downloads are kept after their last change. */
+  downloadRetentionDays: number
+  /** Timeout of one request to Mindeck Cloud or the file library, in milliseconds. */
+  requestTimeoutMs: number
+  /** Largest file a download accepts, in bytes. */
+  maxDownloadBytes: number
+  /** Largest workspace file an upload sends, in bytes. */
+  maxUploadBytes: number
+  /** Most search results returned. */
+  maxSearchResults: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-mindeck-files -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-mindeck-models -->
+<a id="deepseek-aidsh-mindeck-models"></a>
+
+## `@deepseek-ai/dsh-mindeck-models`
+
+- `inject`: `llm` · `mindeckAccount`
+- `source`: [`packages/mindeck/mindeck-models/src/index.ts:29`](../packages/mindeck/mindeck-models/src/index.ts)
+
+```ts config-catalog
+/** Deployment options. */
+export interface Config {
+  /** Interval between catalog refreshes while signed in, in milliseconds. */
+  refreshIntervalMs: number
+  /** Timeout of one catalog request in milliseconds. */
+  requestTimeoutMs: number
+  /** Context window assumed for a model whose catalog entry has none. */
+  defaultContextWindow: number
+  /** Output limit assumed for a model whose catalog entry has none. */
+  defaultMaxTokens: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-mindeck-models -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-mindeck-skills -->
+<a id="deepseek-aidsh-mindeck-skills"></a>
+
+## `@deepseek-ai/dsh-mindeck-skills`
+
+- `inject`: `skills` · `mindeckAccount`
+- `source`: [`packages/mindeck/mindeck-skills/src/index.ts:29`](../packages/mindeck/mindeck-skills/src/index.ts)
+
+```ts config-catalog
+/** Deployment options. */
+export interface Config {
+  /** Cache directory; empty means `mindeck` under the DeepSeek Harness home (`$DSH_HOME` or `~/.dsh`). */
+  cacheDir: string
+  /** Interval between skill refreshes while signed in, in milliseconds. */
+  refreshIntervalMs: number
+  /** Timeout of one Mindeck Cloud request in milliseconds. */
+  requestTimeoutMs: number
+  /** Largest accepted skill, in bytes of decoded file content. */
+  maxSkillBytes: number
+  /** Most files accepted in one skill. */
+  maxSkillFiles: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-mindeck-skills -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-office-to-pdf -->
 <a id="deepseek-aidsh-office-to-pdf"></a>

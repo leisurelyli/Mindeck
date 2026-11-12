@@ -499,6 +499,21 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'The Host owns browser authorization and local credentials; UI consumers receive state without tokens.',
   },
   {
+    key: 'mindeckAccount',
+    pkg: 'mindeck-account',
+    title: 'Mindeck Cloud account',
+    mode: 'service',
+    consumers: ['mindeck-models', 'mindeck-skills', 'mindeck-files'],
+    note: 'Owns the device sign-in and the Mindeck Cloud session; company models, skills, and the file library read the session token and its endpoints.',
+  },
+  {
+    key: 'mindeckFiles',
+    pkg: 'mindeck-files',
+    title: 'Mindeck file library',
+    mode: 'service',
+    note: 'Registers the file-library tools while the library is available and serves the sidebar page over its Remote.',
+  },
+  {
     key: 'authorization',
     pkg: 'authorization',
     title: 'Authorization flow registry',
