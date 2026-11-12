@@ -47,6 +47,7 @@ export interface Config {
 const MiB = 1024 * 1024
 
 /**
+ * Resolve where library downloads are written; an empty setting selects `mindeck/library-downloads` under the DSH home.
  * @param config - deployment options.
  * @returns the absolute download directory.
  */
@@ -138,7 +139,10 @@ export default class MindeckFiles extends TypertRemoteService {
     }
   }
 
-  /** @returns whether the member can use the file library now. */
+  /**
+   * Read the current availability after refreshing it from the account and Mindeck Cloud.
+   * @returns whether the member can use the file library now.
+   */
   @Remote
   async getAvailability(): Promise<LibraryAvailability> {
     await this.refresh()
@@ -169,6 +173,7 @@ export default class MindeckFiles extends TypertRemoteService {
   }
 
   /**
+   * List the spaces the member can open.
    * @param signal - caller cancellation.
    * @returns the member's spaces, personal first.
    */
@@ -181,6 +186,7 @@ export default class MindeckFiles extends TypertRemoteService {
   }
 
   /**
+   * List one space or folder.
    * @param path - library path of a space or folder.
    * @param signal - caller cancellation.
    * @returns the folder's entries, folders first.
@@ -191,9 +197,10 @@ export default class MindeckFiles extends TypertRemoteService {
   }
 
   /**
+   * Search file and folder names across the member's spaces; a blank query returns no entries.
    * @param query - text contained in names.
    * @param signal - caller cancellation.
-   * @returns matching files and folders.
+   * @returns matching files and folders, at most `maxSearchResults`.
    */
   @Remote
   async search(query: string, signal: AbortSignal): Promise<LibraryEntryView[]> {

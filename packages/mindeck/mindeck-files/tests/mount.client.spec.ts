@@ -9,6 +9,7 @@ import { RemoteError, type RemoteResult, type TypertRemoteContribution } from '@
 import type { LibraryAvailability, LibraryEntryView } from '../src/types.ts'
 import type { MindeckFilesInjected } from '../src/client/operations.ts'
 import { LIBRARY_TAB_ID, mountFiles } from '../src/client/mount.ts'
+import { LIBRARY_TEXT_NODE } from '../src/client/LibraryReference.tsx'
 
 const contribution: TypertRemoteContribution = { package: '@deepseek-ai/dsh-mindeck-files', descriptors: [] }
 const sessionId = 'session-1' as SessionId
@@ -57,11 +58,17 @@ async function fixture() {
     return () => { sources.splice(sources.indexOf(source), 1) }
   }
   ctx.provide('inputTriggers', { registerSource } as never)
+  const rules: Array<{ id: string; match: (text: string, from: number, context: never) => unknown }> = []
+  ctx.provide('uiConversation', { userText: { register: (rule: (typeof rules)[number]) => {
+    rules.push(rule)
+    return () => { rules.splice(rules.indexOf(rule), 1) }
+  } } } as never)
   await ctx.plugin(SlotRegistry)
   ctx.slots.register({ name: 'root', children: {
     'sidebar.right.pane.tab': { kind: 'keyed', scope: 'session' },
+    'conversation.user.text.node': { kind: 'keyed', scope: 'session', inline: true },
   } } as never, () => null)
-  return { ctx, remote, unmount, tabs, input, sources }
+  return { ctx, remote, unmount, tabs, input, sources, rules }
 }
 
 function face(entry: { inject?: unknown } | undefined, id: SessionId): MindeckFilesInjected {
@@ -69,7 +76,7 @@ function face(entry: { inject?: unknown } | undefined, id: SessionId): MindeckFi
   return (entry.inject as (sessionId: SessionId) => MindeckFilesInjected)(id)
 }
 
-it('registers the sidebar type and page, writes a library reference into the draft, and withdraws both before the Remote', async () => {
+it('registers the sidebar page, writes library references into the draft, shows them in sent messages, and withdraws all before the Remote', async () => {
   const f = await fixture()
   try {
     const dispose = await mountFiles(f.ctx, contribution)
@@ -85,17 +92,31 @@ it('registers the sidebar type and page, writes a library reference into the dra
     const file: LibraryEntryView = { path: '/研发部/规范.md', name: '规范.md', kind: 'file', writable: true }
     expect(operations.addToConversation(file)).toBe(true)
     expect(f.input.insertReference).toHaveBeenCalledWith({
-      source: 'mindeck-files', ref: 'library:/研发部/规范.md', label: '规范.md', appearance: 'file', clipboardText: 'library:/研发部/规范.md',
+      source: 'mindeck-files', ref: 'library:"/研发部/规范.md"', label: '规范.md', appearance: 'file', clipboardText: 'library:"/研发部/规范.md"',
     }, { start: 5, end: 5, draftRev: 3 })
     expect(f.input.focus).toHaveBeenCalledOnce()
     expect(face(entry, 'other' as SessionId).addToConversation(file)).toBe(false)
     const [source] = f.sources
     expect(source?.name).toBe('mindeck-files')
     expect(await source?.codec?.serialize('library:/研发部/规范.md', new AbortController().signal)).toBe('library:/研发部/规范.md')
+    expect(operations.addToConversation({ path: '/Shared with me/周报', name: '周报', kind: 'folder', writable: false })).toBe(true)
+    expect(f.input.insertReference).toHaveBeenLastCalledWith(expect.objectContaining({
+      ref: 'library:"/Shared with me/周报/"', label: '周报', appearance: 'folder',
+    }), expect.anything())
+
+    const [rule] = f.rules
+    expect(rule?.id).toBe(LIBRARY_TEXT_NODE)
+    const folderRef = 'library:"/Shared with me/周报/"'
+    expect(rule?.match(`读 ${folderRef}，和 library:"/研发部/规范.md"`, 0, undefined as never)).toEqual({
+      id: LIBRARY_TEXT_NODE, start: 2, end: 2 + folderRef.length, data: { path: '/Shared with me/周报/' },
+    })
+    expect(f.ctx.slots.entries('conversation.user.text.node').map(item => item.options.key)).toEqual([LIBRARY_TEXT_NODE])
 
     await dispose()
     expect(f.tabs).toEqual([])
     expect(f.sources).toEqual([])
+    expect(f.rules).toEqual([])
+    expect(f.ctx.slots.entries('conversation.user.text.node')).toHaveLength(0)
     expect(f.ctx.slots.entries('sidebar.right.pane.tab')).toHaveLength(0)
     expect(operations.hooks.library.getSnapshot()).toEqual({ availability: undefined, failed: false })
     expect(f.unmount).toHaveBeenCalledOnce()

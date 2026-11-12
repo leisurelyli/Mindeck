@@ -49,6 +49,7 @@ export class LibraryService {
   constructor(private readonly client: OpenCloudClient, readonly limits: TransferLimits) {}
 
   /**
+   * List the spaces the member can open.
    * @param signal - cancellation.
    * @returns the member's spaces, personal first.
    */
@@ -57,6 +58,7 @@ export class LibraryService {
   }
 
   /**
+   * List one space or folder.
    * @param path - library path of a folder or a space.
    * @param signal - cancellation.
    * @returns the folder's entries, folders first and then by name.
@@ -71,6 +73,7 @@ export class LibraryService {
   }
 
   /**
+   * Look up the entry at one library path.
    * @param path - library path.
    * @param signal - cancellation.
    * @returns the entry, or undefined when nothing exists at the path.
@@ -87,6 +90,7 @@ export class LibraryService {
   }
 
   /**
+   * Search file and folder names across the member's spaces.
    * @param query - text contained in file or folder names.
    * @param limit - most results.
    * @param signal - cancellation.
@@ -105,6 +109,7 @@ export class LibraryService {
   }
 
   /**
+   * Download one file.
    * @param path - library path of a file.
    * @param signal - cancellation.
    * @returns the file's entry and content.

@@ -46,6 +46,7 @@ export function nameSpaces(drives: readonly OpenCloudDrive[]): LibrarySpace[] {
 }
 
 /**
+ * Split a library path into its space name and the segments inside the space.
  * @param path - library path such as `/Personal/reports/weekly.md`; the leading slash is optional.
  * @returns the space name and the path segments inside it.
  * @throws LibraryError `not-found` for an empty path, a `.` or `..` segment, or a backslash.
@@ -62,6 +63,7 @@ export function splitLibraryPath(path: string): { space: string; segments: strin
 }
 
 /**
+ * Find the space that a library path starts with.
  * @param path - library path.
  * @param spaces - the member's spaces.
  * @returns the space and the path inside it.
@@ -77,6 +79,7 @@ export function locate(path: string, spaces: readonly LibrarySpace[]): LibraryLo
 }
 
 /**
+ * Join a space name and a path inside it into a library path.
  * @param space - space name.
  * @param inner - path inside the space.
  * @returns the library path.

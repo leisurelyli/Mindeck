@@ -13,14 +13,15 @@ import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { IconFolderCloseRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { RemoteFailure, RemoteResult, TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
-import { LIBRARY_REFERENCE_PREFIX } from '../reference.ts'
+import { libraryReference } from '../reference.ts'
 import type { LibraryAvailability } from '../types.ts'
 import { LibraryPanel } from './LibraryPanel.tsx'
+import { LIBRARY_TEXT_NODE, LibraryReference, libraryReferenceRule } from './LibraryReference.tsx'
 import { en, NS, zh, type MindeckFilesKey } from './locales.ts'
 import type { LibraryResult, LibrarySnapshot, MindeckFilesInjected } from './operations.ts'
 
 /** Services required by the panel. */
-export const inject = ['remote', 'slots', 'locale', 'remoteAccess', 'sidebarRightTabs', 'sessions', 'inputTriggers']
+export const inject = ['remote', 'slots', 'locale', 'remoteAccess', 'sidebarRightTabs', 'sessions', 'inputTriggers', 'uiConversation']
 
 /** Input-trigger source that owns the panel's draft references. */
 const REFERENCE_SOURCE = 'mindeck-files'
@@ -78,6 +79,11 @@ function registerUi(ctx: Context): void {
     onPick: () => undefined,
     codec: { clipboardText: ref => ref, serialize: ref => Promise.resolve(ref) },
   }), 'mindeck-files: draft references')
+  // Sent messages show the references as labels, also while the library is unavailable.
+  ctx.effect(() => ctx.uiConversation.userText.register(libraryReferenceRule), 'mindeck-files: message references')
+  ctx.slots.inject('conversation.user.text.node', () => ctx.slots.register({
+    name: 'conversation.user.text.node', key: LIBRARY_TEXT_NODE, priority: 100,
+  }, LibraryReference))
   const reads = {
     spaces: async () => result(await ctx.remote.mindeckFiles.spaces()),
     list: async (path: string) => result(await ctx.remote.mindeckFiles.list(path)),
@@ -92,7 +98,7 @@ function registerUi(ctx: Context): void {
       if (scope === undefined || conversation === undefined) return false
       const input = conversation.input.for(scope)
       const { draft, draftRev } = input.state.getSnapshot()
-      const ref = `${LIBRARY_REFERENCE_PREFIX}${entry.path}`
+      const ref = libraryReference(entry.path, entry.kind === 'folder')
       const inserted = input.insertReference({
         source: REFERENCE_SOURCE, ref, label: entry.name, appearance: entry.kind === 'folder' ? 'folder' : 'file', clipboardText: ref,
       }, { start: draft.length, end: draft.length, draftRev })

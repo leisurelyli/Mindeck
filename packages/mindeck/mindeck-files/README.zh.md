@@ -31,7 +31,7 @@ kind: "package-reference"
 
 `library_download` 把文件保存到 `downloadDir`（默认是 DeepSeek Harness 主目录下的 `mindeck/library-downloads`）中按会话划分的目录，并返回本地路径。智能体用文件工具读取这份副本，修改前先复制进工作区。超过 `downloadRetentionDays`（默认七天）未变化的会话目录会在插件启动时删除。`library_upload` 通过文件系统服务读取工作区文件，创建缺少的文件夹；目标文件已存在时，除非设置 `overwrite`，否则拒绝替换；资源库会把被替换的内容保留为历史版本。`maxDownloadBytes` 与 `maxUploadBytes`（默认各 100 MiB）限制传输大小。
 
-页面列出空间、打开文件夹，并在输入停顿片刻后按名称搜索。每个条目都可以在资源库网页中打开，成员在那里上传、预览、恢复历史版本和分享；加号按钮把 `library:` 引用加入消息草稿。成员未登录、公司未启用资源库或资源库无响应时，页面会说明原因。
+页面列出空间、打开文件夹，并在输入停顿片刻后按名称搜索。每个条目都可以在资源库网页中打开，成员在那里上传、预览、恢复历史版本和分享；加号按钮把引用加入消息草稿。消息中的引用写作 `library:"/路径"`，文件夹以 `/` 结尾；发出的消息把它显示为文件或文件夹标签。成员未登录、公司未启用资源库或资源库无响应时，页面会说明原因。
 
 -----
 
@@ -67,7 +67,7 @@ Mindeck Cloud 在 `POST {endpoints.files.token}` 为桌面会话签发 15 分钟
 
 #### What the model sees
 
-四个工具定义：`library_list`、`library_search`、`library_download` 和 `library_upload`。结果列出资源库路径及其类型、大小、修改日期和只读标记，或给出下载后的本地路径和已保存文件的资源库路径。失败时说明需要改什么，例如现有的空间名称或传入 `overwrite`。成员的消息中可以包含 `library:` 引用，工具把它当作路径接受。
+四个工具定义：`library_list`、`library_search`、`library_download` 和 `library_upload`。结果列出资源库路径及其类型、大小、修改日期和只读标记，或给出下载后的本地路径和已保存文件的资源库路径。失败时说明需要改什么，例如现有的空间名称或传入 `overwrite`。成员的消息中可以包含 `library:"/路径"` 引用；工具说明写明了这种形式，工具把它当作路径接受。
 
 #### Token effect
 

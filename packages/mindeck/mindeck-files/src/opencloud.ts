@@ -194,6 +194,7 @@ export class OpenCloudClient {
   }
 
   /**
+   * List the member's OpenCloud drives.
    * @param signal - cancellation.
    * @returns the drives the member can open, personal first.
    */
@@ -219,6 +220,7 @@ export class OpenCloudClient {
   }
 
   /**
+   * Read one item with WebDAV PROPFIND, and for depth `1` also a folder's children.
    * @param driveId - drive.
    * @param path - folder or file inside the drive.
    * @param depth - `0` for the item itself, `1` for a folder and its children.
@@ -234,6 +236,7 @@ export class OpenCloudClient {
   }
 
   /**
+   * Download one file with WebDAV GET.
    * @param driveId - drive.
    * @param path - file inside the drive.
    * @param maxBytes - largest accepted file.

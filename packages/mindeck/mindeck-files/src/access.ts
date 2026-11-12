@@ -38,6 +38,7 @@ export class FilesAccess {
   }
 
   /**
+   * Return the OpenCloud address with a token, requesting a new token from Mindeck Cloud when the cached one is near expiry.
    * @param signal - cancellation of this request.
    * @param renew - ignore the cached token because OpenCloud refused it.
    * @returns OpenCloud address and token.

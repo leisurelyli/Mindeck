@@ -6,7 +6,7 @@ import type {} from '@deepseek-ai/dsh-fs'
 import type {} from '@deepseek-ai/dsh-working-directory'
 import { defineTool, type ToolExecution } from '@deepseek-ai/dsh-tools'
 import { splitLibraryPath } from './library.ts'
-import { LIBRARY_REFERENCE_PREFIX } from './reference.ts'
+import { libraryPathOf } from './reference.ts'
 import type { LibraryEntry, LibraryService } from './library-service.ts'
 import { LibraryError } from './opencloud.ts'
 
@@ -35,11 +35,9 @@ interface EntryValue {
 }
 
 const PATH_HELP = 'A library path starts with a space name, such as /Personal/reports/weekly.md; library_list without a path lists the spaces. '
-  + 'The member sees /Personal as their own files and /Shared with me as items others shared, named in the member\'s language.'
+  + 'The member sees /Personal as their own files and /Shared with me as items others shared, named in the member\'s language. '
+  + 'A message cites an item as library:"/path"; these tools accept that form as a path.'
 
-function normalize(path: string): string {
-  return path.startsWith(LIBRARY_REFERENCE_PREFIX) ? path.slice(LIBRARY_REFERENCE_PREFIX.length) : path
-}
 
 function value(entry: LibraryEntry): EntryValue {
   return {
@@ -67,6 +65,7 @@ const UNSAFE_CHARACTERS = /[<>:"|?*]|\p{Cc}/gu
 const RESERVED_NAME = /^(con|prn|aux|nul|com\d|lpt\d)(\..*)?$/i
 
 /**
+ * Turn one library path segment into a local file name.
  * @param segment - one library path segment.
  * @returns a name every desktop filesystem accepts.
  */
@@ -113,7 +112,7 @@ export function registerLibraryTools(ctx: Context, options: LibraryToolOptions):
     isConcurrencySafe: () => true,
     async execute(args, exec) {
       const library = options.library()
-      const path = args.path === undefined ? '' : normalize(args.path).trim()
+      const path = args.path === undefined ? '' : libraryPathOf(args.path.trim())
       if (path === '' || path === '/') {
         const spaces = await library.spaces(exec.signal)
         return { path: '/', entries: spaces.map(space => ({ path: `/${space.name}`, name: space.name, kind: 'space' as const })) }
@@ -167,7 +166,7 @@ export function registerLibraryTools(ctx: Context, options: LibraryToolOptions):
       }],
     },
     async execute(args, exec) {
-      const path = normalize(args.path)
+      const path = libraryPathOf(args.path)
       const { space, segments } = splitLibraryPath(path)
       const { entry, bytes } = await options.library().read(path, exec.signal)
       const sessionDir = resolve(options.downloadDir, localName(exec.agent?.session.id ?? 'shared'))
@@ -208,7 +207,7 @@ export function registerLibraryTools(ctx: Context, options: LibraryToolOptions):
     async execute(args, exec) {
       const bytes = await readWorkspaceFile(ctx, args.from, options.library().limits.maxUploadBytes, exec)
       const library = options.library()
-      let to = normalize(args.to)
+      let to = libraryPathOf(args.to)
       if (to.endsWith('/') || (await library.stat(to, exec.signal))?.kind === 'folder') {
         to = `${to.replace(/\/+$/, '')}/${basename(args.from)}`
       }

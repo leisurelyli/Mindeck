@@ -31,7 +31,7 @@ A library path starts with a space name: `/Personal` is the member's own space, 
 
 `library_download` saves the file under `downloadDir` (by default `mindeck/library-downloads` in the DeepSeek Harness home), in a directory per Session, and returns the local path. The agent reads that copy with its file tools and copies it into the workspace before changing it. Session directories unchanged for `downloadRetentionDays` (seven by default) are removed when the plugin starts. `library_upload` reads a workspace file through the filesystem service, creates missing folders, and refuses to replace an existing file unless `overwrite` is set; the library keeps the replaced content as a version. `maxDownloadBytes` and `maxUploadBytes` (100 MiB each by default) bound the transfers.
 
-The page lists the spaces, opens folders, and searches names after a short pause in typing. Each item opens in the library's web app, where the member uploads, previews, restores versions, and shares; the plus button adds a `library:` reference to the message draft. The page explains when the member is signed out, the company has not enabled the library, or the library does not respond.
+The page lists the spaces, opens folders, and searches names after a short pause in typing. Each item opens in the library's web app, where the member uploads, previews, restores versions, and shares; the plus button adds a reference to the message draft. The message carries it as `library:"/path"`, with a trailing `/` for a folder, and the sent message shows it as a file or folder label. The page explains when the member is signed out, the company has not enabled the library, or the library does not respond.
 
 -----
 
@@ -67,7 +67,7 @@ Local download paths replace characters Windows rejects, trailing dots and space
 
 #### What the model sees
 
-Four tool schemas: `library_list`, `library_search`, `library_download`, and `library_upload`. Results list library paths with the kind, size, modification date, and a read-only mark, or name the local path of a download and the library path of a saved file. Failures explain what to change, such as the existing space names or passing `overwrite`. A member's message can contain `library:` references that the tools accept as paths.
+Four tool schemas: `library_list`, `library_search`, `library_download`, and `library_upload`. Results list library paths with the kind, size, modification date, and a read-only mark, or name the local path of a download and the library path of a saved file. Failures explain what to change, such as the existing space names or passing `overwrite`. A member's message can contain `library:"/path"` references; the tool descriptions name that form, and the tools accept it as a path.
 
 #### Token effect
 

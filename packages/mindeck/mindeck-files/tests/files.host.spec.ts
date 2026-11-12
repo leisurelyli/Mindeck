@@ -121,6 +121,7 @@ it('lists the spaces and folders, and saves a workspace file with its folders', 
   expect(saved.text).toBe('Saved /研发部/周报/2026/weekly.md (9 B).')
   const listed = await f.run('library_list', { path: 'library:/研发部/周报' })
   expect(listed.value).toMatchObject({ path: '/研发部/周报', entries: [{ path: '/研发部/周报/2026', kind: 'folder', writable: true }] })
+  expect((await f.run('library_list', { path: 'library:"/研发部/周报"' })).value).toEqual(listed.value)
 
   const again = await f.run('library_upload', { from: 'weekly.md', to: '/研发部/周报/2026/weekly.md' })
   expect(again.isError).toBe(true)
