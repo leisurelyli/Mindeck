@@ -551,6 +551,8 @@ async function main(): Promise<void> {
         analyticsEnabled = await welcomeBackend.analyticsEnabled().catch(() => false)
         if (!reportedLaunch) { reportedLaunch = true; void track('desktop_app_launch', {}) }
         stopAccount?.()
+        // Without the native welcome, members sign in inside the workspace and the DeepSeek account is not mounted.
+        if (!mindeckProduct.nativeWelcome) return
         const accountBackend = welcomeBackend.account
         stopAccount = accountBackend.watch((state) => {
           if (quitting) return
@@ -665,6 +667,10 @@ async function main(): Promise<void> {
   const readWelcomeState = async () => {
     if (backend.host === undefined || welcomeBackend === undefined) throw new Error('desktop welcome: backend unavailable')
     return welcomeBackend.read()
+  }
+  const readLocalePreference = async () => {
+    if (backend.host === undefined || welcomeBackend === undefined) throw new Error('desktop welcome: backend unavailable')
+    return welcomeBackend.readLocalePreference()
   }
   stopForRecovery = async () => {
     const reports = stopOperationReports()
@@ -1430,13 +1436,14 @@ async function main(): Promise<void> {
   }
   const openInitialWindow = async (): Promise<void> => {
     if (quitting || recovery.active) return
-    const state = await readWelcomeState()
+    const state = mindeckProduct.nativeWelcome ? await readWelcomeState() : undefined
+    const localePreference = state === undefined ? await readLocalePreference() : state.localePreference
     if (isQuitting() || backend.state.phase !== 'ready') return
-    locale = resolveDesktopStartupLocale(state.localePreference, systemLanguages, mindeckProduct.name)
+    locale = resolveDesktopStartupLocale(localePreference, systemLanguages, mindeckProduct.name)
     writeDesktopLocaleCache(app.getPath('userData'), locale.id)
     windowsLanguage = locale.id
     refreshApplicationMenu()
-    if (!enteredWorkspace && needsWelcome({ loggedIn: state.loggedIn, hasApiKey: state.hasApiKey })) {
+    if (!enteredWorkspace && state !== undefined && needsWelcome({ loggedIn: state.loggedIn, hasApiKey: state.hasApiKey })) {
       // A later login must retain its own activation policy instead of replaying startup focus.
       raiseAfterUpdate = false
       await showWelcome()
@@ -1517,7 +1524,9 @@ async function main(): Promise<void> {
       if (quitting || shellInstallerOwnsQuit) return
       if (approved) { finishQuit(); return }
       // A quit that started from closing the welcome window destroyed it; a cancelled quit needs it back.
-      if (!enteredWorkspace && !recovery.active) void showWelcome().catch((error: unknown) => { reportFatal(error, 'main') })
+      if (mindeckProduct.nativeWelcome && !enteredWorkspace && !recovery.active) {
+        void showWelcome().catch((error: unknown) => { reportFatal(error, 'main') })
+      }
     }).catch((error: unknown) => { console.error(error); if (!quitting && !shellInstallerOwnsQuit) finishQuit() })
   })
 

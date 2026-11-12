@@ -203,6 +203,8 @@ Web 侧的对应命令是 `pnpm run dev:web` 与 `pnpm run start:web`，见[开�
 
 ### 启动引导
 
+产品描述中的 `nativeWelcome` 决定是否使用这套启动引导。Mindeck 将其设为 `false`：Host 启动后，Desktop 只读取语言偏好并打开工作区，由 [Mindeck 账号](../../packages/mindeck/mindeck-account/README.zh.md)在工作区内要求登录；它不监听 DeepSeek 账号，也不会打开欢迎窗口。本节其余内容适用于保留原生欢迎的产品。
+
 API Key 输入框初始为空，并通过 `autocomplete="new-password"` 请求 Chromium 不要自动填入已保存的登录密码。
 
 重复启动和 `mindeck-workspace://open` 会保持工作区隐藏，直到启动凭据检查或欢迎页操作允许进入。从 Welcome 进入时，键盘焦点落在文档上，不选中侧边栏控件；Tab 导航仍可使用。

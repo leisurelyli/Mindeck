@@ -25,6 +25,7 @@ vi.mock('../src/product-bootstrap.ts', () => ({}))
 const productConfiguration = vi.hoisted(() => ({
   automaticUpdates: true,
   globalTerminalCommand: true,
+  nativeWelcome: true,
   updaterEnabled: (): boolean => false,
 }))
 vi.mock('@deepseek-ai/dsh-mindeck-app', async (importOriginal) => {
@@ -33,6 +34,7 @@ vi.mock('@deepseek-ai/dsh-mindeck-app', async (importOriginal) => {
     ...product.mindeckProduct,
     get automaticUpdates() { return productConfiguration.automaticUpdates },
     get globalTerminalCommand() { return productConfiguration.globalTerminalCommand },
+    get nativeWelcome() { return productConfiguration.nativeWelcome },
   } }
 })
 
@@ -473,6 +475,7 @@ function applicationMenuItems(): MenuItemConstructorOptions[] {
 beforeEach(() => {
   productConfiguration.automaticUpdates = true
   productConfiguration.globalTerminalCommand = true
+  productConfiguration.nativeWelcome = true
   vi.resetModules()
   vi.clearAllMocks()
   harness.dialog.showMessageBox.mockReset()
@@ -529,6 +532,21 @@ describe('desktop main startup', () => {
     expect(harness.handlers.has(MANDATORY_IPC.status)).toBe(false)
     expect(JSON.stringify(applicationMenuItems())).not.toContain(en.cliCommandMenu)
     expect(harness.app.setAsDefaultProtocolClient).toHaveBeenCalledWith('mindeck-workspace')
+  })
+  it('enters the workspace without the native welcome or the DeepSeek account watch', async () => {
+    productConfiguration.nativeWelcome = false
+    const watch = vi.spyOn(harness, 'watchAccount')
+    await import('../src/main.ts')
+    await harness.preparing.promise
+    harness.prepared.resolve()
+    await harness.hostStarted.promise
+    const host = harness.hosts[0]!
+    host.fetch.mockResolvedValue(Response.json({ loggedIn: false, hasApiKey: false, localePreference: null }))
+    host.ready.resolve()
+    await harness.windows[0]!.shown.promise
+    expect(host.fetch).not.toHaveBeenCalled()
+    expect(watch).not.toHaveBeenCalled()
+    expect(harness.connectWelcome).toHaveBeenCalledOnce()
   })
   it.each([true, false])('selects the package manager before Host startup (packaged=%s)', async (packaged) => {
     harness.app.isPackaged = packaged

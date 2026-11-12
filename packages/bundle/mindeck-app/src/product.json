@@ -11,6 +11,7 @@
   "developmentUserDataDirectory": "MindeckWorkspaceDev",
   "automaticUpdates": false,
   "globalTerminalCommand": false,
+  "nativeWelcome": false,
   "branding": {
     "masterSvg": "packages/client/ui-brand-mindeck/src/client/assets/mindeck.svg",
     "desktopDirectory": "resources/mindeck",

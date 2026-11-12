@@ -53,6 +53,7 @@ Mindeck Enterprise plugins live in `packages/mindeck/`. The following shared fil
 | `scripts/verify-package-readme-model-experience.ts` | Short Model Experience entry for `mindeck-account`. | The account adds no model input. |
 | `packages/llm/llm-pi-ai/src/index.ts` | Exports `createPiAiAdapter` and `piAiAuthFrom`; the plugin builds its own adapter through the same wiring. | `mindeck-models` serves Cloud catalog routes through pi-ai without writing the `providers` configuration. |
 | `packages/client/locale/package.json`, `packages/client/locale/tsdown.config.ts`, `scripts/check-workspace-constraints.ts` | Builds and publishes `lib/parameters.js` for the `./parameters` entry. | Web boot and the Client test runtime import the locale parameters without the Client bundle. |
+| `apps/desktop/src/main.ts` | Reads the product descriptor's `nativeWelcome`; when it is `false`, startup reads only the language preference, opens the workspace, and does not watch the DeepSeek account. | Mindeck disables the DeepSeek account, so the native welcome cannot read its state; members sign in through the Mindeck account in the workspace. |
 
 <a id="synchronization-record"></a>
 

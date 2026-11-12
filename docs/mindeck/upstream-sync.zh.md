@@ -53,6 +53,7 @@ Mindeck 企业版插件位于 `packages/mindeck/`。下列共享文件带有 Min
 | `scripts/verify-package-readme-model-experience.ts` | 为 `mindeck-account` 登记简短的模型体验说明。 | 账号不增加模型输入。 |
 | `packages/llm/llm-pi-ai/src/index.ts` | 导出 `createPiAiAdapter` 和 `piAiAuthFrom`；插件自身的适配器也经同一套接线构建。 | `mindeck-models` 通过 pi-ai 提供云端目录中的路由，而不写入 `providers` 配置。 |
 | `packages/client/locale/package.json`、`packages/client/locale/tsdown.config.ts`、`scripts/check-workspace-constraints.ts` | 为 `./parameters` 入口构建并发布 `lib/parameters.js`。 | Web 启动和客户端测试运行时不经客户端包即可导入语言参数。 |
+| `apps/desktop/src/main.ts` | 读取产品描述的 `nativeWelcome`；为 `false` 时，启动只读取语言偏好并打开工作区，不监听 DeepSeek 账号。 | Mindeck 禁用了 DeepSeek 账号，原生欢迎无法读取其状态；成员在工作区内通过 Mindeck 账号登录。 |
 
 <a id="synchronization-record"></a>
 

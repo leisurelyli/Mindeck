@@ -44,6 +44,13 @@ const state = vi.hoisted(() => ({
   nativeTheme: { themeSource: 'system', shouldUseDarkColors: false },
 }))
 
+// Directory selection is verified separately; this suite owns its Electron paths.
+vi.mock('../src/product-bootstrap.ts', () => ({}))
+// The native welcome is an upstream product option that Mindeck turns off; this suite keeps it covered.
+vi.mock('@deepseek-ai/dsh-mindeck-app', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@deepseek-ai/dsh-mindeck-app')>()
+  return { ...original, mindeckProduct: { ...original.mindeckProduct, nativeWelcome: true } }
+})
 vi.mock('../src/crash-report.ts', async importOriginal => ({
   ...await importOriginal<typeof import('../src/crash-report.ts')>(),
   writeCrashReport: vi.fn(async () => undefined),

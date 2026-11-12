@@ -203,6 +203,8 @@ Dependency installation does not run the locked Electron package's separate bina
 
 ### Startup onboarding
 
+The product descriptor's `nativeWelcome` selects this startup onboarding. Mindeck sets it to `false`: after the Host starts, Desktop reads only the language preference and opens the workspace, where the [Mindeck account](../../packages/mindeck/mindeck-account/README.md) asks for sign-in. It does not watch the DeepSeek account and never opens the welcome window. The rest of this section applies to products that keep the native welcome.
+
 The API-key input starts empty and uses `autocomplete="new-password"` to ask Chromium not to autofill saved login passwords.
 
 Repeated launches and `mindeck-workspace://open` keep the workspace hidden until the startup credential check or a welcome action permits entry. Entering from Welcome places keyboard focus on the document without selecting a sidebar control; Tab navigation remains available.
