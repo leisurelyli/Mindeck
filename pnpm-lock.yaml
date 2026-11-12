@@ -2781,6 +2781,15 @@ importers:
       '@deepseek-ai/dsh-client-ui-brand-mindeck':
         specifier: workspace:*
         version: link:../../client/ui-brand-mindeck
+      '@deepseek-ai/dsh-mindeck-account':
+        specifier: workspace:*
+        version: link:../../mindeck/mindeck-account
+      '@deepseek-ai/dsh-mindeck-models':
+        specifier: workspace:*
+        version: link:../../mindeck/mindeck-models
+      '@deepseek-ai/dsh-mindeck-skills':
+        specifier: workspace:*
+        version: link:../../mindeck/mindeck-skills
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~

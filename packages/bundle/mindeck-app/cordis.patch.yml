@@ -5,3 +5,36 @@
 - insert:
     - id: ui-brand-mindeck
       name: '@deepseek-ai/dsh-client-ui-brand-mindeck'
+
+# Mindeck Enterprise: the Mindeck Cloud account, company models, and company
+# skills replace the DeepSeek account, its model providers, its sign-in UI, and
+# the DeepSeek web search that requires a DeepSeek credential. Members sign in
+# through the Mindeck account dialog and use the models the company configures
+# in Mindeck Cloud, so personal pi-ai routes and the Models page with personal
+# API keys, its first-run dialogs, and its preview notice are left out; every
+# model request goes through the metered Mindeck Cloud gateway.
+- id: deepseek-account
+  disabled: true
+- id: llm-deepseek
+  disabled: true
+- id: llm-deepseek-account
+  disabled: true
+- id: llm-pi-ai
+  disabled: true
+- id: web-search-deepseek
+  disabled: true
+- id: web-deepseek-api
+  disabled: true
+- id: ui-settings-account
+  disabled: true
+- id: account-controller
+  disabled: true
+- id: ui-settings-models
+  disabled: true
+- insert:
+    - id: mindeck-account
+      name: '@deepseek-ai/dsh-mindeck-account'
+    - id: mindeck-models
+      name: '@deepseek-ai/dsh-mindeck-models'
+    - id: mindeck-skills
+      name: '@deepseek-ai/dsh-mindeck-skills'

@@ -25,9 +25,11 @@ kind: "package-bundle"
 <a id="use-this-package"></a>
 ## 使用本包
 
-在 `@deepseek-ai/dsh-base` 和 `@deepseek-ai/dsh-web-app` 之后应用此组合包。Desktop 将这些层按此顺序放在用户扩展组合包之前。仓库的 `start:web` 和 `dev:web` 脚本将 `packages/bundle/mindeck-app/cordis.patch.yml` 选为本次调用的补丁。手动管理 profile 时，遵循 [Plugin Manager](../../boot/plugin-manager/README.zh.md#use-this-package) 与 [profile 分层规则](../../boot/app-boot/README.zh.md#profiles)。
+在 `@deepseek-ai/dsh-base` 和 `@deepseek-ai/dsh-web-app` 之后应用此组合包。Desktop 将这些层按此顺序放在用户扩展组合包之前。仓库的 `start:web` 和 `dev:web` 脚本以相同顺序把它加入开发 Web profile。手动管理 profile 时，遵循 [Plugin Manager](../../boot/plugin-manager/README.zh.md#use-this-package) 与 [profile 分层规则](../../boot/app-boot/README.zh.md#profiles)。
 
 此层禁用 `ui-brand-official`，选择 [Mindeck 品牌插件](../../client/ui-brand-mindeck/README.zh.md)提供侧栏、空白会话和首次引导图稿。原版 Web 组合包保持独立于 Mindeck。Mindeck 启动器通过[语言参数](../../client/locale/README.zh.md#use-this-package)提供公开的产品名称；此补丁不配置这些值。
+
+成员使用 Mindeck Cloud 账号登录，并使用公司在 Mindeck Cloud 中配置的模型和技能。此层加入[账号](../../mindeck/mindeck-account/README.zh.md)、[公司模型](../../mindeck/mindeck-models/README.zh.md)和[公司技能](../../mindeck/mindeck-skills/README.zh.md)插件。它禁用 DeepSeek 账号及其登录界面、DeepSeek 模型提供商与联网搜索、来自个人设置的 `llm-pi-ai` 路由，以及填写个人 API Key 的模型设置页。因此每个模型请求都经过 Mindeck Cloud 网关，并按公司额度计量。
 
 -----
 
@@ -37,7 +39,7 @@ kind: "package-bundle"
 <details>
 <summary>实现细节——点击展开</summary>
 
-manifest（元数据清单）将 `dsh.bundle.patch` 声明为 [`cordis.patch.yml`](cordis.patch.yml)。该补丁按 id 禁用官方品牌行，并插入 Mindeck provider。它不添加服务或可变运行时状态；所选插件负责注册与清理。后续补丁遵循普通 profile 优先级。
+manifest（元数据清单）将 `dsh.bundle.patch` 声明为 [`cordis.patch.yml`](cordis.patch.yml)。该补丁按 id 禁用官方品牌和被替换的行，并插入 Mindeck 插件。它不添加服务或可变运行时状态；所选插件负责注册与清理。后续补丁遵循普通 profile 优先级。
 
 </details>
 

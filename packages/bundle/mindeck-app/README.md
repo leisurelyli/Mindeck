@@ -25,9 +25,11 @@ Use this layer to display Mindeck artwork over the stock Web application. Mindec
 <a id="use-this-package"></a>
 ## Use this package
 
-Apply this bundle after `@deepseek-ai/dsh-base` and `@deepseek-ai/dsh-web-app`. Desktop prepares that order before user extension bundles. The repository's `start:web` and `dev:web` scripts select `packages/bundle/mindeck-app/cordis.patch.yml` as an invocation patch. For manual profile management, follow [Plugin Manager](../../boot/plugin-manager/README.md#use-this-package) and the [profile layering rules](../../boot/app-boot/README.md#profiles).
+Apply this bundle after `@deepseek-ai/dsh-base` and `@deepseek-ai/dsh-web-app`. Desktop prepares that order before user extension bundles. The repository's `start:web` and `dev:web` scripts add it to the development Web profile in the same order. For manual profile management, follow [Plugin Manager](../../boot/plugin-manager/README.md#use-this-package) and the [profile layering rules](../../boot/app-boot/README.md#profiles).
 
 The layer disables `ui-brand-official` and selects the [Mindeck brand plugin](../../client/ui-brand-mindeck/README.md) for the sidebar, empty conversation and onboarding artwork. The stock Web bundle remains independent of Mindeck. The Mindeck launchers supply public product names through the [locale parameters](../../client/locale/README.md#use-this-package); this patch does not configure them.
+
+Members sign in with a Mindeck Cloud account and use the models and skills their company configures there. The layer adds the [account](../../mindeck/mindeck-account/README.md), [company models](../../mindeck/mindeck-models/README.md) and [company skills](../../mindeck/mindeck-skills/README.md) plugins. It disables the DeepSeek account and its sign-in UI, the DeepSeek model providers and web search, the `llm-pi-ai` routes from personal settings, and the Models settings page with personal API keys. Every model request therefore goes through the Mindeck Cloud gateway, which meters it against the company quotas.
 
 -----
 
@@ -37,7 +39,7 @@ The layer disables `ui-brand-official` and selects the [Mindeck brand plugin](..
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-The manifest declares `dsh.bundle.patch` as [`cordis.patch.yml`](cordis.patch.yml). That patch disables the official brand row by id and inserts the Mindeck provider. It adds no service or mutable runtime state; the selected plugin owns registration and cleanup. Later patches follow normal profile precedence.
+The manifest declares `dsh.bundle.patch` as [`cordis.patch.yml`](cordis.patch.yml). That patch disables the official brand and the replaced rows by id and inserts the Mindeck plugins. It adds no service or mutable runtime state; the selected plugin owns registration and cleanup. Later patches follow normal profile precedence.
 
 </details>
 
