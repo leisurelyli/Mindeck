@@ -497,6 +497,7 @@
       "@deepseek-ai/dsh-message-quotes": ["./packages/session/message-quotes/src"],
       "@deepseek-ai/dsh-mindeck-account": ["./packages/mindeck/mindeck-account/src"],
       "@deepseek-ai/dsh-mindeck-app": ["./packages/bundle/mindeck-app/src"],
+      "@deepseek-ai/dsh-mindeck-models": ["./packages/mindeck/mindeck-models/src"],
       "@deepseek-ai/dsh-native-command": ["./packages/util/native-command/src"],
       "@deepseek-ai/dsh-office-to-pdf": ["./packages/document/office-to-pdf/src"],
       "@deepseek-ai/dsh-official-bundles": ["./packages/util/official-bundles/src"],

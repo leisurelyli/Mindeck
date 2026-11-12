@@ -51,6 +51,7 @@ Mindeck Enterprise plugins live in `packages/mindeck/`. The following shared fil
 | `tsconfig.base.json`, `tsconfig.host.json`, `tsconfig.client.json` | Path aliases and project references for `packages/mindeck/*`. | The aggregate builds and checks include Mindeck packages. |
 | `scripts/product-package-policy.ts` | Optional classification for Mindeck packages that only the Mindeck bundle mounts; no entry for `mindeck-app`, which Desktop main imports. | The product-use gate otherwise rejects packages outside the stock profiles. |
 | `scripts/verify-package-readme-model-experience.ts` | Short Model Experience entry for `mindeck-account`. | The account adds no model input. |
+| `packages/llm/llm-pi-ai/src/index.ts` | Exports `createPiAiAdapter` and `piAiAuthFrom`; the plugin builds its own adapter through the same wiring. | `mindeck-models` serves Cloud catalog routes through pi-ai without writing the `providers` configuration. |
 | `packages/client/locale/package.json`, `packages/client/locale/tsdown.config.ts`, `scripts/check-workspace-constraints.ts` | Builds and publishes `lib/parameters.js` for the `./parameters` entry. | Web boot and the Client test runtime import the locale parameters without the Client bundle. |
 
 <a id="synchronization-record"></a>

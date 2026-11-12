@@ -1,0 +1,21 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types"
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    { "path": "../../../vendor/cordis" },
+    { "path": "../../../vendor/schemastery" },
+    { "path": "../../attachment/attachment" },
+    { "path": "../../core/agent-default-model" },
+    { "path": "../../llm/llm" },
+    { "path": "../../llm/llm-pi-ai" },
+    { "path": "../mindeck-account/tsconfig.host.json" },
+    { "path": "../../util/timeout" },
+    { "path": "../../util/values" }
+  ]
+}

@@ -65,10 +65,11 @@ import type { AdapterRegistrationHandle, DirectoryRegistrationHandle, LlmConfigu
 import type {} from '@deepseek-ai/dsh-fs'
 import { deepEqualJson } from '@deepseek-ai/dsh-util-values'
 import { PiAiAdapter } from './adapter.ts'
+import type { PiAiAdapterOptions, PiAiAuthInjection } from './adapter.ts'
 import { authContextFrom, credentialStoreFrom } from './auth.ts'
 import { catalogProvider, catalogProviderIds } from './catalog.ts'
 import { assertServiceable, Config, resolveProfiles } from './config.ts'
-import type { ResolvedPiAiProviderProfile } from './config.ts'
+import type { PiAiProviderProfile, ResolvedPiAiProviderProfile } from './config.ts'
 import { discoverModels } from './discovery.ts'
 import type { StoredModelDiscoveryProfile } from './discovery.ts'
 import { registerPiAiFlows } from './login.ts'
@@ -76,7 +77,7 @@ import { providerDefaultsOf } from './provider-data.ts'
 import type { PiAiRequestHeaderContext } from './types.ts'
 
 export { PiAiAdapter } from './adapter.ts'
-export type { PiAiAdapterOptions } from './adapter.ts'
+export type { PiAiAdapterOptions, PiAiAuthInjection } from './adapter.ts'
 export type { PiAiRequestHeaderContext } from './types.ts'
 export { Config } from './config.ts'
 export type {
@@ -171,6 +172,78 @@ function directoryEntries(
   return [...entries.values()]
 }
 
+/**
+ * The auth injectables of a pi-ai collection, read through `ctx` on every call.
+ * @param ctx - host context with the optional credentials seam.
+ * @returns the credential store and ambient auth context for {@link PiAiAdapter}.
+ */
+export function piAiAuthFrom(ctx: Context): PiAiAuthInjection {
+  return { credentials: credentialStoreFrom(ctx), authContext: authContextFrom(ctx) }
+}
+
+/** Wire a pi-ai adapter to the host the way this plugin wires its own. */
+function buildPiAiAdapter(
+  ctx: Context,
+  options: Pick<PiAiAdapterOptions, 'profiles' | 'resolveApiKey' | 'auth'>,
+): PiAiAdapter {
+  return new PiAiAdapter({
+    profiles: options.profiles,
+    resolveApiKey: options.resolveApiKey,
+    auth: options.auth,
+    prepareHeaders: (request, headers) => ctx.waterfall('llm-pi-ai/request-headers', request, headers, () => headers),
+    resolveAttachments: () => ctx.get('attachments'),
+    resolveImageAccess: (attachments, ref) => resolveImageAttachmentAccess(
+      attachments,
+      hostPath => ctx.get('fs')?.processPathFromHostPath(hostPath),
+      ref,
+    ),
+    onReplayDegrade: ({ provider, model, reason }) => {
+      ctx.logger.warn(
+        `llm-pi-ai: unusable replay state on assistant history for route "${provider}/${model}";`
+        + ` sending that message as provider-neutral content (${reason})`,
+      )
+    },
+  })
+}
+
+/** Inputs of {@link createPiAiAdapter}. */
+export interface PiAiRouteAdapterOptions {
+  /**
+   * Current provider profiles by route, in the `providers` configuration format. The adapter resolves a
+   * snapshot once per object identity, so return the same object until the routes change.
+   */
+  profiles: () => Readonly<Record<string, PiAiProviderProfile>>
+  /** Credential for one route; see {@link PiAiAdapterOptions.resolveApiKey}. */
+  resolveApiKey: PiAiAdapterOptions['resolveApiKey']
+  /** Auth injectables, usually {@link piAiAuthFrom}. */
+  auth: PiAiAuthInjection
+}
+
+/**
+ * Build a pi-ai adapter for routes a plugin owns outside the `providers` configuration. It applies the
+ * same `llm-pi-ai/request-headers` waterfall, durable image attachments, and replay-degrade warning as
+ * this plugin's adapter; the caller registers it and its routes with `ctx.llm.registerAdapter`.
+ * @param ctx - host context the adapter reads attachments, filesystem access, and headers through.
+ * @param options - the profile source, the credential resolver, and the auth injectables.
+ * @returns the adapter. A profile that fails validation fails the operations that read it.
+ */
+export function createPiAiAdapter(ctx: Context, options: PiAiRouteAdapterOptions): PiAiAdapter {
+  let source: Readonly<Record<string, PiAiProviderProfile>> | undefined
+  let resolved: ReadonlyMap<string, ResolvedPiAiProviderProfile> | undefined
+  return buildPiAiAdapter(ctx, {
+    profiles: () => {
+      const next = options.profiles()
+      if (next !== source || resolved === undefined) {
+        resolved = resolveProfiles(structuredClone(next), 'deferred')
+        source = next
+      }
+      return resolved
+    },
+    resolveApiKey: options.resolveApiKey,
+    auth: options.auth,
+  })
+}
+
 /** Register one generic pi-ai adapter for all configured provider routes. */
 export function apply(ctx: Context, config: Config): void {
   ctx.inject(['settings'], (child) => { child.effect(() => child.settings.configure({ auto: false }, ctx.fiber)) })
@@ -234,25 +307,8 @@ export function apply(ctx: Context, config: Config): void {
   // One store and one ambient context for the whole plugin instance: both read
   // through `ctx` per call, so they stay correct across the collection rebuilds
   // a configuration change causes, and a sign-in survives one.
-  const auth = { credentials: credentialStoreFrom(ctx), authContext: authContextFrom(ctx) }
-  const adapter = new PiAiAdapter({
-    profiles,
-    resolveApiKey,
-    auth,
-    prepareHeaders: (request, headers) => ctx.waterfall('llm-pi-ai/request-headers', request, headers, () => headers),
-    resolveAttachments: () => ctx.get('attachments'),
-    resolveImageAccess: (attachments, ref) => resolveImageAttachmentAccess(
-      attachments,
-      hostPath => ctx.get('fs')?.processPathFromHostPath(hostPath),
-      ref,
-    ),
-    onReplayDegrade: ({ provider, model, reason }) => {
-      ctx.logger.warn(
-        `llm-pi-ai: unusable replay state on assistant history for route "${provider}/${model}";`
-        + ` sending that message as provider-neutral content (${reason})`,
-      )
-    },
-  })
+  const auth = piAiAuthFrom(ctx)
+  const adapter = buildPiAiAdapter(ctx, { profiles, resolveApiKey, auth })
   // Independent of the route set: signing in is what makes a route worth
   // adding, so the flows are offered before any profile names their provider.
   // Scoped to the authorization seam rather than injected outright, because a

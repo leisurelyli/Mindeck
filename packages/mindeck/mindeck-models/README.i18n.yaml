@@ -1,0 +1,46 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/mindeck/mindeck-models/README.md
+/:
+  en: 048707723a9bbcd5
+  zh: cd6eacea3269c586
+/deepseek-ai-dsh-mindeck-models:
+  en: 2b4baa5c16c95c23
+  zh: 0b7320d13d0b6ea6
+/deepseek-ai-dsh-mindeck-models/summary:
+  en: b8c8914632b31f0c
+  zh: 02d1368ccc7f1b9d
+/deepseek-ai-dsh-mindeck-models/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: ce40cab8e7534137
+/deepseek-ai-dsh-mindeck-models/use-this-package:
+  en: 096ac464feba9214
+  zh: a3366d6e7a19cd2c
+/deepseek-ai-dsh-mindeck-models/understand-the-implementation:
+  en: b3f04a83aa90977b
+  zh: 397c8ada34796b4f
+/deepseek-ai-dsh-mindeck-models/further-exploration:
+  en: 1bfd4c3b4db9f704
+  zh: 4af0f22c15ec1bde
+/deepseek-ai-dsh-mindeck-models/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-mindeck-models/model-experience/company-model-requests:
+  en: dcc8f56de10320df
+  zh: 2464e29f3a3aa32a
+/deepseek-ai-dsh-mindeck-models/model-experience/company-model-requests/what-the-model-sees:
+  en: b82d8e1468e0d30c
+  zh: 47d50605ee231489
+/deepseek-ai-dsh-mindeck-models/model-experience/company-model-requests/token-effect:
+  en: 7084568acbcb60ae
+  zh: 79bad71479644561
+/deepseek-ai-dsh-mindeck-models/model-experience/company-model-requests/kv-cache-effect:
+  en: 31269618ca1ad6cb
+  zh: e442e0df238d9e73
+/deepseek-ai-dsh-mindeck-models/known-limitations-and-deferred-work:
+  en: 9af374d6ae5d5d25
+  zh: a37249ce7ae66d76
+/deepseek-ai-dsh-mindeck-models/known-limitations-and-deferred-work/dev-note:
+  en: 0225ba087c5266f3
+  zh: 0400e21a2683a23c
