@@ -14,7 +14,7 @@
 .row dt { flex: none; color: var(--dsw-alias-label-secondary); }
 .row dd { margin: 0; min-width: 0; text-align: end; }
 .row dd.copy { align-items: flex-end; }
-.address { overflow-wrap: anywhere; font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 12px; }
+.address { overflow-wrap: anywhere; font-family: var(--ds-font-family-code); font-size: 12px; }
 .actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; flex-wrap: wrap; }
 
 /* One sign-in step: copy, the field or code, then actions. */
@@ -26,7 +26,7 @@
 .label { color: var(--dsw-alias-label-secondary); font-size: 13px; }
 .stepTitle { font-weight: 500; }
 .addressRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: var(--dsw-radius-md); background: var(--dsw-alias-bg-skeleton); }
-.code { display: block; padding: 14px 0; border-radius: var(--dsw-radius-lg); background: var(--dsw-alias-bg-skeleton); text-align: center; font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 26px; line-height: 34px; font-weight: 600; letter-spacing: 0.12em; user-select: all; }
+.code { display: block; padding: 14px 0; border-radius: var(--dsw-radius-lg); background: var(--dsw-alias-bg-skeleton); text-align: center; font-family: var(--ds-font-family-code); font-size: 26px; line-height: 34px; font-weight: 600; letter-spacing: 0.12em; user-select: all; }
 .progress { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--dsw-alias-label-secondary); }
 .spinner { flex: none; width: 16px; height: 16px; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
