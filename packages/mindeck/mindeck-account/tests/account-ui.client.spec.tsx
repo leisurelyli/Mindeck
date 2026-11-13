@@ -138,6 +138,18 @@ it('takes the Cloud address out of a pasted account message', () => {
   const input = view.getByLabelText(en.cloudUrlLabel) as HTMLInputElement
   fireEvent.paste(input, { clipboardData: { getData: () => '你的 Mindeck 账号已开通。\nMindeck Cloud 地址：https://cloud.example.com\n账号：lin@example.com' } })
   expect(input.value).toBe('https://cloud.example.com')
+  // The console's activation message also links the sign-in page and the installer after the address.
+  fireEvent.change(input, { target: { value: '' } })
+  fireEvent.paste(input, { clipboardData: { getData: () => [
+    '你的 Mindeck 账号已开通。',
+    'Mindeck Cloud 地址：https://cloud.example.com',
+    '邮箱：lin@example.com',
+    '初始密码：Ab3dEf6hJk9m',
+    '1. 在浏览器打开 https://cloud.example.com/sign-in 登录，按提示设置自己的密码。',
+    '2. 下载并安装 Mindeck 桌面端：Windows 版 https://downloads.example.com/Mindeck-Setup.exe',
+    '3. 打开桌面端，把这段消息整段粘贴到地址框，点“登录”，在浏览器里允许登录。',
+  ].join('\n') } })
+  expect(input.value).toBe('https://cloud.example.com')
 })
 
 it('explains a failed attempt or an ended session and lets the member retry or change the address', async () => {

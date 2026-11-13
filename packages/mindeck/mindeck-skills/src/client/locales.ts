@@ -33,7 +33,7 @@ export const zh: Record<MindeckSkillsKey, string> = {
   title: '技能',
   guideDescription: '查看公司为你配置的技能，单击即可在对话中使用。',
   searchPlaceholder: '搜索名称、分类或拼音',
-  hint: '单击技能放入输入框，也可以在输入框输入 / 查找。',
+  hint: '单击技能放入输入框，也可以在输入框输入“/”查找。',
   provided: '{company}为你提供 {count} 个技能',
   recommended: '推荐',
   other: '其他',
