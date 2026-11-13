@@ -37,6 +37,10 @@ DeepSeek 账号仍保留在组合中，作为由公司决定是否允许的第�
 
 其他 Host 插件调用 `ctx.mindeckAccount.session()` 获取云端地址、Bearer 令牌和 bootstrap 端点，在 `mindeck-account/changed` 时重新读取，并用 `rejectToken(token)` 报告 HTTP 401。令牌不会到达任何客户端。
 
+需要推送“每次变更后重新读取的值”的 Host 服务使用导出的 `followChanges(listeners, signal, lifetime, read)`：它先立即产出一次 `read()`，之后每收到一次变更通知再产出一次；读取期间到达的多次通知合并为一次读取；任一信号中止时结束。[mindeck-skills](../mindeck-skills/README.zh.md) 和 [mindeck-files](../mindeck-files/README.zh.md) 用它推送各自的列表。
+
+在 Web 客户端中，只要会话、工作区、工作区界面和 Agent 预设 Remote 服务存在，本插件就提供 `ctx.mindeckComposer`。`draft(sessionId)` 返回客户端已打开的某个对话的 scope 和输入框。`startConversation({ agentPreset, prepare })` 像“新会话”一样在当前工作区打开一个空白对话：当前工作区是主区域所显示对话所在的工作区，否则是对话最近有变化的工作区。它请求 `agentPreset`，未指定时请求预设列表中 Host 的默认预设，并复用该工作区中第一个不属于其他预设的空白对话及其草稿，没有时新建一个；读不到预设列表时，任何空白对话都可能被复用。`prepare` 在对话显示前编辑草稿，随后输入框获得焦点。创建被拒绝时，工作区提示会说明原因，当前页面保持不变；没有任何工作区时，它的行为与“新会话”相同，且不调用 `prepare`。数字员工、技能和资源库页面都通过它开始对话。
+
 -----
 
 <a id="understand-the-implementation"></a>
@@ -49,7 +53,7 @@ Host 服务继承 `TypertRemoteService`，Remote 命名空间为 `mindeckAccount
 
 启动时 Host 会重新读取 bootstrap：401 结束会话，变化的信息替换缓存，云端不可达时保留会话以便离线使用。`rejectToken` 只在会话仍持有被拒绝的令牌时才删除会话，因此迟到的拒绝不会结束较新的登录。
 
-客户端挂载生成的 Remote，并通过 `remoteAccess.whenAccess('mindeckAccount/watch')` 跟随 `watch` 流，没有账号访问权限的客户端不会渲染任何账号界面。它在 `shell.overlay` 注册登录对话框，以优先级 -1 在 `settings.launcher` 注册侧栏入口，在 `settings.section` 注册设置页并在 `settings.section.icon` 注册其图标，为 `QUOTA` 失败码在 `shell.quota-notice` 注册额度对话框，并在 `conversation.input.dock` 注册额度提醒。
+客户端挂载生成的 Remote，并通过 `remoteAccess.whenAccess('mindeckAccount/watch')` 跟随 `watch` 流，没有账号访问权限的客户端不会渲染任何账号界面。它在 `shell.overlay` 注册登录对话框，以优先级 -1 在 `settings.launcher` 注册侧栏入口，在 `settings.section` 注册设置页并在 `settings.section.icon` 注册其图标，为 `QUOTA` 失败码在 `shell.quota-notice` 注册额度对话框，并在 `conversation.input.dock` 注册额度提醒。它在注入 `sessions`、`workspaces`、`uiWorkspace` 和 `remote.agentPresets` 的子作用域中提供 `mindeckComposer`，其中任一服务离开时该服务随之撤回。
 
 </details>
 

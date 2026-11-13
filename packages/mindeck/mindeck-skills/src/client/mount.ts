@@ -1,29 +1,28 @@
-/** Remote contribution, the listing stream, and the skills sidebar page. */
+/** Remote contribution, the listing stream, and the skills page with its left-sidebar row. */
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-api-remote-access/client'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
-import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
-import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
+import type {} from '@deepseek-ai/dsh-mindeck-account/client'
 import type {} from '@deepseek-ai/dsh-mindeck-skills/remote'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
-import { IconSkillOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
-import { fileAddressFor } from '@deepseek-ai/dsh-util-workspace-path'
 import type { MindeckSkillCatalog } from '../types.ts'
 import { en, NS, zh } from './locales.ts'
 import type { MindeckSkillsInjected, MindeckSkillsSnapshot } from './operations.ts'
+import { SkillsPanelIcon } from './PanelIcon.tsx'
 import { skillInsertion } from './sections.ts'
-import { SkillsPanel } from './SkillsPanel.tsx'
+import { SkillsPage } from './SkillsPage.tsx'
 
 /** Services required by the page. */
-export const inject = ['remote', 'slots', 'locale', 'remoteAccess', 'sidebarRight', 'sidebarRightTabs', 'sessions', 'remote.skills']
+export const inject = ['remote', 'slots', 'locale', 'remoteAccess', 'mindeckComposer']
 
-/** Identity of the sidebar page type. */
-export const SKILLS_TAB_ID = '@deepseek-ai/dsh-mindeck-skills'
+/** Id shared by the left-sidebar row and the main-column page it selects. */
+export const SKILLS_PANEL_ID = 'mindeck-skills' as MainPanelId
 
 function registerUi(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { en, zh }), 'mindeck-skills: dictionaries')
@@ -49,42 +48,29 @@ function registerUi(ctx: Context): void {
       }
     })().catch(() => { if (!grant.ended) state.set({ ...state.getSnapshot(), failed: true }) })
   })
-  const createFace = (sessionId: SessionId): MindeckSkillsInjected => ({
+  const page: MindeckSkillsInjected = {
     hooks: { catalog: state },
-    async sessionSkills() {
-      const result = await ctx.remote.skills.list({ sessionId })
-      return result.ok ? result.value.skills : undefined
+    use: name => ctx.mindeckComposer.startConversation({
+      prepare: ({ scope, input }) => {
+        const { draft, draftRev } = input.state.getSnapshot()
+        const { end, text } = skillInsertion(draft, name)
+        scope.bail(scope, 'slash/input-insert-text', { text, span: { start: 0, end, draftRev } })
+      },
+    }),
+    async instructions(name) {
+      const read = await ctx.remote.mindeckSkills.instructions(name)
+        .catch((error: unknown) => ({ ok: false as const, error: error instanceof Error ? error : new Error(String(error)) }))
+      if (read.ok) return { ok: true, markdown: read.value }
+      return { ok: false, reason: 'code' in read.error && read.error.code === 'mindeck-skills/not-found' ? 'missing' : 'failed' }
     },
-    useSkill(name) {
-      const scope = ctx.sessions.scope(sessionId)
-      const conversation = scope?.get('conversation')
-      if (scope === undefined || conversation === undefined) return false
-      const input = conversation.input.for(scope)
-      const { draft, draftRev } = input.state.getSnapshot()
-      const { end, text } = skillInsertion(draft, name)
-      const inserted = scope.bail(scope, 'slash/input-insert-text', { text, span: { start: 0, end, draftRev } }) === true
-      if (inserted) input.focus()
-      return inserted
-    },
-    preview(path) {
-      const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd
-      ctx.sidebarRight.openResource(fileAddressFor(sessionId, cwd, path))
-    },
-  })
-  // One face per Session keeps the page's operations stable across renders.
-  const faces = new Map<SessionId, MindeckSkillsInjected>()
-  const face = (sessionId: SessionId): MindeckSkillsInjected => {
-    let existing = faces.get(sessionId)
-    if (existing === undefined) { existing = createFace(sessionId); faces.set(sessionId, existing) }
-    return existing
   }
-  ctx.remoteAccess.whenAccess('mindeckSkills/watch', () => ctx.sidebarRightTabs.register({
-    id: SKILLS_TAB_ID, kind: 'mindeck-skills', title: () => t('title'),
-    guide: [{ id: 'open', order: 41, title: () => t('title'), description: () => t('guideDescription'), icon: IconSkillOutlineRegular }],
-  }))
-  ctx.remoteAccess.whenAccess('mindeckSkills/watch', () => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
-    name: 'sidebar.right.pane.tab', key: SKILLS_TAB_ID, locale: NS, inject: face,
-  }, SkillsPanel)))
+  // Between the digital-employee row (-30) and the file-library row (-10), before Plugins (0).
+  ctx.remoteAccess.whenAccess('mindeckSkills/watch', function* () {
+    yield ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: SKILLS_PANEL_ID, locale: NS, inject: () => page }, SkillsPage))
+    yield ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
+      name: 'sidebar.panellist', id: SKILLS_PANEL_ID, order: -20, locale: NS, label: () => t('title'),
+    }, SkillsPanelIcon))
+  })
 }
 
 /**

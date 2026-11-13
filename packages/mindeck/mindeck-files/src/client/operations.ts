@@ -1,4 +1,4 @@
-/** Operations and the availability observable injected into the file-library panel. */
+/** Operations and the availability observable injected into the file-library side panel and page. */
 import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
 import type { LibraryAvailability, LibraryEntryView, LibrarySpaceView } from '../types.ts'
 import type { MindeckFilesKey } from './locales.ts'
@@ -14,9 +14,8 @@ export interface LibrarySnapshot {
 /** Result of one Host read; a failure names the copy that explains it. */
 export type LibraryResult<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly reason: MindeckFilesKey }
 
-/** Panel operations for one Session's pane. */
-export interface MindeckFilesInjected {
-  hooks: { library: HostObservable<LibrarySnapshot> }
+/** Library reads and the upload, shared by the panel and the page. */
+export interface MindeckFilesReads {
   /** @returns the member's spaces, personal first. */
   spaces: () => Promise<LibraryResult<LibrarySpaceView[]>>
   /** @param path - library path of a space or folder. @returns its entries, folders first. */
@@ -31,10 +30,26 @@ export interface MindeckFilesInjected {
    * @returns the saved file, or why it was not saved; `exists` when the name is taken and `overwrite` is false.
    */
   upload: (folder: string, file: File, overwrite: boolean) => Promise<LibraryResult<LibraryEntryView>>
+}
+
+/** Panel operations for one Session's pane. */
+export interface MindeckFilesInjected extends MindeckFilesReads {
+  hooks: { library: HostObservable<LibrarySnapshot> }
   /**
    * Put a reference to the library item into this Session's message draft.
    * @param entry - file or folder.
    * @returns whether the composer accepted it.
    */
   addToConversation: (entry: LibraryEntryView) => boolean
+}
+
+/** Operations of the library page. */
+export interface MindeckFilesPageInjected extends MindeckFilesReads {
+  hooks: { library: HostObservable<LibrarySnapshot> }
+  /**
+   * Open a blank conversation in the current Workspace with a reference to the library item in its draft.
+   * @param entry - file or folder.
+   * @returns once the conversation shows or the Host refused it.
+   */
+  startWith: (entry: Pick<LibraryEntryView, 'path' | 'name' | 'kind'>) => Promise<void>
 }

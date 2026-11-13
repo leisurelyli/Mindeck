@@ -2252,14 +2252,21 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   },
   {
     key: 'mindeckSkills',
-    summary: 'Keeps the member\'s company skills in the local cache, serves them while signed in, and lists them for the skills page.',
-    description: 'Keeps the member\'s company skills in the local cache, serves them while signed in, and lists them for the skills page.',
+    summary: 'Keeps the member\'s company skills in the local cache, serves them while signed in, and lists them and their instructions for the skills page.',
+    description: 'Keeps the member\'s company skills in the local cache, serves them while signed in, and lists them and their instructions for the skills page.',
     methods: [
       {
         signature: '@Remote({ mode: \'stream\' }) async *watch(signal: AbortSignal): AsyncIterable<MindeckSkillCatalog>',
         description: 'Stream the company skills the signed-in member has on this computer.',
         parameters: [{ name: 'signal', description: 'stream lifetime.' }],
         returns: 'the current listing, then every change.',
+      },
+      {
+        signature: '@Remote async instructions(name: string, signal: AbortSignal): Promise<string>',
+        description: 'Read the instructions of a company skill the member has on this computer, as the agent receives them.',
+        parameters: [{ name: 'name', description: 'skill name from the listing.' }, { name: 'signal', description: 'caller cancellation.' }],
+        returns: 'the SKILL.md body without its front matter.',
+        throws: ['RemoteError `mindeck-skills/not-found` when the listing has no such skill, its cached copy is gone, or another provider\'s skill of that name takes precedence.'],
       },
     ],
   },

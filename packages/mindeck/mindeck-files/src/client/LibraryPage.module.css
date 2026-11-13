@@ -1,0 +1,161 @@
+/* The library page: the Plugins and Automation tasks page column (960px, the same inline insets and title step).
+   Below the heading, the spaces column and the folder card fill the window height; only the folder's rows scroll. */
+.page {
+  --library-inset: clamp(24px, 4vw, 48px);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 var(--library-inset);
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  line-height: 20px;
+}
+.page > * { width: 100%; max-width: 960px; }
+
+@media (max-width: 767px) {
+  .page { --library-inset: 20px; }
+}
+
+/* The heading row starts at the window's top edge; its 28px inset is the page's top inset. */
+.head { flex: none; padding-top: 28px; margin-bottom: 20px; }
+:global([data-platform='darwin']) .head { padding-top: calc(28px + var(--dsh-frame-top-clearance, 0px)); }
+.title { margin: 0; font-size: 20px; font-weight: 500; line-height: 28px; }
+.intro { margin: 4px 0 0; color: var(--dsw-alias-label-secondary); }
+
+.columns { flex: 1; display: grid; grid-template-columns: clamp(152px, 21%, 200px) minmax(0, 1fr); gap: 20px; min-height: 0; padding-bottom: 24px; }
+
+/* Space rows share the left sidebar's row treatment: the current one takes the hover fill and primary ink. */
+.spaces { min-width: 0; min-height: 0; overflow-y: auto; }
+.spacesTitle { margin: 0 0 4px; padding: 6px 10px 0; color: var(--dsw-alias-label-tertiary); font-size: 12px; font-weight: 400; line-height: 18px; }
+.spaceList { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.spaceItem { display: flex; min-width: 0; }
+.space { box-sizing: border-box; display: flex; flex: 1; align-items: center; gap: 8px; min-width: 0; height: 36px; padding: 0 10px; border: 0; border-radius: var(--dsw-radius-md); background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 14px; line-height: 22px; text-align: left; cursor: pointer; }
+.space[aria-current='page'] { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); font-weight: 500; }
+.spaceIcon { flex: none; }
+.spaceName { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* The open folder: settings card material holding the toolbar, the column labels, and the scrolling rows. */
+.browser {
+  --library-row-columns: minmax(0, 1fr) 112px 72px;
+  position: relative;
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 0.5px solid var(--dsw-alias-settings-card-stroke);
+  border-radius: var(--dsw-radius-xl);
+  background: var(--dsw-alias-settings-card-fill);
+}
+
+.bar { flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; min-height: 52px; padding: 10px 12px 10px 16px; box-sizing: border-box; }
+.location { display: flex; flex: 1 1 160px; align-items: center; gap: 8px; min-width: 0; }
+.crumbs { display: flex; align-items: center; min-width: 0; overflow: hidden; white-space: nowrap; }
+.crumbItem { display: inline-flex; align-items: center; min-width: 0; }
+.crumbItem:last-child { flex-shrink: 0; max-width: 100%; }
+.separator { flex: none; padding: 0 2px; color: var(--dsw-alias-label-tertiary); }
+.crumb { min-width: 0; max-width: 180px; overflow: hidden; padding: 2px 6px; border: 0; border-radius: var(--dsw-radius-sm); background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 14px; line-height: 22px; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.crumbItem:first-child .crumb { margin-left: -6px; }
+.crumb[aria-current='page'] { color: var(--dsw-alias-label-primary); font-weight: 500; }
+.resultsTitle { margin: 0; overflow: hidden; font-size: 14px; font-weight: 500; line-height: 22px; text-overflow: ellipsis; white-space: nowrap; }
+.readOnly { display: inline-flex; flex: none; }
+
+.tools { display: flex; flex: 0 1 auto; align-items: center; gap: 8px; min-width: 0; }
+.search { position: relative; flex: 0 1 220px; min-width: 120px; }
+.searchInput { box-sizing: border-box; width: 100%; }
+.searchInput input { padding-right: 24px; font-size: 13px; }
+/* The clear button beside the field owns clearing it. */
+.searchInput input::-webkit-search-cancel-button { display: none; }
+.clear { position: absolute; top: 50%; right: 4px; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: var(--dsw-radius-sm); background: transparent; color: var(--dsw-alias-label-tertiary); cursor: pointer; transform: translateY(-50%); }
+.uploadButton { flex: none; }
+/* The library has no upload glyph; the download arrow turned over reads as one. */
+.uploadButton svg { transform: rotate(180deg); }
+.iconButton { box-sizing: border-box; display: inline-flex; flex: none; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 6px; border: 0; border-radius: var(--dsw-radius-sm); background: transparent; color: var(--dsw-alias-label-secondary); cursor: pointer; }
+
+.columnsHead { flex: none; display: grid; grid-template-columns: var(--library-row-columns); gap: 12px; padding: 6px 16px; border-top: 0.5px solid var(--dsw-alias-border-l3); border-bottom: 0.5px solid var(--dsw-alias-border-l3); color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 18px; }
+.sizeColumn { text-align: right; }
+
+/* The rows scroll on the card's elevated fill, so the thumb takes the elevated pair. */
+.listArea { position: relative; flex: 1; min-height: 0; overflow-y: auto; padding: 4px 6px 8px; --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2); --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2); }
+.list { margin: 0; padding: 0; list-style: none; }
+.row { position: relative; display: grid; grid-template-columns: var(--library-row-columns); align-items: center; gap: 12px; min-height: 44px; padding: 0 10px 0 10px; border-radius: var(--dsw-radius-md); }
+.nameCell { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.entryIcon { flex: none; color: var(--dsw-alias-label-secondary); }
+/* File type glyphs keep their own colors. */
+.fileIcon { flex: none; }
+.name { min-width: 0; overflow: hidden; padding: 0; border: 0; background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 14px; line-height: 22px; text-align: left; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+button.name, a.name { cursor: pointer; }
+.rowTag { flex: none; color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 18px; }
+.meta { min-width: 0; overflow: hidden; color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
+/* The start action takes the place of the date and size while the row is pointed at or focused, so the columns
+   keep their widths and the column labels stay over them. */
+.actions { position: absolute; top: 0; right: 6px; bottom: 0; display: flex; align-items: center; opacity: 0; }
+.row:focus-within .actions { opacity: 1; }
+.row:focus-within > .meta { visibility: hidden; }
+.useButton { box-sizing: border-box; display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px; border: 0; border-radius: var(--dsw-radius-sm); background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 12px; line-height: 18px; white-space: nowrap; cursor: pointer; }
+.useButton:disabled { cursor: default; opacity: 0.4; }
+
+.skeleton { height: 32px; margin: 6px 10px; border-radius: var(--dsw-radius-md); background: var(--dsw-alias-bg-skeleton); }
+
+/* Empty, failed, and unavailable states center their message in the space they replace. */
+.state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 100%; padding: 32px 16px; box-sizing: border-box; text-align: center; }
+/* The Plugins page's icon tile: a hairline square around the glyph. */
+.stateIcon, .unavailableIcon { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin-bottom: 4px; border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md); color: var(--dsw-alias-label-secondary); }
+.unavailableIcon { width: 48px; height: 48px; border-radius: var(--dsw-radius-lg); }
+.stateTitle { margin: 0; font-size: 14px; font-weight: 500; line-height: 22px; }
+.stateHint { margin: 0; color: var(--dsw-alias-label-secondary); }
+.unavailable { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding-bottom: 12vh; text-align: center; }
+
+.dropZone { position: absolute; inset: 4px; z-index: 1; display: flex; align-items: center; justify-content: center; padding: 16px; border: 1px dashed var(--dsw-alias-state-business-primary); border-radius: var(--dsw-radius-lg); background: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 92%, transparent); color: var(--dsw-alias-label-primary); font-size: 14px; text-align: center; pointer-events: none; }
+
+/* Upload progress and failures float over the rows' lower edge, so the rows never move when they appear. */
+.notice:empty { display: none; }
+.notice, .uploadIssue { position: absolute; bottom: 12px; z-index: 2; box-shadow: var(--dsw-elevation-soft); background: var(--dsw-alias-bg-layer-1); }
+.notice { left: 50%; margin: 0; padding: 6px 12px; border-radius: var(--dsw-radius-md); color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; white-space: nowrap; transform: translateX(-50%); pointer-events: none; }
+.uploadIssue { inset-inline: 12px; display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 12px; border-radius: var(--dsw-radius-md); color: var(--dsw-alias-label-primary); font-size: 12px; line-height: 18px; }
+.uploadIssue > span { flex: 1; min-width: 0; }
+
+@media (hover: hover) {
+  .space:hover, .crumb:hover, .iconButton:hover, .clear:hover, .useButton:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }
+  .row:hover { background: var(--dsw-alias-interactive-bg-hover); }
+  .row:hover .actions { opacity: 1; }
+  .row:hover > .meta { visibility: hidden; }
+  .row:hover .useButton:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-active); color: var(--dsw-alias-label-primary); }
+  a.name:hover, button.name:hover { text-decoration: underline; text-underline-offset: 2px; }
+}
+
+/* Touch screens have no hover: the start action stays visible as its icon in a column of its own. */
+@media (hover: none) {
+  .columnsHead, .row { --library-row-columns: minmax(0, 1fr) 112px 72px 28px; }
+  .actions { position: static; opacity: 1; }
+  .row:focus-within > .meta { visibility: visible; }
+  .useButton > span { display: none; }
+  .useButton { width: 28px; justify-content: center; padding: 0; }
+}
+
+/* A narrow folder card drops the modification date and keeps the start action as its icon. The query reads the
+   card, so the column widths are set on the card's rows. */
+@container (max-width: 520px) {
+  .columnsHead, .row { --library-row-columns: minmax(0, 1fr) 64px; }
+  .columnsHead > :nth-child(2), .row > .meta:not(.sizeColumn) { display: none; }
+  .useButton > span { display: none; }
+  .useButton { width: 28px; justify-content: center; padding: 0; }
+  .search { flex-basis: 100%; }
+  .tools { flex: 1 1 100%; }
+  @media (hover: none) {
+    .columnsHead, .row { --library-row-columns: minmax(0, 1fr) 64px 28px; }
+  }
+}
+
+.space:focus-visible, .crumb:focus-visible, .iconButton:focus-visible, .clear:focus-visible, .useButton:focus-visible, .name:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: -2px;
+}

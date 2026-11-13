@@ -1,0 +1,162 @@
+/* The digital-employee page: the Plugins and Automation tasks page column (960px, the same inline insets and
+   title step), with a grid of employee cards that scrolls with the heading. */
+.page {
+  --employees-inset: clamp(24px, 4vw, 48px);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* A 9px rail carries the 5px thumb inset 2px from the page edge, as on the Automation tasks page. */
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  --dsh-scrollbar-width: 9px;
+  --dsh-scrollbar-thumb-border: 2px;
+}
+
+.content { box-sizing: border-box; max-width: calc(960px + 2 * var(--employees-inset)); margin: 0 auto; padding: 0 var(--employees-inset) 48px; }
+
+@media (max-width: 767px) {
+  .page { --employees-inset: 20px; }
+}
+
+/* The heading row starts at the window's top edge; its 28px inset is the page's top inset. */
+.head { padding-top: 28px; margin-bottom: 24px; }
+:global([data-platform='darwin']) .head { padding-top: calc(28px + var(--dsh-frame-top-clearance, 0px)); }
+.title { margin: 0; font-size: 20px; font-weight: 500; line-height: 28px; }
+.intro { margin: 4px 0 0; color: var(--dsw-alias-label-secondary); }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); gap: 16px; margin: 0; padding: 0; list-style: none; }
+.item { display: flex; min-width: 0; }
+
+/* Settings card material; the portrait and the hover fills sit 6px inside it, so their curve follows the card's. */
+.card {
+  --employee-card-inset: 6px;
+  box-sizing: border-box;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--employee-card-inset);
+  border: 0.5px solid var(--dsw-alias-settings-card-stroke);
+  border-radius: var(--dsw-radius-xl);
+  background: var(--dsw-alias-settings-card-fill);
+}
+
+.main {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 0 0 12px;
+  border: 0;
+  border-radius: calc(var(--dsw-radius-xl) - var(--employee-card-inset));
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.main:disabled { cursor: default; }
+
+.portrait {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: calc(var(--dsw-radius-xl) - var(--employee-card-inset));
+  background: var(--dsw-alias-bg-skeleton);
+}
+/* The portraits are square half-body drawings: the crop keeps the head and shoulders. */
+.image { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0%; transition: transform 240ms ease; user-select: none; }
+.initial { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-size: 40px; font-weight: 500; line-height: 1; user-select: none; }
+.initial[data-tint='0'] { background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 14%, transparent); color: var(--dsw-alias-state-business-primary); }
+.initial[data-tint='1'] { background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 14%, transparent); color: var(--dsw-alias-state-success-primary); }
+.initial[data-tint='2'] { background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 16%, transparent); color: var(--dsw-alias-state-warn-primary); }
+.initial[data-tint='3'] { background: var(--dsw-alias-bg-skeleton); color: var(--dsw-alias-label-secondary); }
+
+/* The start hint rests on the portrait's lower right corner while the card is pointed at or focused. */
+.cta {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 28px;
+  padding: 0 8px 0 12px;
+  border-radius: 999px;
+  corner-shape: round;
+  background: var(--dsw-alias-bg-layer-1);
+  box-shadow: var(--dsw-elevation-soft);
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  line-height: 18px;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.identity { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 0 8px; }
+.nameLine { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.name { overflow: hidden; font-size: 15px; font-weight: 500; line-height: 22px; text-overflow: ellipsis; white-space: nowrap; }
+.draft { display: inline-flex; flex: none; }
+/* Two lines, reserved even when shorter, so the starters of neighboring cards start on one line. */
+.tagline { display: -webkit-box; min-height: 40px; overflow: hidden; color: var(--dsw-alias-label-secondary); text-wrap: pretty; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+
+.starters { display: flex; flex-direction: column; gap: 4px; margin: 0 2px; padding-top: 10px; border-top: 0.5px solid var(--dsw-alias-border-l3); }
+.startersTitle { margin: 0; padding: 0 6px; color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 18px; }
+.starterList { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.starterItem { display: flex; min-width: 0; }
+.starter {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 32px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--dsw-radius-md);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.starter:disabled { cursor: default; }
+.starterIcon { flex: none; }
+.starterText { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (hover: hover) {
+  .main:hover:not(:disabled) .image { transform: scale(1.03); }
+  .main:hover:not(:disabled) .cta { opacity: 1; }
+  .starter:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
+}
+
+/* Touch screens have no hover, so the start hint stays visible. */
+@media (hover: none) {
+  .cta { opacity: 1; }
+}
+
+.main:focus-visible .cta { opacity: 1; }
+.main:focus-visible { outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 2px; }
+.starter:focus-visible { outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: -2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .image, .cta { transition: none; }
+}

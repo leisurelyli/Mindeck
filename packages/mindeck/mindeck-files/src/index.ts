@@ -8,7 +8,7 @@ import { join, resolve } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
-import type {} from '@deepseek-ai/dsh-mindeck-account'
+import { followChanges } from '@deepseek-ai/dsh-mindeck-account'
 import type {} from '@deepseek-ai/dsh-tools'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { FilesAccess } from './access.ts'
@@ -158,20 +158,7 @@ export default class MindeckFiles extends TypertRemoteService {
    */
   @Remote({ mode: 'stream' })
   async *watch(signal: AbortSignal): AsyncIterable<LibraryAvailability> {
-    let dirty = true
-    let wake: (() => void) | undefined
-    const wakeUp = (): void => { dirty = true; wake?.() }
-    this.listeners.add(wakeUp)
-    signal.addEventListener('abort', wakeUp, { once: true })
-    try {
-      while (!signal.aborted && !this.lifetime.signal.aborted) {
-        if (dirty) { dirty = false; yield await this.getAvailability(); continue }
-        await new Promise<void>((resolve) => { wake = resolve })
-      }
-    } finally {
-      this.listeners.delete(wakeUp)
-      signal.removeEventListener('abort', wakeUp)
-    }
+    yield* followChanges(this.listeners, signal, this.lifetime.signal, () => this.getAvailability())
   }
 
   /**

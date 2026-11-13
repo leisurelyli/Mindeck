@@ -1,4 +1,5 @@
 /** Company-skill listing shared by the Host plugin and the skills page. */
+import type {} from '@deepseek-ai/dsh-typert-protocol'
 
 /** One company skill as Mindeck lists it. */
 export interface MindeckSkillView {
@@ -21,4 +22,11 @@ export interface MindeckSkillCatalog {
   readonly company: string | null
   /** Installed company skills in Mindeck Cloud order. */
   readonly skills: readonly MindeckSkillView[]
+}
+
+declare module '@deepseek-ai/dsh-typert-protocol' {
+  interface RemoteErrorDetailsMap {
+    /** The member has no company skill of that name on this computer. */
+    'mindeck-skills/not-found': Record<string, never>
+  }
 }

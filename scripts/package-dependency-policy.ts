@@ -99,6 +99,13 @@ const PEER_REQUIRED_HOST_EXPORTS = {
   // Mindeck company skills serve their cache through the Host's skill registry and check names by its rules.
   '@deepseek-ai/dsh-skill': ['isSkillName'],
   '@deepseek-ai/dsh-skill-filesystem': ['FileSystemSkillProvider'],
+  // The Mindeck file library and company skills stream their listings with the account's change loop and already
+  // peer-require the account package whose session they read.
+  '@deepseek-ai/dsh-mindeck-account': ['followChanges'],
+  // Mindeck digital employees read a base preset with the Loader's own YAML schema and check its rows by the
+  // preset registry's own rules, so the presets they register parse as the registry's do.
+  '@deepseek-ai/cordis-plugin-include': ['entryListSchema'],
+  '@deepseek-ai/dsh-agent-preset-registry': ['entryListProblem'],
 } as const satisfies HostDependencyExports
 
 /** Exact import specifier to reviewed runtime exports. */

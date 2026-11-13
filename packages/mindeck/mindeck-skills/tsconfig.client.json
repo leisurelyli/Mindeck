@@ -33,13 +33,16 @@
       "path": "../../client/ui-conversation/tsconfig.client.json"
     },
     {
+      "path": "../../client/ui-layout"
+    },
+    {
       "path": "../../client/ui-primitives"
     },
     {
       "path": "../../client/ui-renderer"
     },
     {
-      "path": "../../client/ui-sidebar-right"
+      "path": "../../client/ui-sidebar"
     },
     {
       "path": "../../client/ui-slots"
@@ -48,10 +51,10 @@
       "path": "../../core/session"
     },
     {
-      "path": "../../typert/protocol"
+      "path": "../mindeck-account/tsconfig.client.json"
     },
     {
-      "path": "../../util/workspace-path"
+      "path": "../../typert/protocol"
     }
   ]
 }

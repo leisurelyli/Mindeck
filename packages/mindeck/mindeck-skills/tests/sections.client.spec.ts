@@ -19,7 +19,7 @@ it('matches names, categories, descriptions, and pinyin, with single letters onl
   expect(matchesSkill(['weekly-report', null], [], 'contract')).toBe(false)
 })
 
-it('lists recommended skills, then categories in reading order, then ungrouped and built-in skills', () => {
+it('lists recommended skills, then categories in reading order, then ungrouped skills', () => {
   const company = [
     view('weekly-report', { displayName: '周报助手', category: '写作', recommended: true, searchKeys: ['zbzs'] }),
     view('meeting-notes', { displayName: '会议纪要', category: '写作' }),
@@ -27,29 +27,19 @@ it('lists recommended skills, then categories in reading order, then ungrouped a
     view('data-check', { category: '数据', description: '核对表格' }),
     view('misc'),
   ]
-  const session = [
-    { name: 'weekly-report', description: '', path: '/home/u/.dsh/mindeck/skills/weekly-report/SKILL.md' },
-    { name: 'docx', description: 'Word documents', path: '/app/skills/docx/SKILL.md' },
-    { name: 'pdf', description: 'PDF files' },
-  ]
-  const sections = skillSections(company, session, '')
+  const sections = skillSections(company, '')
   expect(sections.map(section => section.heading)).toEqual([
     { kind: 'recommended' }, { kind: 'category', name: '数据' }, { kind: 'category', name: '写作' },
-    { kind: 'category', name: '研发' }, { kind: 'other' }, { kind: 'built-in' },
+    { kind: 'category', name: '研发' }, { kind: 'other' },
   ])
-  expect(sections[0]?.rows).toEqual([{
-    name: 'weekly-report', title: '周报助手', description: '', path: '/home/u/.dsh/mindeck/skills/weekly-report/SKILL.md',
-  }])
-  expect(sections[2]?.rows).toEqual([{ name: 'meeting-notes', title: '会议纪要', description: '' }])
-  expect(sections.at(-1)?.rows).toEqual([
-    { name: 'docx', title: 'docx', description: 'Word documents', path: '/app/skills/docx/SKILL.md' },
-    { name: 'pdf', title: 'pdf', description: 'PDF files' },
-  ])
+  expect(sections[0]?.skills).toEqual([company[0]])
+  expect(sections[2]?.skills).toEqual([company[1]])
+  expect(sections.at(-1)?.skills).toEqual([company[4]])
 
-  expect(skillSections(company, undefined, 'zb').map(section => section.key)).toEqual(['recommended'])
-  expect(skillSections(company, session, '表格').map(section => section.key)).toEqual(['category:数据'])
-  expect(skillSections(company, session, 'word').map(section => section.key)).toEqual(['built-in'])
-  expect(skillSections([], undefined, '')).toEqual([])
+  expect(skillSections(company, 'zb').map(section => section.key)).toEqual(['recommended'])
+  expect(skillSections(company, '表格').map(section => section.key)).toEqual(['category:数据'])
+  expect(skillSections(company, 'word')).toEqual([])
+  expect(skillSections([], '')).toEqual([])
 })
 
 it('puts the skill at the start of the draft, replacing a skill already there', () => {

@@ -31,14 +31,15 @@ function fixture(catalog: MindeckEmployeeCatalog | undefined, options: DockOptio
   const useProjectionValue = bindSnapshotSelector(projection)
   const select = vi.fn(async (_preset: string): Promise<string | undefined> => undefined)
   const insertStarter = vi.fn((_text: string) => true)
+  const openAll = vi.fn()
   const props = {
     session: { blank: options.blank ?? true, promptAttempted: options.promptAttempted ?? false },
     useProjection: (_key: string) => useProjectionValue(value => value.preset),
     useCatalog: bindSnapshotSelector(store),
-    select, insertStarter, t: makeTranslate(zh),
+    select, insertStarter, openAll, t: makeTranslate(zh),
   } as EmployeeDockProps
   const setPreset = (preset: string) => { act(() => { projection.set({ preset }) }) }
-  return { props, select, insertStarter, setPreset }
+  return { props, select, insertStarter, openAll, setPreset }
 }
 
 it('appears only while the conversation is blank and the company has digital employees', () => {
@@ -87,20 +88,20 @@ it('offers the chosen employee\'s starters and puts one in the draft without sen
   expect(view.queryByRole('list', { name: zh.starters })).toBeNull()
 })
 
-it('shows six cards, expands to all of them, and keeps a selected card beyond the first six in view', () => {
+it('shows six cards, keeps a selected card beyond them in view, and links to the page for the rest', () => {
   const cards = [GENERAL, ...['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(id => employee(id))]
   const f = fixture({ cards }, { preset: 'mindeck-employee-g' })
   const view = render(<EmployeeDock {...f.props} />)
   const names = () => view.getAllByRole('button').filter(button => button.hasAttribute('aria-pressed'))
     .map(button => button.querySelector('[class*="name"]')?.textContent)
   expect(names()).toEqual([zh.generalName, '员工a', '员工b', '员工c', '员工d', '员工g'])
-  const toggle = view.getByRole('button', { name: zh.showAll })
-  expect(toggle.getAttribute('aria-expanded')).toBe('false')
-  fireEvent.click(toggle)
-  expect(names()).toHaveLength(8)
-  fireEvent.click(view.getByRole('button', { name: zh.showFewer }))
+  fireEvent.click(view.getByRole('button', { name: zh.showAll }))
+  expect(f.openAll).toHaveBeenCalledOnce()
   expect(names()).toHaveLength(6)
-  expect(visibleCards(cards, undefined, false).map(card => card.presetId)).toEqual(cards.slice(0, 6).map(card => card.presetId))
+  expect(visibleCards(cards, undefined).map(card => card.presetId)).toEqual(cards.slice(0, 6).map(card => card.presetId))
+  // Six cards or fewer need no link.
+  cleanup()
+  expect(render(<EmployeeDock {...fixture({ cards: cards.slice(0, 6) }).props} />).queryByRole('button', { name: zh.showAll })).toBeNull()
 })
 
 it('draws the name\'s first character when the avatar has no image or the image fails', () => {

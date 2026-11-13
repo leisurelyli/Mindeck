@@ -189,3 +189,18 @@ it('lists installed skills for the skills page, from the saved listing until Min
   stopAgain.abort()
   await readingAgain
 })
+
+it('reads the instructions of a listed skill without its front matter and refuses other names', async () => {
+  const f = await fixture()
+  f.cloud.state.skills = [{ name: 'weekly-report', hash: 'h1', description: 'Write the weekly report.' }]
+  await f.ctx.plugin(MindeckSkills, f.config)
+  await vi.waitFor(async () => { expect(await f.names()).toEqual(['weekly-report']) })
+  const signal = new AbortController().signal
+  await vi.waitFor(async () => { expect(await f.ctx.mindeckSkills.instructions('weekly-report', signal)).toBe('# weekly-report') })
+  await expect(f.ctx.mindeckSkills.instructions('contract-review', signal)).rejects.toMatchObject({ code: 'mindeck-skills/not-found' })
+  // A runtime skill of the same name takes precedence in the registry; its body is not the company skill's.
+  const shadow = f.ctx.skills.register({ name: 'weekly-report', description: 'Local copy.', content: 'Local instructions.', source: 'runtime' })
+  await expect(f.ctx.mindeckSkills.instructions('weekly-report', signal)).rejects.toMatchObject({ code: 'mindeck-skills/not-found' })
+  shadow()
+  expect(await f.ctx.mindeckSkills.instructions('weekly-report', signal)).toBe('# weekly-report')
+})

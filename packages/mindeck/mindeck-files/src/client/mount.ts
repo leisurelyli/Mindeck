@@ -1,14 +1,16 @@
-/** Remote contribution, the availability stream, and the file-library sidebar page. */
+/** Remote contribution, the availability stream, the file-library side panel, and the file-library page with its left-sidebar row. */
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-api-remote-access/client'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
-import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-input-trigger/client'
+import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type {} from '@deepseek-ai/dsh-client-ui-tool/client'
+import type { MindeckDraft } from '@deepseek-ai/dsh-mindeck-account/client'
 import type {} from '@deepseek-ai/dsh-mindeck-files/remote'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { IconFolderCloseRegular } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -17,22 +19,27 @@ import type { RemoteFailure, RemoteResult, TypertRemoteContribution } from '@dee
 import { libraryReference } from '../reference.ts'
 import { libraryLabel } from './labels.ts'
 import type { LibraryAvailability, LibraryEntryView } from '../types.ts'
+import { LibraryPage } from './LibraryPage.tsx'
 import { LibraryPanel } from './LibraryPanel.tsx'
 import { LIBRARY_TEXT_NODE, LibraryReference, libraryReferenceRule } from './LibraryReference.tsx'
 import { LIBRARY_TOOLS, LibraryToolRow } from './LibraryToolRow.tsx'
 import { en, NS, zh, type MindeckFilesKey } from './locales.ts'
-import type { LibraryResult, LibrarySnapshot, MindeckFilesInjected } from './operations.ts'
+import type { LibraryResult, LibrarySnapshot, MindeckFilesInjected, MindeckFilesPageInjected } from './operations.ts'
+import { LibraryPanelIcon } from './PanelIcon.tsx'
 
-/** Services required by the panel. */
-export const inject = ['remote', 'slots', 'locale', 'remoteAccess', 'sidebarRightTabs', 'sessions', 'inputTriggers', 'uiConversation']
+/** Services required by the panel and the page. */
+export const inject = ['remote', 'slots', 'locale', 'remoteAccess', 'sidebarRightTabs', 'mindeckComposer', 'inputTriggers', 'uiConversation']
 
 /** Input-trigger source that owns the panel's draft references. */
 const REFERENCE_SOURCE = 'mindeck-files'
 /** Pause in typing after `@` before the library is searched, in milliseconds. */
 const SEARCH_DELAY_MS = 250
 
-/** Identity of the sidebar page type. */
+/** Identity of the right-sidebar page type. */
 export const LIBRARY_TAB_ID = '@deepseek-ai/dsh-mindeck-files'
+
+/** Id shared by the left-sidebar row and the main-column page it selects. */
+export const LIBRARY_PANEL_ID = 'mindeck-files' as MainPanelId
 
 /**
  * @param error - Remote failure of a library read.
@@ -67,6 +74,20 @@ async function fileBase64(file: File): Promise<string> {
   })
   // A data URL is `data:<type>;base64,<content>`.
   return url.slice(url.indexOf(',') + 1)
+}
+
+/**
+ * Put a reference to a library item at the end of a draft.
+ * @param target - the conversation's composer.
+ * @param entry - file or folder.
+ * @returns whether the composer accepted it.
+ */
+function insertReference({ input }: MindeckDraft, entry: Pick<LibraryEntryView, 'path' | 'name' | 'kind'>): boolean {
+  const { draft, draftRev } = input.state.getSnapshot()
+  const ref = libraryReference(entry.path, entry.kind === 'folder')
+  return input.insertReference({
+    source: REFERENCE_SOURCE, ref, label: entry.name, appearance: entry.kind === 'folder' ? 'folder' : 'file', clipboardText: ref,
+  }, { start: draft.length, end: draft.length, draftRev })
 }
 
 function result<T>(outcome: RemoteResult<T>): LibraryResult<T> {
@@ -152,17 +173,10 @@ function registerUi(ctx: Context): void {
     hooks: { library: state },
     ...reads,
     addToConversation(entry) {
-      const scope = ctx.sessions.scope(sessionId)
-      const conversation = scope?.get('conversation')
-      if (scope === undefined || conversation === undefined) return false
-      const input = conversation.input.for(scope)
-      const { draft, draftRev } = input.state.getSnapshot()
-      const ref = libraryReference(entry.path, entry.kind === 'folder')
-      const inserted = input.insertReference({
-        source: REFERENCE_SOURCE, ref, label: entry.name, appearance: entry.kind === 'folder' ? 'folder' : 'file', clipboardText: ref,
-      }, { start: draft.length, end: draft.length, draftRev })
-      if (inserted) input.focus()
-      return inserted
+      const target = ctx.mindeckComposer.draft(sessionId)
+      if (target === undefined || !insertReference(target, entry)) return false
+      target.input.focus()
+      return true
     },
   })
   // One face per Session keeps the page's operations stable across renders.
@@ -172,6 +186,19 @@ function registerUi(ctx: Context): void {
     if (existing === undefined) { existing = createFace(sessionId); faces.set(sessionId, existing) }
     return existing
   }
+  const page: MindeckFilesPageInjected = {
+    hooks: { library: state },
+    ...reads,
+    startWith: entry => ctx.mindeckComposer.startConversation({ prepare: (target) => { insertReference(target, entry) } }),
+  }
+  // After the digital-employee (-30) and skills (-20) rows, before Plugins (0).
+  ctx.remoteAccess.whenAccess('mindeckFiles/watch', function* () {
+    yield ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: LIBRARY_PANEL_ID, locale: NS, inject: () => page }, LibraryPage))
+    yield ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
+      name: 'sidebar.panellist', id: LIBRARY_PANEL_ID, order: -10, locale: NS, label: () => t('title'),
+    }, LibraryPanelIcon))
+  })
+  // The right-sidebar page adds library items to the open conversation.
   ctx.remoteAccess.whenAccess('mindeckFiles/watch', () => ctx.sidebarRightTabs.register({
     id: LIBRARY_TAB_ID, kind: 'mindeck-files', title: () => t('title'),
     guide: [{ id: 'open', order: 40, title: () => t('title'), description: () => t('guideDescription'), icon: IconFolderCloseRegular }],
@@ -182,7 +209,7 @@ function registerUi(ctx: Context): void {
 }
 
 /**
- * Mount the file-library Remote, then the panel; withdraw them in reverse order.
+ * Mount the file-library Remote, then the panel and the page; withdraw them in reverse order.
  * @param ctx - Client plugin lifetime.
  * @param contribution - generated file-library Remote definitions.
  * @returns disposer that removes both contributions.

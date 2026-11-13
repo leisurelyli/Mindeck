@@ -182,3 +182,20 @@ it('signs out a personal DeepSeek account the company does not allow, and leaves
     await vi.waitFor(() => { expect(account.signOut).toHaveBeenCalledOnce() })
   } finally { await f.ctx.fiber.dispose() }
 })
+
+it('provides the composer service once the conversation services exist and withdraws it with the UI', async () => {
+  const f = await fixture()
+  try {
+    const dispose = await mountAccount(f.ctx, contribution)
+    expect(f.ctx.get('mindeckComposer')).toBeUndefined()
+    f.ctx.provide('sessions', { list: { getSnapshot: () => ({ byId: {} }) }, scope: () => undefined } as never)
+    f.ctx.provide('workspaces', { list: { getSnapshot: () => ({ items: [] }) } } as never)
+    f.ctx.provide('uiWorkspace', { startSession: vi.fn() } as never)
+    expect(f.ctx.get('mindeckComposer')).toBeUndefined()
+    f.ctx.provide('remote.agentPresets', { list: vi.fn() } as never)
+    await vi.waitFor(() => { expect(f.ctx.get('mindeckComposer')).toBeDefined() })
+    expect(f.ctx.get('mindeckComposer')?.draft('s1' as never)).toBeUndefined()
+    await dispose()
+    expect(f.ctx.get('mindeckComposer')).toBeUndefined()
+  } finally { await f.ctx.fiber.dispose() }
+})

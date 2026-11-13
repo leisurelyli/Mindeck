@@ -1,14 +1,14 @@
-/** Browser entry for Mindeck company skills: the skills sidebar page. */
+/** Browser entry for Mindeck company skills: the skills page and its left-sidebar row. */
 import type { Context } from '@deepseek-ai/cordis'
 import remote from '@deepseek-ai/dsh-mindeck-skills/remote'
 import { mountSkills } from './mount.ts'
 
-export { inject, SKILLS_TAB_ID } from './mount.ts'
+export { inject, SKILLS_PANEL_ID } from './mount.ts'
 export type { MindeckSkillsKey } from './locales.ts'
-export type { MindeckSkillsInjected, MindeckSkillsSnapshot } from './operations.ts'
-export type { SkillsPanelProps } from './SkillsPanel.tsx'
+export type { InstructionsRead, MindeckSkillsInjected, MindeckSkillsSnapshot } from './operations.ts'
+export type { SkillsPageProps } from './SkillsPage.tsx'
 export { matchesSkill, skillInsertion, skillSections } from './sections.ts'
-export type { SectionHeading, SessionSkill, SkillRowView, SkillSection } from './sections.ts'
+export type { SectionHeading, SkillSection } from './sections.ts'
 
 /**
  * Mount the skills Remote, then the page.

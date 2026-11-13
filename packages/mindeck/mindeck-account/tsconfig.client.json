@@ -14,6 +14,8 @@
     { "path": "../../../vendor/cordis" },
     { "path": "../../api/remote-access/tsconfig.client.json" },
     { "path": "../../api/remotes/tsconfig.client.json" },
+    { "path": "../../api/session-controller/tsconfig.client.json" },
+    { "path": "../../api/workspace-controller/tsconfig.client.json" },
     { "path": "../../credentials/deepseek-account" },
     { "path": "../../client/locale/tsconfig.client.json" },
     { "path": "../../client/store" },
@@ -24,6 +26,9 @@
     { "path": "../../client/ui-renderer" },
     { "path": "../../client/ui-settings/tsconfig.client.json" },
     { "path": "../../client/ui-slots" },
+    { "path": "../../client/ui-workspace" },
+    { "path": "../../core/session" },
+    { "path": "../../preset/agent-preset-registry" },
     { "path": "../../typert/protocol" },
     { "path": "../../util/brand" }
   ]

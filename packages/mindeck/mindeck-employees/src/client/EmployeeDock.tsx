@@ -1,12 +1,12 @@
 /** "Who can help?" cards above the composer of a blank conversation, with the chosen employee's starter requests. */
 import { useId, useRef, useState } from 'react'
-import { IconChevronDownOutlineRegular, IconWarningOutlineRegular, Tag, Toast } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconChevronRightOutlineRegular, IconWarningOutlineRegular, Tag, Toast } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-agent-preset-registry/types'
 import type { MindeckEmployeeCard } from '../types.ts'
 import { avatarImage } from './avatars.ts'
-import { avatarInitial, avatarTint, COLLAPSED_CARDS, visibleCards } from './cards.ts'
+import { avatarInitial, avatarTint, COLLAPSED_CARDS, offersEmployees, visibleCards } from './cards.ts'
 import type { MindeckEmployeesInjected } from './operations.ts'
 import css from './Employees.module.css'
 
@@ -40,15 +40,15 @@ function Avatar({ avatar, name }: { avatar: string; name: string }) {
 /**
  * Offered while the conversation has no turn and the company has at least one digital employee; the general
  * assistant comes first. Choosing a card switches the conversation's agent preset; a starter request goes into
- * the message box and is never sent.
+ * the message box and is never sent. When the company has more cards than the row shows, a link opens the
+ * digital-employee page.
  * @param props - the Session, its preset, the cards, the card operations, and localized copy.
  * @returns the cards, a refusal notice, or nothing.
  */
-export function EmployeeDock({ session, useProjection, useCatalog, select, insertStarter, t }: EmployeeDockProps) {
+export function EmployeeDock({ session, useProjection, useCatalog, select, insertStarter, openAll, t }: EmployeeDockProps) {
   const catalog = useCatalog(snapshot => snapshot.catalog)
   const preset = useProjection('agentPreset')
   const headingId = useId()
-  const [expanded, setExpanded] = useState(false)
   const [pending, setPending] = useState<string | undefined>(undefined)
   const [chosen, setChosen] = useState<Chosen | undefined>(undefined)
   const refusalSeq = useRef(0)
@@ -60,7 +60,7 @@ export function EmployeeDock({ session, useProjection, useCatalog, select, inser
       anchor={document.querySelector<HTMLElement>('[data-composer-card]')} onDone={() => { setRefusal(null) }} />
   )
   const cards = catalog?.cards ?? []
-  if (!session.blank || session.promptAttempted || !cards.some(card => card.kind === 'employee')) return toast
+  if (!session.blank || session.promptAttempted || !offersEmployees(catalog)) return toast
 
   // The Session's preset arrives with its next projection frame; until then the accepted choice stays selected.
   const selected = pending ?? (chosen !== undefined && chosen.from === preset ? chosen.presetId : preset ?? undefined)
@@ -81,14 +81,14 @@ export function EmployeeDock({ session, useProjection, useCatalog, select, inser
       <div className={css.header}>
         <h2 id={headingId} className={css.title}>{t('title')}</h2>
         {cards.length > COLLAPSED_CARDS && (
-          <button type="button" className={css.toggle} aria-expanded={expanded} onClick={() => { setExpanded(value => !value) }}>
-            {expanded ? t('showFewer') : t('showAll')}
-            <IconChevronDownOutlineRegular size={14} className={css.chevron} />
+          <button type="button" className={css.allLink} onClick={openAll}>
+            {t('showAll')}
+            <IconChevronRightOutlineRegular size={14} />
           </button>
         )}
       </div>
       <ul className={css.cards}>
-        {visibleCards(cards, selected, expanded).map((card) => {
+        {visibleCards(cards, selected).map((card) => {
           const name = nameOf(card)
           const tagline = card.kind === 'general' ? t('generalTagline') : card.tagline
           return (

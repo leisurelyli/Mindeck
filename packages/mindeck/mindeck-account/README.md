@@ -37,6 +37,10 @@ While signed in, the Host reads the month-to-date quota from `/api/desktop/quota
 
 Other Host plugins call `ctx.mindeckAccount.session()` for the Cloud address, the bearer token, and the bootstrap endpoints, re-read it on `mindeck-account/changed`, and report an HTTP 401 with `rejectToken(token)`. The token never reaches a Client.
 
+Host services that stream a value they read again after each change use the exported `followChanges(listeners, signal, lifetime, read)`: it yields `read()` at once and again after each change notice, collapses notices that arrive during a read into one read, and ends when either signal aborts; [mindeck-skills](../mindeck-skills/README.md) and [mindeck-files](../mindeck-files/README.md) stream their listings with it.
+
+In the Web Client, the plugin provides `ctx.mindeckComposer` while the sessions, Workspace, Workspace UI, and agent preset Remote services exist. `draft(sessionId)` returns the scope and input of a conversation the Client has open. `startConversation({ agentPreset, prepare })` opens a blank conversation in the current Workspace as New Session does: the Workspace of the conversation in the main column, otherwise the Workspace whose conversations changed last. It asks for `agentPreset`, or for the Host's default preset from the preset roster, and reuses that Workspace's first blank conversation of no other preset, with its draft, or creates one; when the roster cannot be read, any blank conversation can be reused. `prepare` edits the draft before the conversation shows, and the message box takes focus. A refused creation appears in the Workspace notice and keeps the current page; without any Workspace, it behaves as New Session and skips `prepare`. The digital employee, skills, and file library pages start conversations through it.
+
 -----
 
 <a id="understand-the-implementation"></a>
@@ -49,7 +53,7 @@ The Host service extends `TypertRemoteService` under the `mindeckAccount` Remote
 
 At startup the Host reads the bootstrap again: a 401 ends the session, changed details replace the cached ones, and an unreachable Cloud keeps the session for offline use. `rejectToken` removes the session only when it still holds the rejected token, so a late rejection never ends a newer sign-in.
 
-The Client mounts the generated Remote and follows the `watch` stream through `remoteAccess.whenAccess('mindeckAccount/watch')`, so a Client without account access renders none of the account UI. It registers the sign-in dialog in `shell.overlay`, the launcher in `settings.launcher` at priority -1, the page in `settings.section` with its icon in `settings.section.icon`, the quota dialog in `shell.quota-notice` for the `QUOTA` failure code, and the quota reminder in `conversation.input.dock`.
+The Client mounts the generated Remote and follows the `watch` stream through `remoteAccess.whenAccess('mindeckAccount/watch')`, so a Client without account access renders none of the account UI. It registers the sign-in dialog in `shell.overlay`, the launcher in `settings.launcher` at priority -1, the page in `settings.section` with its icon in `settings.section.icon`, the quota dialog in `shell.quota-notice` for the `QUOTA` failure code, and the quota reminder in `conversation.input.dock`. It provides `mindeckComposer` from a child scope that injects `sessions`, `workspaces`, `uiWorkspace`, and `remote.agentPresets`, so the service leaves with any of them.
 
 </details>
 

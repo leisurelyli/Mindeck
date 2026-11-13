@@ -1,10 +1,11 @@
-/** Browser entry for the Mindeck account: sign-in gate, settings section, and sidebar launcher. */
+/** Browser entry for the Mindeck account: sign-in gate, settings section, sidebar launcher, and the `mindeckComposer` service. */
 import type { Context } from '@deepseek-ai/cordis'
 import remote from '@deepseek-ai/dsh-mindeck-account/remote'
 import { mountAccount } from './mount.ts'
 
 export { inject } from './mount.ts'
 export type { MindeckAccountKey } from './locales.ts'
+export type { MindeckComposer, MindeckConversationRequest, MindeckDraft } from './composer.ts'
 export type { MindeckAccountInjected, MindeckAccountSnapshot, OperationOutcome } from './operations.ts'
 export type { AccountMenuProps } from './AccountMenu.tsx'
 export type { AccountSectionProps } from './AccountSection.tsx'

@@ -1,7 +1,6 @@
 /** Operations and the skill-listing observable injected into the skills page. */
 import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
 import type { MindeckSkillCatalog } from '../types.ts'
-import type { SessionSkill } from './sections.ts'
 
 /** Latest company-skill listing as the Client observes it. */
 export interface MindeckSkillsSnapshot {
@@ -11,20 +10,25 @@ export interface MindeckSkillsSnapshot {
   readonly failed: boolean
 }
 
-/** Page operations for one Session's pane. */
+/** Outcome of reading one skill's instructions. */
+export type InstructionsRead =
+  | { readonly ok: true; readonly markdown: string }
+  /** `missing`: the skill left this computer; `failed`: the read did not complete. */
+  | { readonly ok: false; readonly reason: 'missing' | 'failed' }
+
+/** Operations of the skills page. */
 export interface MindeckSkillsInjected {
   hooks: { catalog: HostObservable<MindeckSkillsSnapshot> }
   /**
-   * Read the skills this conversation can use, including the company's.
-   * @returns the skills, or undefined when the conversation cannot be read yet.
-   */
-  sessionSkills: () => Promise<readonly SessionSkill[] | undefined>
-  /**
-   * Put `/name ` at the start of this Session's message draft.
+   * Open a blank conversation in the current Workspace with `/name ` at the start of its draft.
    * @param name - skill to use.
-   * @returns whether the composer accepted it.
+   * @returns once the conversation shows or the Host refused it.
    */
-  useSkill: (name: string) => boolean
-  /** @param path - SKILL.md to show in the side panel. */
-  preview: (path: string) => void
+  use: (name: string) => Promise<void>
+  /**
+   * Read the instructions the agent receives with a skill.
+   * @param name - skill from the listing.
+   * @returns the SKILL.md body, or why it could not be read.
+   */
+  instructions: (name: string) => Promise<InstructionsRead>
 }

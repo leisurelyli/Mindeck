@@ -33,6 +33,9 @@
       "path": "../../client/ui-conversation/tsconfig.client.json"
     },
     {
+      "path": "../../client/ui-layout"
+    },
+    {
       "path": "../../client/ui-primitives"
     },
     {
@@ -42,10 +45,16 @@
       "path": "../../client/ui-session"
     },
     {
+      "path": "../../client/ui-sidebar"
+    },
+    {
       "path": "../../client/ui-slots"
     },
     {
       "path": "../../core/session"
+    },
+    {
+      "path": "../mindeck-account/tsconfig.client.json"
     },
     {
       "path": "../../preset/agent-preset-registry"

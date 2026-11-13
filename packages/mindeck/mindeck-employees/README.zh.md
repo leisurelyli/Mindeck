@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-与公司的数字员工开始对话。管理员在 Mindeck Cloud 中设置每位数字员工：岗位名称、头像、一句话介绍、岗位说明、最多 4 条示例请求，以及建议使用的公司技能。本插件把每位员工注册为一个 Agent 预设，沿用基础预设的插件，并以员工的岗位作为人设；还注册通用助手 `mindeck-general`，Mindeck 的新对话默认使用它。在空白对话中，输入框上方的**找谁帮忙？**卡片行可以把对话切换到某位员工，并列出这位员工的示例请求。
+与公司的数字员工开始对话。管理员在 Mindeck Cloud 中设置每位数字员工：岗位名称、头像、一句话介绍、岗位说明、最多 4 条示例请求，以及建议使用的公司技能。本插件把每位员工注册为一个 Agent 预设，沿用基础预设的插件，并以员工的岗位作为人设；还注册通用助手 `mindeck-general`，Mindeck 的新对话默认使用它。空白对话输入框上方的卡片可以把对话切换到某位员工，左侧栏的**数字员工**页面可以与其中任意一位开始新对话。
 
 ## 目录
 
@@ -40,7 +40,9 @@ kind: "package-reference"
 
 只有预设仍在注册时，对话才能继续，因此离开 Cloud 列表的员工会以已停用状态保留注册：名称后加**（已停用）**，说明为“管理员已停用这位数字员工，可以继续之前的对话。”，排在最后，并保留最后的人设。启动时，插件先注册已保存的员工，再请求 Mindeck Cloud。退出登录后这些预设仍然保留。另一位成员在同一台电脑上登录时，上一位成员的员工预设会移除，新成员已保存的员工随即注册。
 
-客户端入口 `@deepseek-ai/dsh-mindeck-employees/client` 把卡片加入 `conversation.input.dock`。对话还没有任何轮次且公司至少提供一位员工时显示卡片：通用助手在前，随后最多 5 位员工，**全部数字员工**展开其余员工。被选中的卡片就是对话当前的预设；选择另一张卡片会调用 `agentPresets.select`，被拒绝时显示提示。被选中员工的示例请求显示在卡片下方；单击后，输入框为空时填入，已有内容时另起一行接在后面，不会自动发送。头像按头像键使用随包附带的头部特写；未知的键或加载失败的图片会显示名称首字和带色方块。窗口较窄时，卡片隐藏一句话介绍并保持两列，示例请求只显示前两条。
+客户端入口 `@deepseek-ai/dsh-mindeck-employees/client` 把**找谁帮忙？**卡片加入 `conversation.input.dock`。对话还没有任何轮次且公司至少提供一位员工时显示卡片：通用助手在前，随后最多 5 位员工；员工更多时，**全部数字员工**打开数字员工页面。被选中的卡片就是对话当前的预设；选择另一张卡片会调用 `agentPresets.select`，被拒绝时显示提示。被选中员工的示例请求显示在卡片下方；单击后，输入框为空时填入，已有内容时另起一行接在后面，不会自动发送。头像按头像键使用随包附带的头部特写；未知的键或加载失败的图片会显示名称首字和带色方块。窗口较窄时，卡片隐藏一句话介绍并保持两列，示例请求只显示前两条。
+
+公司至少提供一位员工时，客户端入口还会在左侧栏“插件”之前加入**数字员工**，其页面显示在主区域。页面先显示通用助手，再显示每位当前员工，附半身像、一句话介绍和示例请求；已停用的员工不列出，草稿带**草稿**标记，通用助手的卡片提供 3 条通用请求。单击卡片会通过 [Mindeck 账号](../mindeck-account/README.zh.md)的 `mindeckComposer` 在当前工作区以该卡片的预设打开一个空白对话，光标位于输入框；单击示例请求还会把它填入输入框，但不会发送。对话显示之前，页面上的所有操作都会等待。公司不再提供员工或成员退出登录时，左侧栏的这一行随之移除。
 
 其他 Host 插件可以调用 `ctx.mindeckEmployees.employeeForSession(sessionId)`，得到进行中对话所属员工的 Cloud id；通用助手和其他预设返回 undefined。[mindeck-models](../mindeck-models/README.zh.md) 会在网关请求中带上它。
 
@@ -58,7 +60,7 @@ kind: "package-reference"
 
 `cacheDir` 中的 `employees.json` 记录最后登录的成员，并按成员（Cloud 地址和用户 id）记录员工：先是 Cloud 顺序的当前员工，再是已停用的员工。新的 Cloud 列表替换该成员的当前员工；缓存中不在列表里的员工变为已停用。id 含 `[A-Za-z0-9_-]` 以外字符、缺少名称或 id 重复的条目会被跳过；示例请求去掉首尾空白，最多保留 4 条，技能名必须是有效的技能名。
 
-`ctx.mindeckEmployees.watch()` 通过 `mindeckEmployees` Remote 推送 `MindeckEmployeeCatalog`：先是通用助手，再是预设已注册的当前员工，不含已停用员工。`employeeForSession` 通过 `agentPresets.presetForSession` 读取 Session 的预设，只对当前已注册其预设的成员的员工给出结果。
+`ctx.mindeckEmployees.watch()` 通过 `mindeckEmployees` Remote 推送 `MindeckEmployeeCatalog`：先是通用助手，再是预设已注册的当前员工，不含已停用员工。`employeeForSession` 通过 `agentPresets.presetForSession` 读取 Session 的预设，只对当前已注册其预设的成员的员工给出结果。推送的列表首次出现员工时，客户端同时在根 `main` 插槽注册页面、以 order -30 在 `sidebar.panellist` 注册这一行；列表中没有员工时两者一起释放。**全部数字员工**以该面板 id 调用 `layout.selectPanel`。
 
 </details>
 

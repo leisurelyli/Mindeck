@@ -37,10 +37,16 @@
       "path": "../../client/ui-input-trigger"
     },
     {
+      "path": "../../client/ui-layout"
+    },
+    {
       "path": "../../client/ui-primitives"
     },
     {
       "path": "../../client/ui-renderer"
+    },
+    {
+      "path": "../../client/ui-sidebar"
     },
     {
       "path": "../../client/ui-sidebar-right"
@@ -53,6 +59,9 @@
     },
     {
       "path": "../../core/session"
+    },
+    {
+      "path": "../mindeck-account/tsconfig.client.json"
     },
     {
       "path": "../../typert/protocol"

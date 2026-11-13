@@ -1,0 +1,97 @@
+/* The skills page: the Plugins and Automation tasks page column (960px, the same inline insets and title step).
+   The heading and the search stay in place; the sections of skill cards scroll beneath them. */
+.page {
+  --skills-inset: clamp(24px, 4vw, 48px);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* A 9px rail carries the 5px thumb inset 2px from the page edge, as on the Automation tasks page; the heading
+   reserves the same rail so its column stays over the sections' column. */
+.scroll, .head {
+  scrollbar-gutter: stable;
+  --dsh-scrollbar-width: 9px;
+  --dsh-scrollbar-thumb-border: 2px;
+}
+.scroll { flex: 1; min-height: 0; overflow: auto; }
+
+.column { box-sizing: border-box; max-width: calc(960px + 2 * var(--skills-inset)); margin: 0 auto; padding: 0 var(--skills-inset); }
+.body { padding-top: 4px; padding-bottom: 48px; }
+
+@media (max-width: 767px) {
+  .page { --skills-inset: 20px; }
+}
+
+/* The heading row starts at the window's top edge; its 28px inset is the page's top inset. */
+.head { flex: none; overflow: hidden; padding: 28px 0 20px; }
+:global([data-platform='darwin']) .head { padding-top: calc(28px + var(--dsh-frame-top-clearance, 0px)); }
+.title { margin: 0; font-size: 20px; font-weight: 500; line-height: 28px; }
+.intro { margin: 4px 0 0; color: var(--dsw-alias-label-secondary); }
+
+.search { position: relative; max-width: 360px; margin-top: 16px; }
+.searchInput { box-sizing: border-box; width: 100%; }
+.searchInput input { padding-right: 32px; }
+/* The clear button beside the field owns clearing it. */
+.searchInput input::-webkit-search-cancel-button { display: none; }
+.clear { position: absolute; top: 50%; right: 6px; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: var(--dsw-radius-sm); background: transparent; color: var(--dsw-alias-label-tertiary); cursor: pointer; transform: translateY(-50%); }
+
+/* Sections sit farther apart than the cards inside them, so each heading reads with its own grid. */
+.section + .section { margin-top: 32px; }
+.sectionTitle { margin: 0 0 12px; font-size: 14px; font-weight: 500; line-height: 22px; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.item { display: flex; min-width: 0; }
+
+/* Settings card material. */
+.card {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px 12px 12px 16px;
+  border: 0.5px solid var(--dsw-alias-settings-card-stroke);
+  border-radius: var(--dsw-radius-xl);
+  background: var(--dsw-alias-settings-card-fill);
+}
+.cardText { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding-right: 4px; }
+.cardTitle { margin: 0; overflow: hidden; font-size: 14px; font-weight: 500; line-height: 22px; text-overflow: ellipsis; white-space: nowrap; }
+.cardMeta { display: flex; align-items: baseline; gap: 8px; min-width: 0; margin: 0; color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 18px; }
+.command { min-width: 0; overflow: hidden; font-family: var(--ds-font-family-code); text-overflow: ellipsis; white-space: nowrap; }
+.category { flex: none; }
+/* Two lines, reserved even when shorter, so the actions of neighboring cards line up. */
+.description { display: -webkit-box; min-height: 40px; margin: 6px 0 0; overflow: hidden; color: var(--dsw-alias-label-secondary); -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+
+.skeleton { height: 136px; border-radius: var(--dsw-radius-xl); background: var(--dsw-alias-bg-skeleton); }
+
+.notice { margin: 0; padding: 48px 0; color: var(--dsw-alias-label-secondary); text-align: center; }
+.empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 64px 0; text-align: center; }
+/* The Plugins page's icon tile: a hairline square around the glyph. */
+.emptyIcon { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; margin-bottom: 4px; border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-lg); color: var(--dsw-alias-label-secondary); }
+.emptyTitle { margin: 0; font-size: 14px; font-weight: 500; line-height: 22px; }
+.emptyHint { margin: 0; color: var(--dsw-alias-label-secondary); }
+
+/* The instructions dialog reads like a document: wider than a confirmation, its Markdown scrolling inside. */
+.dialog { width: min(720px, 100%); }
+.dialogBody { display: flex; flex-direction: column; gap: 12px; min-width: 0; margin-top: -12px; }
+.dialogMeta { display: flex; align-items: baseline; gap: 8px; min-width: 0; margin: 0; color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 18px; }
+.dialogDescription { margin: 0; color: var(--dsw-alias-label-secondary); font-size: 14px; line-height: 22px; }
+.dialogEmpty { margin: 0; color: var(--dsw-alias-label-tertiary); }
+
+@media (hover: hover) {
+  .clear:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-secondary); }
+}
+
+.clear:focus-visible { outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: -2px; }

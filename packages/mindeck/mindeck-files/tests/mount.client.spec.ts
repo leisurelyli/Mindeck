@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
-/** The library page registers its sidebar type, maps Remote failures, writes draft references, and leaves with the plugin. */
+/**
+ * The library registers its side panel, its page, and its row, maps Remote failures, writes draft references, and
+ * leaves with the plugin.
+ */
 import { Context, Service } from '@deepseek-ai/cordis'
 import { expect, it, vi } from 'vitest'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
@@ -8,10 +11,14 @@ import { StaticRemoteAccess } from '@deepseek-ai/dsh-client-test-runtime'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { RemoteError, type RemoteResult, type TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
 import type { LibraryAvailability, LibraryEntryView } from '../src/types.ts'
-import type { MindeckFilesInjected } from '../src/client/operations.ts'
-import { LIBRARY_TAB_ID, mountFiles } from '../src/client/mount.ts'
+import type { MindeckFilesInjected, MindeckFilesPageInjected } from '../src/client/operations.ts'
+import { LIBRARY_PANEL_ID, LIBRARY_TAB_ID, mountFiles } from '../src/client/mount.ts'
+import type { MindeckConversationRequest, MindeckDraft } from '@deepseek-ai/dsh-mindeck-account/client'
 import { LIBRARY_TEXT_NODE } from '../src/client/LibraryReference.tsx'
 import type { InputTriggerCandidate } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
+
+/** Matches the draft edit a page passes with its request. */
+const anyFunction: unknown = expect.any(Function)
 
 const contribution: TypertRemoteContribution = { package: '@deepseek-ai/dsh-mindeck-files', descriptors: [] }
 const sessionId = 'session-1' as SessionId
@@ -57,8 +64,9 @@ async function fixture() {
   } as never)
   const draft = { draft: 'Read ', draftRev: 3 }
   const input = { state: { getSnapshot: () => draft }, insertReference: vi.fn(() => true), focus: vi.fn() }
-  const scope = { get: (name: string) => name === 'conversation' ? { input: { for: () => input } } : undefined }
-  ctx.provide('sessions', { scope: (id: SessionId) => id === sessionId ? scope : undefined } as never)
+  const target: MindeckDraft = { scope: {} as never, input: input as never }
+  const startConversation = vi.fn(async (request?: MindeckConversationRequest) => { request?.prepare?.(target) })
+  ctx.provide('mindeckComposer', { draft: (id: SessionId) => id === sessionId ? target : undefined, startConversation } as never)
   const sources: Array<{
     name: string
     codec?: { serialize: (ref: string, signal: AbortSignal) => Promise<string> }
@@ -80,8 +88,10 @@ async function fixture() {
     'sidebar.right.pane.tab': { kind: 'keyed', scope: 'session' },
     'conversation.user.text.node': { kind: 'keyed', scope: 'session', inline: true },
     'tool.call.toolview': { kind: 'keyed', scope: 'session' },
+    'main': { kind: 'keyed', scope: 'root' },
+    'sidebar.panellist': { kind: 'list', scope: 'root' },
   } } as never, () => null)
-  return { ctx, remote, unmount, tabs, input, sources, rules }
+  return { ctx, remote, unmount, tabs, input, sources, rules, startConversation }
 }
 
 function face(entry: { inject?: unknown } | undefined, id: SessionId): MindeckFilesInjected {
@@ -89,7 +99,12 @@ function face(entry: { inject?: unknown } | undefined, id: SessionId): MindeckFi
   return (entry.inject as (sessionId: SessionId) => MindeckFilesInjected)(id)
 }
 
-it('registers the sidebar page, writes library references into the draft, shows them in sent messages, and withdraws all before the Remote', async () => {
+function pageFace(entry: { inject?: unknown } | undefined): MindeckFilesPageInjected {
+  if (typeof entry?.inject !== 'function') throw new Error('Expected an injected page face')
+  return (entry.inject as () => MindeckFilesPageInjected)()
+}
+
+it('registers the side panel, the page, and the row, writes library references into the draft, shows them in sent messages, and withdraws all before the Remote', async () => {
   const f = await fixture()
   try {
     const dispose = await mountFiles(f.ctx, contribution)
@@ -136,6 +151,19 @@ it('registers the sidebar page, writes library references into the draft, shows 
       ref: 'library:"/Shared with me/周报/"', label: '周报', appearance: 'folder',
     }), expect.anything())
 
+    // The page and its row start conversations with the same reference.
+    expect(f.ctx.slots.entries('sidebar.panellist').map(item => item.options)).toMatchObject([{ id: LIBRARY_PANEL_ID, order: -10 }])
+    const [main] = f.ctx.slots.entries('main')
+    expect(main?.options.key).toBe(LIBRARY_PANEL_ID)
+    const page = pageFace(main)
+    expect(page.hooks.library).toBe(operations.hooks.library)
+    expect(await page.list('/研发部')).toEqual({ ok: false, reason: 'denied' })
+    await page.startWith({ path: '/研发部/周报', name: '周报', kind: 'folder' })
+    expect(f.startConversation).toHaveBeenCalledWith({ prepare: anyFunction })
+    expect(f.input.insertReference).toHaveBeenLastCalledWith({
+      source: 'mindeck-files', ref: 'library:"/研发部/周报/"', label: '周报', appearance: 'folder', clipboardText: 'library:"/研发部/周报/"',
+    }, { start: 5, end: 5, draftRev: 3 })
+
     const [rule] = f.rules
     expect(rule?.id).toBe(LIBRARY_TEXT_NODE)
     const folderRef = 'library:"/Shared with me/周报/"'
@@ -153,6 +181,8 @@ it('registers the sidebar page, writes library references into the draft, shows 
     expect(f.ctx.slots.entries('conversation.user.text.node')).toHaveLength(0)
     expect(f.ctx.slots.entries('sidebar.right.pane.tab')).toHaveLength(0)
     expect(f.ctx.slots.entries('tool.call.toolview')).toHaveLength(0)
+    expect(f.ctx.slots.entries('main')).toHaveLength(0)
+    expect(f.ctx.slots.entries('sidebar.panellist')).toHaveLength(0)
     expect(operations.hooks.library.getSnapshot()).toEqual({ availability: undefined, failed: false })
     expect(f.unmount).toHaveBeenCalledOnce()
   } finally { await f.ctx.fiber.dispose() }

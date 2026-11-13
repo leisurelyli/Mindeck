@@ -8,11 +8,11 @@ The [Mindeck package group](../../packages/mindeck/README.md) connects Mindeck D
 
 | Owner | Responsibility |
 |---|---|
-| [mindeck-account](../../packages/mindeck/mindeck-account/README.md) | `ctx.mindeckAccount`: the Cloud address, device sign-in, the stored Cloud session, and the sign-in gate |
+| [mindeck-account](../../packages/mindeck/mindeck-account/README.md) | `ctx.mindeckAccount`: the Cloud address, device sign-in, the stored Cloud session, and the sign-in gate; the Client's `ctx.mindeckComposer`, through which the Mindeck pages open conversations |
 | [mindeck-models](../../packages/mindeck/mindeck-models/README.md) | The member's company models as model routes through the Cloud gateway, with quota and sign-in failures, and the `mindeck-search` web search provider, which searches through the gateway's `/gateway/v1/tools/search` only while the company has turned search on |
-| [mindeck-skills](../../packages/mindeck/mindeck-skills/README.md) | The member's company skills, cached on the device and served by a skill provider while signed in |
-| [mindeck-files](../../packages/mindeck/mindeck-files/README.md) | `ctx.mindeckFiles`: the file-library tools, the sidebar page, and `library:` references in messages |
-| [mindeck-employees](../../packages/mindeck/mindeck-employees/README.md) | `ctx.mindeckEmployees`: the general assistant and the company's digital employees as agent presets with their own persona, the new-conversation cards, and the employee of a live conversation |
+| [mindeck-skills](../../packages/mindeck/mindeck-skills/README.md) | The member's company skills, cached on the device and served by a skill provider while signed in, and the Skills page |
+| [mindeck-files](../../packages/mindeck/mindeck-files/README.md) | `ctx.mindeckFiles`: the file-library tools, the right-sidebar panel, the File library page, and `library:` references in messages |
+| [mindeck-employees](../../packages/mindeck/mindeck-employees/README.md) | `ctx.mindeckEmployees`: the general assistant and the company's digital employees as agent presets with their own persona, the new-conversation cards, the Digital employees page, and the employee of a live conversation |
 
 ## Account session
 
@@ -21,6 +21,10 @@ The [Mindeck package group](../../packages/mindeck/README.md) connects Mindeck D
 ## Digital employees
 
 `ctx.mindeckEmployees` registers `mindeck-general` and one `mindeck-employee-<Cloud id>` agent preset per digital employee, each the base preset's plugin rows with its own persona; the bundle makes `mindeck-general` the default. Employees that leave the Cloud listing stay registered as retired, so their conversations resume. `employeeForSession(sessionId)` returns the Cloud id of a live conversation's employee; mindeck-models sends it as `x-mindeck-employee` on gateway model requests and company searches, so Mindeck Cloud can attribute their usage.
+
+## Sidebar pages
+
+While the member has Mindeck access, the left sidebar lists **数字员工**, **技能**, and **资源库** above Plugins, at `sidebar.panellist` orders -30, -20, and -10, each opening a page in the root `main` slot; the employee row appears only while the company offers an employee. Each page starts a conversation through `ctx.mindeckComposer`: a blank conversation in the current Workspace, as New Session opens it, under the chosen employee's preset or else the Host's default preset, with a starter request, `/name `, or a `library:` reference put in its draft before it shows. The message box takes focus and nothing is sent. The right sidebar keeps the file library panel; skills have no right-sidebar page.
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
@@ -200,7 +204,7 @@ Source: [`packages/mindeck/mindeck-files/src/index.ts`](../../packages/mindeck/m
 
 ### `ctx.mindeckSkills` — `MindeckSkills`
 
-Keeps the member's company skills in the local cache, serves them while signed in, and lists them for the skills page.
+Keeps the member's company skills in the local cache, serves them while signed in, and lists them and their instructions for the skills page.
 
 ```ts cordis-catalog
 /**
@@ -209,6 +213,16 @@ Keeps the member's company skills in the local cache, serves them while signed i
  * @returns the current listing, then every change.
  */
 @Remote({ mode: 'stream' }) async *watch(signal: AbortSignal): AsyncIterable<MindeckSkillCatalog>
+
+/**
+ * Read the instructions of a company skill the member has on this computer, as the agent receives them.
+ * @param name - skill name from the listing.
+ * @param signal - caller cancellation.
+ * @returns the SKILL.md body without its front matter.
+ * @throws RemoteError `mindeck-skills/not-found` when the listing has no such skill, its cached copy is gone, or
+ * another provider's skill of that name takes precedence.
+ */
+@Remote async instructions(name: string, signal: AbortSignal): Promise<string>
 ```
 
 Source: [`packages/mindeck/mindeck-skills/src/index.ts`](../../packages/mindeck/mindeck-skills/src/index.ts)

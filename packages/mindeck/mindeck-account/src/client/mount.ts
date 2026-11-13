@@ -13,6 +13,7 @@ import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { RemoteFailure, TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
 import type { MindeckAccountView } from '../types.ts'
 import { AccountMenu } from './AccountMenu.tsx'
+import { composerInject, createMindeckComposer } from './composer.ts'
 import { AccountSection, AccountSectionIcon } from './AccountSection.tsx'
 import { QuotaNotice } from './QuotaNotice.tsx'
 import { SignInGate } from './SignInGate.tsx'
@@ -46,6 +47,8 @@ function failureReason(error: RemoteFailure): MindeckAccountKey {
 
 function registerUi(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { en, zh }), 'mindeck-account: dictionaries')
+  // The Mindeck pages open conversations through this service whether or not the member is signed in.
+  ctx.inject(composerInject, (child) => { child.provide('mindeckComposer', createMindeckComposer(child)) })
   const state = createSnapshotStore<MindeckAccountSnapshot>({ view: undefined, failed: false })
   const reminders = createSnapshotStore<MindeckReminderSnapshot>({ dismissed: [] })
   const appVersion = process.env.DSH_CLIENT_VERSION ?? ''

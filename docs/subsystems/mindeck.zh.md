@@ -8,11 +8,11 @@
 
 | 负责方 | 职责 |
 |---|---|
-| [mindeck-account](../../packages/mindeck/mindeck-account/README.zh.md) | `ctx.mindeckAccount`：Cloud 地址、设备登录、保存的 Cloud 会话和登录遮罩 |
+| [mindeck-account](../../packages/mindeck/mindeck-account/README.zh.md) | `ctx.mindeckAccount`：Cloud 地址、设备登录、保存的 Cloud 会话和登录遮罩；客户端的 `ctx.mindeckComposer`，Mindeck 各页面通过它打开对话 |
 | [mindeck-models](../../packages/mindeck/mindeck-models/README.zh.md) | 把成员可用的公司模型作为经 Cloud 网关的模型路由提供，并给出额度与登录失败提示；还提供 `mindeck-search` 联网搜索提供方，只在公司开启搜索时经网关的 `/gateway/v1/tools/search` 搜索 |
-| [mindeck-skills](../../packages/mindeck/mindeck-skills/README.zh.md) | 成员可用的公司技能：缓存在本机，登录期间由技能提供方提供 |
-| [mindeck-files](../../packages/mindeck/mindeck-files/README.zh.md) | `ctx.mindeckFiles`：资源库工具、侧栏页面和消息中的 `library:` 引用 |
-| [mindeck-employees](../../packages/mindeck/mindeck-employees/README.zh.md) | `ctx.mindeckEmployees`：作为带各自人设的 Agent 预设的通用助手和公司数字员工、新对话卡片，以及进行中对话所属的员工 |
+| [mindeck-skills](../../packages/mindeck/mindeck-skills/README.zh.md) | 成员可用的公司技能：缓存在本机，登录期间由技能提供方提供；以及技能页面 |
+| [mindeck-files](../../packages/mindeck/mindeck-files/README.zh.md) | `ctx.mindeckFiles`：资源库工具、右侧栏面板、资源库页面和消息中的 `library:` 引用 |
+| [mindeck-employees](../../packages/mindeck/mindeck-employees/README.zh.md) | `ctx.mindeckEmployees`：作为带各自人设的 Agent 预设的通用助手和公司数字员工、新对话卡片、数字员工页面，以及进行中对话所属的员工 |
 
 ## 账号会话
 
@@ -21,6 +21,10 @@
 ## 数字员工
 
 `ctx.mindeckEmployees` 注册 `mindeck-general`，并为每位数字员工注册一个 `mindeck-employee-<Cloud id>` Agent 预设，每个预设都是基础预设的插件行加上各自的人设；组合包把 `mindeck-general` 设为默认预设。离开 Cloud 列表的员工以已停用状态保留注册，因此其对话可以继续。`employeeForSession(sessionId)` 返回进行中对话所属员工的 Cloud id；mindeck-models 在网关模型请求和公司搜索中以 `x-mindeck-employee` 发送它，便于 Mindeck Cloud 归属用量。
+
+## 侧栏页面
+
+成员拥有 Mindeck 访问权限期间，左侧栏在“插件”上方列出**数字员工**、**技能**和**资源库**，在 `sidebar.panellist` 中的 order 分别为 -30、-20 和 -10，各自在根 `main` 插槽打开一个页面；公司提供员工时才显示数字员工这一行。各页面通过 `ctx.mindeckComposer` 开始对话：像“新会话”一样在当前工作区打开一个空白对话，使用所选员工的预设，否则使用 Host 的默认预设，并在对话显示前把示例请求、`/name ` 或 `library:` 引用放进草稿。输入框获得焦点，不会自动发送。右侧栏保留资源库面板；技能不再有右侧栏页面。
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
@@ -200,7 +204,7 @@ Source: [`packages/mindeck/mindeck-files/src/index.ts`](../../packages/mindeck/m
 
 ### `ctx.mindeckSkills` — `MindeckSkills`
 
-Keeps the member's company skills in the local cache, serves them while signed in, and lists them for the skills page.
+Keeps the member's company skills in the local cache, serves them while signed in, and lists them and their instructions for the skills page.
 
 ```ts cordis-catalog
 /**
@@ -209,6 +213,16 @@ Keeps the member's company skills in the local cache, serves them while signed i
  * @returns the current listing, then every change.
  */
 @Remote({ mode: 'stream' }) async *watch(signal: AbortSignal): AsyncIterable<MindeckSkillCatalog>
+
+/**
+ * Read the instructions of a company skill the member has on this computer, as the agent receives them.
+ * @param name - skill name from the listing.
+ * @param signal - caller cancellation.
+ * @returns the SKILL.md body without its front matter.
+ * @throws RemoteError `mindeck-skills/not-found` when the listing has no such skill, its cached copy is gone, or
+ * another provider's skill of that name takes precedence.
+ */
+@Remote async instructions(name: string, signal: AbortSignal): Promise<string>
 ```
 
 Source: [`packages/mindeck/mindeck-skills/src/index.ts`](../../packages/mindeck/mindeck-skills/src/index.ts)

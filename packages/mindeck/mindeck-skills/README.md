@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Use the skills a company publishes in Mindeck Cloud. While Mindeck Desktop is signed in, this plugin keeps a local copy of the skills the member receives and serves them like skills in a custom skill directory. Signing out removes the copy. A **Skills** page in the right sidebar lists them by the company's names and categories, recommended skills first, and puts one in the message box with a click.
+Use the skills a company publishes in Mindeck Cloud. While Mindeck Desktop is signed in, this plugin keeps a local copy of the skills the member receives and serves them like skills in a custom skill directory. Signing out removes the copy. A **Skills** page in the left sidebar lists them by the company's names and categories, recommended skills first, shows each skill's instructions, and starts a new conversation with one.
 
 ## Table of Contents
 
@@ -29,7 +29,7 @@ Mount the plugin on the Host after the [Mindeck account](../mindeck-account/READ
 
 The plugin refreshes after each sign-in or sign-out and every `refreshIntervalMs` (ten minutes by default). It downloads only skills whose content changed and removes skills the member no longer receives. A skill that fails to download keeps its previous copy until the next refresh. `maxSkillBytes` and `maxSkillFiles` bound one skill, `requestTimeoutMs` bounds each request, and `cacheDir` moves the cache from its default, `mindeck` under the DeepSeek Harness home.
 
-The Client entry `@deepseek-ai/dsh-mindeck-skills/client` adds the **Skills** page to the right sidebar and its guide. The page names the company, lists the recommended skills, then each category in Chinese reading order, then ungrouped skills, then the other skills of the conversation under **Built into Mindeck**. Search matches names, categories, descriptions, and the pinyin Mindeck Cloud sends, so `zb` finds 周报助手. Clicking a skill puts `/name ` at the start of the message draft, replacing a skill already there; the information button opens the skill's `SKILL.md` in the side panel. Until Mindeck Cloud answers, the page lists the skills saved with the cache.
+The Client entry `@deepseek-ai/dsh-mindeck-skills/client` adds **技能** to the left sidebar before Plugins, with its page in the main column. The page names the company and how many skills it provides, lists the recommended skills under **公司推荐**, then each category in Chinese reading order, then ungrouped skills under **其他**; a recommended skill is not repeated in its category. Search matches names, categories, descriptions, and the pinyin Mindeck Cloud sends, so `zb` finds 周报助手. **使用** opens a blank conversation through the [Mindeck account](../mindeck-account/README.md)'s `mindeckComposer`, puts `/name ` at the start of its draft, replacing a skill already there, and leaves the cursor in the message box; **查看说明** shows the skill's `SKILL.md` in a dialog that can also start the conversation. Typing `/` in a conversation lists the same skills. Until Mindeck Cloud answers, the page lists the skills saved with the cache.
 
 -----
 
@@ -41,7 +41,7 @@ The Client entry `@deepseek-ai/dsh-mindeck-skills/client` adds the **Skills** pa
 
 The cache directory holds `skills/` (one directory per skill), `staging/`, and `skills.json`, which records the Cloud address, the member, each skill's content hash, and the listing of the installed skills (display name, category, description, recommendation, and pinyin keys). A sync lists `GET {endpoints.skills}`, downloads `GET {endpoints.skills}/{name}` for each skill whose hash or `SKILL.md` is missing, checks every path and the size limits, writes the files into `staging/`, and renames the result over the cached directory. A manifest for another member or Cloud address clears the cache before syncing; sign-out clears it entirely. A 401 reports the token to `mindeckAccount.rejectToken`.
 
-`ctx.mindeckSkills.watch()` streams `MindeckSkillCatalog`, the company name and the installed skills in Cloud order, over the `mindeckSkills` Remote; a skill that has no installed copy is not listed. The page reads the conversation's own catalog through `skills/list` for the built-in skills and the `SKILL.md` paths.
+`ctx.mindeckSkills.watch()` streams `MindeckSkillCatalog`, the company name and the installed skills in Cloud order, over the `mindeckSkills` Remote; a skill that has no installed copy is not listed. `ctx.mindeckSkills.instructions(name)` returns the `SKILL.md` body of an installed company skill as the skill registry serves it, without front matter, and fails with `mindeck-skills/not-found` when the member has no installed copy of that skill or another provider's skill of that name takes precedence. The Client registers the page in the root `main` slot and its `sidebar.panellist` row at order -20 while it has `mindeckSkills/watch` access.
 
 A `FileSystemSkillProvider` from [skill-filesystem](../../skill/skill-filesystem/README.md) serves `skills/` as its only root, without watching it; the plugin invalidates the catalog after each sync that changed the cache. Paths must be relative, use `/`, avoid `.` and `..` segments, and avoid names Windows cannot store; file names that differ only in case are refused.
 
@@ -81,6 +81,7 @@ A refresh that adds, changes, or removes a skill changes the skill catalog for l
 
 - Two Hosts of the same Mindeck home that sync at the same moment may each replace a skill directory; the last replacement wins.
 - File permissions are not part of the Cloud format; scripts in a skill are written without the executable bit.
+- The page lists only company skills; built-in skills and the member's own skills appear only in a conversation's `/` menu.
 
 -----
 

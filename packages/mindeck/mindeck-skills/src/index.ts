@@ -1,7 +1,7 @@
 /**
  * Company skills for Mindeck Desktop. The plugin keeps a local copy of the skills Mindeck Cloud offers
  * the signed-in member, serves it through a filesystem skill provider named `mindeck`, and streams how
- * the skills are listed to the skills page.
+ * the skills are listed, and serves their instructions, to the skills page.
  * @module @deepseek-ai/dsh-mindeck-skills
  */
 import { access } from 'node:fs/promises'
@@ -9,11 +9,11 @@ import { join, resolve } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
-import type {} from '@deepseek-ai/dsh-mindeck-account'
+import { followChanges } from '@deepseek-ai/dsh-mindeck-account'
 import type { SkillProviderControl } from '@deepseek-ai/dsh-skill'
 import { FileSystemSkillProvider } from '@deepseek-ai/dsh-skill-filesystem'
 import { deadline } from '@deepseek-ai/dsh-timeout'
-import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
+import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { deepEqualJson } from '@deepseek-ai/dsh-util-values'
 import { cacheLayout, clearCache, installSkill, pruneSkills, readManifest, skillFiles, writeManifest } from './cache.ts'
 import type { CacheLayout } from './cache.ts'
@@ -64,7 +64,10 @@ async function isInstalled(layout: CacheLayout, skill: string): Promise<boolean>
 
 const SIGNED_OUT: MindeckSkillCatalog = { company: null, skills: [] }
 
-/** Keeps the member's company skills in the local cache, serves them while signed in, and lists them for the skills page. */
+/**
+ * Keeps the member's company skills in the local cache, serves them while signed in, and lists them and their
+ * instructions for the skills page.
+ */
 export default class MindeckSkills extends TypertRemoteService {
   static inject = ['skills', 'mindeckAccount', 'typert']
   static Config: z<Config> = z.object({
@@ -210,19 +213,25 @@ export default class MindeckSkills extends TypertRemoteService {
    */
   @Remote({ mode: 'stream' })
   async *watch(signal: AbortSignal): AsyncIterable<MindeckSkillCatalog> {
-    let dirty = true
-    let wake: (() => void) | undefined
-    const wakeUp = (): void => { dirty = true; wake?.() }
-    this.listeners.add(wakeUp)
-    signal.addEventListener('abort', wakeUp, { once: true })
-    try {
-      while (!signal.aborted && !this.lifetime.signal.aborted) {
-        if (dirty) { dirty = false; yield this.catalog; continue }
-        await new Promise<void>((resolve) => { wake = resolve })
-      }
-    } finally {
-      this.listeners.delete(wakeUp)
-      signal.removeEventListener('abort', wakeUp)
-    }
+    yield* followChanges(this.listeners, signal, this.lifetime.signal, () => this.catalog)
+  }
+
+  /**
+   * Read the instructions of a company skill the member has on this computer, as the agent receives them.
+   * @param name - skill name from the listing.
+   * @param signal - caller cancellation.
+   * @returns the SKILL.md body without its front matter.
+   * @throws RemoteError `mindeck-skills/not-found` when the listing has no such skill, its cached copy is gone, or
+   * another provider's skill of that name takes precedence.
+   */
+  @Remote
+  async instructions(name: string, signal: AbortSignal): Promise<string> {
+    const missing = (): RemoteError<'mindeck-skills/not-found'> =>
+      new RemoteError('mindeck-skills/not-found', `the member has no company skill named "${name}"`, {})
+    if (!this.catalog.skills.some(skill => skill.name === name)) throw missing()
+    const skill = await this.ctx.skills.get(name, { signal })
+    // A skill of the same name from another provider takes precedence in the registry; it is not this listing's.
+    if (skill?.provider !== PROVIDER_NAME) throw missing()
+    return skill.content
   }
 }

@@ -19,6 +19,7 @@ import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-settings'
 import { deadline } from '@deepseek-ai/dsh-timeout'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
+import { followChanges } from './changes.ts'
 import {
   type DeviceInfo, type MindeckBootstrap, MindeckCloudError, normalizeCloudUrl, pollDeviceToken, probeCloud,
   readBootstrap, readQuota, reportDevice, reportDeviceRequest, requestDeviceCode, sendFeedback, signOutDevice,
@@ -30,6 +31,7 @@ import type {
 export type * from './types.ts'
 export type { MindeckBootstrap } from './cloud.ts'
 export { normalizeCloudUrl } from './cloud.ts'
+export { followChanges } from './changes.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -229,20 +231,7 @@ export default class MindeckAccount extends TypertRemoteService {
    */
   @Remote({ mode: 'stream' })
   async *watch(signal: AbortSignal): AsyncIterable<MindeckAccountView> {
-    let dirty = true
-    let wake: (() => void) | undefined
-    const wakeUp = (): void => { dirty = true; wake?.() }
-    this.listeners.add(wakeUp)
-    signal.addEventListener('abort', wakeUp, { once: true })
-    try {
-      while (!signal.aborted && !this.lifetime.signal.aborted) {
-        if (dirty) { dirty = false; yield await this.getState(); continue }
-        await new Promise<void>((resolve) => { wake = resolve })
-      }
-    } finally {
-      this.listeners.delete(wakeUp)
-      signal.removeEventListener('abort', wakeUp)
-    }
+    yield* followChanges(this.listeners, signal, this.lifetime.signal, () => this.getState())
   }
 
   /**
