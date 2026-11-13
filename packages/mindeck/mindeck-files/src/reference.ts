@@ -1,7 +1,12 @@
-/** Composer reference form of a library path, shared by the Host tools and the Client panel. */
+/** Composer reference form of a library path and the fixed space names, shared by the Host tools and the Client panel. */
 
 /** Prefix that composer references put before a library path; the tools accept paths with or without it. */
 export const LIBRARY_REFERENCE_PREFIX = 'library:'
+
+/** Space name of the member's own drive. */
+export const PERSONAL_SPACE = 'Personal'
+/** Space name of the items other members share with the member. */
+export const SHARED_SPACE = 'Shared with me'
 
 /** A library reference found in message text. */
 export interface LibraryReferenceMatch {

@@ -8,15 +8,18 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+import type {} from '@deepseek-ai/dsh-client-ui-tool/client'
 import type {} from '@deepseek-ai/dsh-mindeck-files/remote'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { IconFolderCloseRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { RemoteFailure, RemoteResult, TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
 import { libraryReference } from '../reference.ts'
+import { libraryLabel } from './labels.ts'
 import type { LibraryAvailability, LibraryEntryView } from '../types.ts'
 import { LibraryPanel } from './LibraryPanel.tsx'
 import { LIBRARY_TEXT_NODE, LibraryReference, libraryReferenceRule } from './LibraryReference.tsx'
+import { LIBRARY_TOOLS, LibraryToolRow } from './LibraryToolRow.tsx'
 import { en, NS, zh, type MindeckFilesKey } from './locales.ts'
 import type { LibraryResult, LibrarySnapshot, MindeckFilesInjected } from './operations.ts'
 
@@ -25,6 +28,8 @@ export const inject = ['remote', 'slots', 'locale', 'remoteAccess', 'sidebarRigh
 
 /** Input-trigger source that owns the panel's draft references. */
 const REFERENCE_SOURCE = 'mindeck-files'
+/** Pause in typing after `@` before the library is searched, in milliseconds. */
+const SEARCH_DELAY_MS = 250
 
 /** Identity of the sidebar page type. */
 export const LIBRARY_TAB_ID = '@deepseek-ai/dsh-mindeck-files'
@@ -92,11 +97,35 @@ function registerUi(ctx: Context): void {
       }
     })().catch(() => { if (!grant.ended) state.set({ ...state.getSnapshot(), failed: true }) })
   })
-  // Draft references serialize to their `library:` text; the source offers no `@` candidates of its own.
+  // `@` finds library files and folders by name; draft references serialize to their `library:` text.
   ctx.effect(() => ctx.inputTriggers.registerSource({
-    trigger: '@', name: REFERENCE_SOURCE, showGroupTitle: false,
-    candidates: () => Promise.resolve([]),
-    onPick: () => undefined,
+    trigger: '@', name: REFERENCE_SOURCE, order: 20, showGroupTitle: false,
+    async candidates(_session, { query, signal }) {
+      const text = query.trim()
+      if (text === '' || state.getSnapshot().availability !== 'ready') return []
+      // Each keystroke supersedes the previous request; only a pause in typing reaches the library.
+      const paused = await new Promise<boolean>((resolve) => {
+        const timer = setTimeout(() => { resolve(true) }, SEARCH_DELAY_MS)
+        signal.addEventListener('abort', () => { clearTimeout(timer); resolve(false) }, { once: true })
+      })
+      if (!paused) return []
+      const found = await ctx.remote.mindeckFiles.search(text, signal)
+      if (!found.ok || signal.aborted) return []
+      return found.value.map((entry) => {
+        const label = libraryLabel(entry.path, t)
+        return {
+          name: entry.path, label: entry.name, description: label.location, icon: entry.kind,
+          section: t('title'), value: entry.kind,
+        }
+      })
+    },
+    onPick({ candidate }) {
+      const folder = candidate.value === 'folder'
+      const ref = libraryReference(candidate.name, folder)
+      return { insert: {
+        source: REFERENCE_SOURCE, ref, label: candidate.label ?? candidate.name, appearance: folder ? 'folder' : 'file', clipboardText: ref,
+      } }
+    },
     codec: { clipboardText: ref => ref, serialize: ref => Promise.resolve(ref) },
   }), 'mindeck-files: draft references')
   // Sent messages show the references as labels, also while the library is unavailable.
@@ -104,6 +133,10 @@ function registerUi(ctx: Context): void {
   ctx.slots.inject('conversation.user.text.node', () => ctx.slots.register({
     name: 'conversation.user.text.node', key: LIBRARY_TEXT_NODE, priority: 100,
   }, LibraryReference))
+  // Library tool calls read as what the agent did and where, also while the library is unavailable.
+  for (const tool of LIBRARY_TOOLS) {
+    ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({ name: 'tool.call.toolview', key: tool, locale: NS }, LibraryToolRow))
+  }
   const reads = {
     spaces: async () => result(await ctx.remote.mindeckFiles.spaces()),
     list: async (path: string) => result(await ctx.remote.mindeckFiles.list(path)),

@@ -11,6 +11,7 @@ import type { LibraryAvailability, LibraryEntryView } from '../src/types.ts'
 import type { MindeckFilesInjected } from '../src/client/operations.ts'
 import { LIBRARY_TAB_ID, mountFiles } from '../src/client/mount.ts'
 import { LIBRARY_TEXT_NODE } from '../src/client/LibraryReference.tsx'
+import type { InputTriggerCandidate } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 
 const contribution: TypertRemoteContribution = { package: '@deepseek-ai/dsh-mindeck-files', descriptors: [] }
 const sessionId = 'session-1' as SessionId
@@ -40,7 +41,10 @@ async function fixture() {
     list: vi.fn(async (_path: string): Promise<RemoteResult<LibraryEntryView[]>> => ({
       ok: false, error: new RemoteError('mindeck-files/denied', 'no access', {}),
     })),
-    search: vi.fn(async (_query: string): Promise<RemoteResult<LibraryEntryView[]>> => ({ ok: true, value: [] })),
+    search: vi.fn(async (_query: string, _signal?: AbortSignal): Promise<RemoteResult<LibraryEntryView[]>> => ({ ok: true, value: [
+      { path: '/Personal/周报/第一周.md', name: '第一周.md', kind: 'file', writable: true },
+      { path: '/研发部/周报', name: '周报', kind: 'folder', writable: true },
+    ] })),
     upload: vi.fn(async (_folder: string, _name: string, _content: string, _overwrite: boolean)
     : Promise<RemoteResult<LibraryEntryView>> => ({ ok: false, error: new RemoteError('mindeck-files/exists', 'taken', {}) })),
   }
@@ -55,7 +59,12 @@ async function fixture() {
   const input = { state: { getSnapshot: () => draft }, insertReference: vi.fn(() => true), focus: vi.fn() }
   const scope = { get: (name: string) => name === 'conversation' ? { input: { for: () => input } } : undefined }
   ctx.provide('sessions', { scope: (id: SessionId) => id === sessionId ? scope : undefined } as never)
-  const sources: Array<{ name: string; codec?: { serialize: (ref: string, signal: AbortSignal) => Promise<string> } }> = []
+  const sources: Array<{
+    name: string
+    codec?: { serialize: (ref: string, signal: AbortSignal) => Promise<string> }
+    candidates: (session: unknown, request: { query: string; signal: AbortSignal }) => Promise<readonly InputTriggerCandidate[]>
+    onPick: (pick: { candidate: InputTriggerCandidate }) => unknown
+  }> = []
   const registerSource = (source: (typeof sources)[number]) => {
     sources.push(source)
     return () => { sources.splice(sources.indexOf(source), 1) }
@@ -70,6 +79,7 @@ async function fixture() {
   ctx.slots.register({ name: 'root', children: {
     'sidebar.right.pane.tab': { kind: 'keyed', scope: 'session' },
     'conversation.user.text.node': { kind: 'keyed', scope: 'session', inline: true },
+    'tool.call.toolview': { kind: 'keyed', scope: 'session' },
   } } as never, () => null)
   return { ctx, remote, unmount, tabs, input, sources, rules }
 }
@@ -102,6 +112,23 @@ it('registers the sidebar page, writes library references into the draft, shows 
     expect(f.input.focus).toHaveBeenCalledOnce()
     expect(face(entry, 'other' as SessionId).addToConversation(file)).toBe(false)
     const [source] = f.sources
+    if (source === undefined) throw new Error('Expected the library reference source')
+    const signal = new AbortController().signal
+    expect(await source.candidates({ sessionId }, { query: ' ', signal })).toEqual([])
+    const candidates = await source.candidates({ sessionId }, { query: '周报', signal })
+    expect(f.remote.search).toHaveBeenCalledWith('周报', signal)
+    expect(candidates).toEqual([
+      { name: '/Personal/周报/第一周.md', label: '第一周.md', description: 'My files / 周报', icon: 'file', section: 'File library', value: 'file' },
+      { name: '/研发部/周报', label: '周报', description: '研发部', icon: 'folder', section: 'File library', value: 'folder' },
+    ])
+    expect(source.onPick({ candidate: candidates[1]! })).toEqual({ insert: {
+      source: 'mindeck-files', ref: 'library:"/研发部/周报/"', label: '周报', appearance: 'folder', clipboardText: 'library:"/研发部/周报/"',
+    } })
+    const superseded = new AbortController()
+    const pending = source.candidates({ sessionId }, { query: '周', signal: superseded.signal })
+    superseded.abort()
+    expect(await pending).toEqual([])
+    expect(f.remote.search).toHaveBeenCalledOnce()
     expect(source?.name).toBe('mindeck-files')
     expect(await source?.codec?.serialize('library:/研发部/规范.md', new AbortController().signal)).toBe('library:/研发部/规范.md')
     expect(operations.addToConversation({ path: '/Shared with me/周报', name: '周报', kind: 'folder', writable: false })).toBe(true)
@@ -116,6 +143,8 @@ it('registers the sidebar page, writes library references into the draft, shows 
       id: LIBRARY_TEXT_NODE, start: 2, end: 2 + folderRef.length, data: { path: '/Shared with me/周报/' },
     })
     expect(f.ctx.slots.entries('conversation.user.text.node').map(item => item.options.key)).toEqual([LIBRARY_TEXT_NODE])
+    expect(f.ctx.slots.entries('tool.call.toolview').map(item => item.options.key))
+      .toEqual(['library_list', 'library_search', 'library_download', 'library_upload'])
 
     await dispose()
     expect(f.tabs).toEqual([])
@@ -123,6 +152,7 @@ it('registers the sidebar page, writes library references into the draft, shows 
     expect(f.rules).toEqual([])
     expect(f.ctx.slots.entries('conversation.user.text.node')).toHaveLength(0)
     expect(f.ctx.slots.entries('sidebar.right.pane.tab')).toHaveLength(0)
+    expect(f.ctx.slots.entries('tool.call.toolview')).toHaveLength(0)
     expect(operations.hooks.library.getSnapshot()).toEqual({ availability: undefined, failed: false })
     expect(f.unmount).toHaveBeenCalledOnce()
   } finally { await f.ctx.fiber.dispose() }

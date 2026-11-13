@@ -1,10 +1,8 @@
 /** Library paths: `/<space>/<folders>/<file>`, where a space is one OpenCloud drive named for the model and the panel. */
 import { LibraryError, type OpenCloudDrive, type SpaceKind } from './opencloud.ts'
+import { PERSONAL_SPACE, SHARED_SPACE } from './reference.ts'
 
-/** Space name of the member's own drive. */
-export const PERSONAL_SPACE = 'Personal'
-/** Space name of the items other members share with the member. */
-export const SHARED_SPACE = 'Shared with me'
+export { PERSONAL_SPACE, SHARED_SPACE } from './reference.ts'
 
 /** One space of the file library. */
 export interface LibrarySpace {
