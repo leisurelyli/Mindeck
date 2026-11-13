@@ -18,7 +18,7 @@
  * scrollbar indirection away while it is elsewhere, so a list the user is not
  * pointing at carries no bar.
  */
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
   FishLogo, IconAppsAddOutlineRegular, IconNewChatOutlineMedium, IconNewChatOutlineRegular,
@@ -60,8 +60,8 @@ type PanelRowProps =
   & Pick<SidebarSectionOwnerProps, 'wide'>
   & Pick<PropsRuntime<'sidebar'>, 'usePanelInfo'>
   & Pick<InjectFace<SidebarRootInjected>, 'selectPanel' | 'trackEntryClick' | 'setPinned'>
-  & { readonly unpinLabel: string; readonly unpinTooltip: string; readonly canUnpin: boolean }
-  & PropsRenderFactories
+  & { readonly unpinLabel: string; readonly unpinTooltip: string; readonly canUnpin: boolean; readonly badged: boolean }
+  & PropsRenderFactories & PropsRenderSlots<'sidebar.panellist.badge'>
 
 /** Analytics category of an official panel; other panels are never reported. */
 function officialEntry(id: string): 'plugin' | 'cron' | undefined {
@@ -71,9 +71,11 @@ function officialEntry(id: string): 'plugin' | 'cron' | undefined {
 
 /** Each panel row subscribes only to its own selection state. */
 function PanelRow({
-  id, label, wide, unpinLabel, unpinTooltip, canUnpin, usePanelInfo, selectPanel, setPinned, trackEntryClick, renderFactorySlot,
+  id, label, wide, unpinLabel, unpinTooltip, canUnpin, badged, usePanelInfo, selectPanel, setPinned, trackEntryClick,
+  renderFactorySlot, renderSlot,
 }: PanelRowProps) {
   const active = usePanelInfo(info => info.activePanelId === id)
+  const badgeId = useId()
   return (
     <div className={clsx(css.panelEntry, wide && css.panelEntryWide, active && css.panelEntryActive)}>
       <Tooltip label={label} delayMs={500} disabled={wide}>
@@ -81,6 +83,7 @@ function PanelRow({
           type="button"
           className={css.panelRow}
           aria-label={label}
+          aria-describedby={badged ? badgeId : undefined}
           aria-current={active ? 'page' : undefined}
           onClick={() => {
             const entry = officialEntry(id)
@@ -94,6 +97,11 @@ function PanelRow({
           {wide && (
             <span className={clsx(css.panelTitle, css.wide)}>
               {label}
+            </span>
+          )}
+          {badged && (
+            <span id={badgeId} className={clsx(css.panelBadge, wide && css.wide)}>
+              {renderSlot('sidebar.panellist.badge', { wide, active }, { only: id })}
             </span>
           )}
         </button>
@@ -161,6 +169,7 @@ export function SidebarRoot({
   usePanels,
   useEntryPins,
   useEntryActions,
+  usePanelBadges,
   useShortcuts,
   usePanelInfo,
   t,
@@ -171,6 +180,7 @@ export function SidebarRoot({
   const unpinned = useEntryPins(ids => ids)
   const activePanelId = usePanelInfo(info => info.activePanelId)
   const hasEntryActions = useEntryActions(registered => registered)
+  const badges = usePanelBadges(ids => ids)
   const shortcut = useShortcuts(rows => rows.find(row => row.id === 'sidebar.left.toggle'))
   const newShortcut = useShortcuts(rows => rows.find(row => row.id === 'session.new'))
   // A page whose access snapshot excludes starting a Session offers no New Session affordance.
@@ -418,6 +428,8 @@ export function SidebarRoot({
                   unpinLabel={t('panels.unpin', { name: label })}
                   unpinTooltip={t('panels.unpinTooltip')}
                   canUnpin={hasEntryActions && id !== FIXED_PANEL_ID}
+                  badged={badges.includes(id)}
+                  renderSlot={renderSlot}
                   setPinned={setPinned}
                   usePanelInfo={usePanelInfo}
                   selectPanel={selectPanel}

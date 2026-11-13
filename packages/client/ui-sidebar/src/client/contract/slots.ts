@@ -45,6 +45,12 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * the sidebar owns the button and resolves its label from list metadata.
      */
     'sidebar.panellist': { kind: 'list'; scope: 'root'; owner: SidebarPanelIconOwnerProps }
+    /**
+     * Optional badge of a global panel row, such as an unread count. Each list id addresses the
+     * `sidebar.panellist` row of the same id; the row renders the badge after its title, or at its
+     * icon's corner in the rail, and announces the badge's text as the row's description.
+     */
+    'sidebar.panellist.badge': { kind: 'list'; scope: 'root'; owner: SidebarPanelBadgeOwnerProps }
     /** Rows of the panel list's More menu; the sidebar shows More only while this list has registrations. */
     'sidebar.panellist.actions': { kind: 'list'; scope: 'root'; owner: SidebarPanelActionsOwnerProps }
     /**
@@ -92,6 +98,14 @@ export interface SidebarBrandNameOwnerProps {
 export interface SidebarPanelIconOwnerProps {
   /** Requested square edge in pixels. */
   size: number
+  /** Whether this panel is selected in the main column. */
+  active: boolean
+}
+
+/** Presentation supplied to a global panel row's badge. */
+export interface SidebarPanelBadgeOwnerProps {
+  /** Whether the sidebar renders wide content (false = 56px rail). */
+  wide: boolean
   /** Whether this panel is selected in the main column. */
   active: boolean
 }
@@ -220,6 +234,8 @@ export type SidebarRootInjected = {
     entryPins: ObservableSnapshot<readonly string[]>
     /** Whether `sidebar.panellist.actions` has registrations. */
     entryActions: ObservableSnapshot<boolean>
+    /** Panel ids with a `sidebar.panellist.badge` registration. */
+    panelBadges: ObservableSnapshot<readonly string[]>
   }
 }
 
@@ -235,6 +251,7 @@ export type SidebarRootComponentProps =
     | 'sidebar.brand.name'
     | 'sidebar.toggle.badge'
     | 'sidebar.panellist.actions'
+    | 'sidebar.panellist.badge'
     | 'sidebar.workspaces'
     | 'sidebar.settings'
     | 'sidebar.footer.action'

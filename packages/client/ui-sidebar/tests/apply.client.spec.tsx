@@ -76,6 +76,7 @@ describe('ui-sidebar apply', () => {
     expect(b.slots.spec('sidebar.settings')).toEqual({ kind: 'single', scope: 'root' })
     expect(b.slots.spec('sidebar.footer.action')).toEqual({ kind: 'list', scope: 'root' })
     expect(b.slots.spec('sidebar.panellist')).toEqual({ kind: 'list', scope: 'root' })
+    expect(b.slots.spec('sidebar.panellist.badge')).toEqual({ kind: 'list', scope: 'root' })
     // Copy rides the standard locale seat, not the inject face.
     expect(b.slots.entries('sidebar')[0]!.locale).toBe('sidebar')
     // The window-chrome occupant reuses the shell's inject face and locale.
@@ -89,6 +90,7 @@ describe('ui-sidebar apply', () => {
     expect(injected.hooks.panels.getSnapshot()).toEqual([])
     expect(injected.hooks.entryPins.getSnapshot()).toEqual([])
     expect(injected.hooks.entryActions.getSnapshot()).toBe(false)
+    expect(injected.hooks.panelBadges.getSnapshot()).toEqual([])
     expect(b.slots.entries('main')).toEqual([])
     // Both arms delegate to the Workspace UI's shared New Session action.
     injected.startSession('workspace' as never)
@@ -175,6 +177,26 @@ describe('ui-sidebar apply', () => {
       expect(b.slots.entries('main')).toEqual([])
     } finally {
       await panel.dispose()
+      await sidebar.dispose()
+    }
+  })
+
+  it('lists the panels that have a badge and drops a badge with its owner', async () => {
+    const b = await bench()
+    const sidebar = b.ctx.plugin({ inject: [...inject], apply })
+    await sidebar.await()
+    const injected = (b.slots.entries('sidebar')[0]!.inject as () => SidebarRootInjected)()
+    const badge = b.ctx.plugin({
+      inject: ['slots'],
+      apply(ctx: Context) { ctx.slots.register({ name: 'sidebar.panellist.badge', id: 'custom-panel' }, () => null) },
+    })
+    try {
+      await badge.await()
+      await vi.waitFor(() => { expect(injected.hooks.panelBadges.getSnapshot()).toEqual(['custom-panel']) })
+      await badge.dispose()
+      await vi.waitFor(() => { expect(injected.hooks.panelBadges.getSnapshot()).toEqual([]) })
+    } finally {
+      await badge.dispose()
       await sidebar.dispose()
     }
   })

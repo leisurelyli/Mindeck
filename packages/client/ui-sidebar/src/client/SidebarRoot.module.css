@@ -742,6 +742,28 @@
   white-space: nowrap;
 }
 
+/* A panel badge ends the expanded row before the unpin action's reserved
+   inset; in the rail it sits on the icon's top-right corner. The occupant
+   draws the badge; an empty occupant leaves no box. */
+.panelBadge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.panelBadge:empty {
+  display: none;
+}
+
+.collapsed .panelBadge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  margin: 0;
+  pointer-events: none;
+}
+
 .collapsed .panelList {
   gap: 12px;
   margin-bottom: 12px;
@@ -752,6 +774,7 @@
 }
 
 .collapsed .panelRow {
+  position: relative;
   width: 36px;
   height: 36px;
   justify-content: center;
