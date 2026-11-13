@@ -7,36 +7,43 @@ import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-tes
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type { MindeckAccountView, MindeckSignInAttemptId } from '../src/types.ts'
 import { en } from '../src/client/locales.ts'
-import type { MindeckAccountSnapshot, OperationOutcome } from '../src/client/operations.ts'
+import type { MindeckAccountSnapshot, MindeckReminderSnapshot, OperationOutcome } from '../src/client/operations.ts'
 import { SignInGate, type SignInGateProps } from '../src/client/SignInGate.tsx'
 import { AccountSection, type AccountSectionProps } from '../src/client/AccountSection.tsx'
 import { QuotaNotice, type QuotaNoticeProps } from '../src/client/QuotaNotice.tsx'
 import { cloudUrlInText } from '../src/client/address.ts'
+import { QuotaDock, type QuotaDockProps } from '../src/client/QuotaDock.tsx'
+import { AccountMenu, type AccountMenuProps } from '../src/client/AccountMenu.tsx'
+import type { MindeckQuota } from '../src/types.ts'
 
 afterEach(cleanup)
 
 const attemptId = brandString<MindeckSignInAttemptId>('attempt-1')
 const signedOut: MindeckAccountView = {
-  cloudUrl: null, status: 'signed-out', user: null, companyName: null, notice: null, attempt: null,
+  cloudUrl: null, status: 'signed-out', user: null, companyName: null, notice: null, attempt: null, quota: null,
 }
 const signedIn: MindeckAccountView = {
-  cloudUrl: 'https://cloud.example.com', status: 'signed-in', companyName: '星河科技', notice: null, attempt: null,
+  cloudUrl: 'https://cloud.example.com', status: 'signed-in', companyName: '星河科技', notice: null, attempt: null, quota: null,
   user: { id: 'user-1', name: '林晓', email: 'lin@example.com', role: 'admin', department: null },
 }
 
 function fixture(view: MindeckAccountView | undefined, failed = false) {
   const account = createSnapshotStore<MindeckAccountSnapshot>({ view, failed })
+  const reminders = createSnapshotStore<MindeckReminderSnapshot>({ dismissed: [] })
   const ok: OperationOutcome = { ok: true }
   const operations = {
     connect: vi.fn(async (_input: string): Promise<OperationOutcome> => ok),
     startSignIn: vi.fn(async (): Promise<OperationOutcome> => ok),
     cancelSignIn: vi.fn(async (_id: MindeckSignInAttemptId) => {}),
     signOut: vi.fn(async (): Promise<OperationOutcome> => ok),
+    refreshQuota: vi.fn(() => {}),
+    dismissReminder: vi.fn((key: string) => { reminders.set({ dismissed: [...reminders.getSnapshot().dismissed, key] }) }),
   }
   // Global standard hooks are unused by these components; the renderer supplies them in production.
   const props = {
-    t: makeTranslate(en), useAccount: bindSnapshotSelector(account), close: () => {}, ...operations,
-  } as SignInGateProps & AccountSectionProps & Omit<QuotaNoticeProps, 'matched'>
+    t: makeTranslate(en), useAccount: bindSnapshotSelector(account), useReminders: bindSnapshotSelector(reminders),
+    close: () => {}, wide: true, openSettings: () => {}, ...operations,
+  } as SignInGateProps & AccountSectionProps & Omit<QuotaNoticeProps, 'matched'> & QuotaDockProps & AccountMenuProps
   const set = (next: MindeckAccountView) => { act(() => { account.set({ view: next, failed: false }) }) }
   return { props, operations, set }
 }
@@ -174,7 +181,8 @@ it('explains a used-up company quota with a link to the member usage page, and k
   const dismiss = vi.fn()
   const view = render(<QuotaNotice {...member.props} matched={notice(dismiss)} />)
   const dialog = view.getByRole('dialog', { name: en.quotaTitle })
-  expect(within(dialog).getByText(en.quotaDescription)).toBeTruthy()
+  expect(within(dialog).getByText('Quota used up')).toBeTruthy()
+  expect(member.operations.refreshQuota).toHaveBeenCalledOnce()
   const usage = within(dialog).getByRole('link', { name: en.quotaUsage })
   expect(usage.getAttribute('href')).toBe('https://cloud.example.com/usage')
   expect(usage.getAttribute('target')).toBe('_blank')
@@ -185,4 +193,52 @@ it('explains a used-up company quota with a link to the member usage page, and k
   const generic = render(<QuotaNotice {...visitor.props} matched={notice(vi.fn())} />)
   expect(generic.queryByRole('dialog')).toBeNull()
   expect(generic.getByText('Quota used up')).toBeTruthy()
+  expect(visitor.operations.refreshQuota).not.toHaveBeenCalled()
+  cleanup()
+  const silent = fixture(signedIn)
+  const fallback = render(<QuotaNotice {...silent.props} matched={{ ...notice(vi.fn()), message: ' ' }} />)
+  expect(fallback.getByText(en.quotaDescription)).toBeTruthy()
+})
+
+const withQuota = (quota: MindeckQuota): MindeckAccountView => ({ ...signedIn, quota })
+
+it('reminds from 75% of the limit that runs out first, again from 95% and when used up, until dismissed', () => {
+  const f = fixture(withQuota({ user: { used: 30, limit: 50 }, department: null, resetDate: '2026-12-01' }))
+  const view = render(<QuotaDock {...f.props} />)
+  expect(view.container.textContent).toBe('')
+
+  f.set(withQuota({ user: { used: 40, limit: 50 }, department: { used: 100, limit: 1000 }, resetDate: '2026-12-01' }))
+  const reminder = view.getByRole('status')
+  expect(reminder.textContent).toContain('You have used 80% of your model quota this month (¥40.00 of ¥50.00). It resets on 12/1.')
+  expect(reminder.getAttribute('data-level')).toBe('warning')
+  expect(within(reminder).getByRole('link', { name: en.quotaUsage }).getAttribute('href')).toBe('https://cloud.example.com/usage')
+  fireEvent.click(within(reminder).getByRole('button', { name: en.quotaDockDismiss }))
+  expect(f.operations.dismissReminder).toHaveBeenCalledWith('2026-12-01:user:warning')
+  expect(view.queryByRole('status')).toBeNull()
+
+  f.set(withQuota({ user: { used: 48, limit: 50 }, department: null, resetDate: '2026-12-01' }))
+  expect(view.getByRole('status').getAttribute('data-level')).toBe('urgent')
+  f.set(withQuota({ user: { used: 1, limit: null }, department: { used: 1000, limit: 1000 }, resetDate: '2026-12-01' }))
+  expect(view.getByRole('status').textContent).toContain('Your department\'s model quota for this month is used up (¥1000.00 of ¥1000.00).')
+  f.set(withQuota({ user: { used: 0, limit: 0 }, department: null, resetDate: '2026-12-01' }))
+  expect(view.getByRole('status').getAttribute('data-level')).toBe('out')
+  f.set(withQuota({ user: { used: 99, limit: null }, department: null, resetDate: '2026-12-01' }))
+  expect(view.queryByRole('status')).toBeNull()
+  f.set({ ...signedOut, quota: null })
+  expect(view.queryByRole('status')).toBeNull()
+})
+
+it('shows this month\'s quota in the account menu and refreshes it when the menu opens', async () => {
+  const f = fixture(withQuota({ user: { used: 12.5, limit: 50 }, department: { used: 300, limit: 1000 }, resetDate: '2026-12-01' }))
+  const view = render(<AccountMenu {...f.props} />)
+  fireEvent.click(view.getByRole('button', { name: en.menu }))
+  expect(f.operations.refreshQuota).toHaveBeenCalledOnce()
+  expect(await screen.findByText('This month: ¥12.50 of ¥50.00')).toBeTruthy()
+  expect(screen.getByText('Department: ¥300.00 of ¥1000.00')).toBeTruthy()
+  cleanup()
+  const unlimited = fixture(withQuota({ user: { used: 3, limit: null }, department: null, resetDate: '2026-12-01' }))
+  render(<AccountMenu {...unlimited.props} />)
+  fireEvent.click(screen.getByRole('button', { name: en.menu }))
+  expect(await screen.findByText('This month: ¥3.00, no limit')).toBeTruthy()
+  expect(screen.queryByText(/Department:/)).toBeNull()
 })

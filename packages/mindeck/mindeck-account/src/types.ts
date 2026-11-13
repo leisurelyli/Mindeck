@@ -39,6 +39,22 @@ export interface MindeckAccountUser {
   readonly department: { readonly id: string; readonly name: string } | null
 }
 
+/** Month-to-date estimated cost against one company limit, in CNY. */
+export interface MindeckQuotaUsage {
+  readonly used: number
+  /** Monthly limit; null when there is none. */
+  readonly limit: number | null
+}
+
+/** The member's model quota for the current month, as Mindeck Cloud reports it. */
+export interface MindeckQuota {
+  readonly user: MindeckQuotaUsage
+  /** The department's shared limit; null when the member has no department. */
+  readonly department: MindeckQuotaUsage | null
+  /** `YYYY-MM-DD` of the first day of the next month in the company time zone, when usage starts over. */
+  readonly resetDate: string
+}
+
 /** Account state the Client renders. */
 export interface MindeckAccountView {
   /** Configured Mindeck Cloud address, or null until one is set. */
@@ -50,6 +66,8 @@ export interface MindeckAccountView {
   /** Why the last session ended without the member signing out, until the next sign-in. */
   readonly notice: 'session-expired' | null
   readonly attempt: MindeckSignInAttempt | null
+  /** Latest quota read while signed in; null while signed out or before the first successful read. */
+  readonly quota: MindeckQuota | null
 }
 
 declare module '@deepseek-ai/dsh-typert-protocol' {

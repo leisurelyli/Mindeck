@@ -39,6 +39,14 @@ Mindeck Cloud account service and its Remote namespace.
 @Remote async getState(): Promise<MindeckAccountView>
 
 /**
+ * Read the month-to-date quota from Mindeck Cloud now, as after a refused request or when the account
+ * menu opens. A failed read keeps the previous quota; a rejected token ends the session.
+ * @param signal - caller cancellation.
+ * @returns state with the latest quota.
+ */
+@Remote async refreshQuota(signal: AbortSignal): Promise<MindeckAccountView>
+
+/**
  * Stream account state.
  * @param signal - stream lifetime; ending it never cancels a sign-in.
  * @returns the current state, then every change.

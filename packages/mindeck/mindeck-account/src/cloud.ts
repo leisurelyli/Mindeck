@@ -1,6 +1,6 @@
 /** Mindeck Cloud HTTP endpoints used by desktop sign-in; every response is validated before use. */
 import { z } from 'zod'
-import type { MindeckAccountErrorCode } from './types.ts'
+import type { MindeckAccountErrorCode, MindeckQuota } from './types.ts'
 
 /** OAuth client id Mindeck Cloud accepts on its device authorization endpoints. */
 export const DESKTOP_CLIENT_ID = 'mindeck-desktop'
@@ -242,6 +242,30 @@ export async function reportDevice(
     body: JSON.stringify({ name: device.name, platform: device.platform, appVersion: device.appVersion }),
   }), signal)
   return response.ok ? 'ok' : await desktopFailure(response)
+}
+
+const quotaUsageSchema = z.object({ used: z.number(), limit: z.number().nullable() })
+const quotaSchema = z.object({
+  user: quotaUsageSchema,
+  department: quotaUsageSchema.nullable(),
+  resetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+})
+
+/**
+ * Read the member's month-to-date quota.
+ * @param cloudUrl - normalized Mindeck Cloud origin.
+ * @param token - desktop session token.
+ * @param signal - cancellation and timeout.
+ * @returns the quota, or `sign-in-required` when the token is no longer valid.
+ */
+export async function readQuota(
+  cloudUrl: string, token: string, signal: AbortSignal,
+): Promise<MindeckQuota | 'sign-in-required'> {
+  const response = await send(`${cloudUrl}/api/desktop/quota`, bearer(token), signal)
+  if (!response.ok) return await desktopFailure(response)
+  const quota = parse(quotaSchema, await json(response), 'quota')
+  const usage = ({ used, limit }: z.infer<typeof quotaUsageSchema>) => ({ used, limit })
+  return { user: usage(quota.user), department: quota.department === null ? null : usage(quota.department), resetDate: quota.resetDate }
 }
 
 /**

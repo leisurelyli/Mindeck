@@ -25,6 +25,8 @@ export interface FakeCloud {
   outcome: TokenOutcome
   /** Display name returned by bootstrap; change it to observe revalidation. */
   userName: string
+  /** Body of `GET /api/desktop/quota`; `sign-in-required` answers 401. */
+  quota: unknown
   /** Wait until the token endpoint has been polled `count` times in total. */
   polled: (count: number) => Promise<void>
   close: () => Promise<void>
@@ -86,6 +88,9 @@ export async function startFakeCloud(): Promise<FakeCloud> {
         const issuedToken = `desktop-token-${++issued}-0123456789`
         cloud.tokens.add(issuedToken)
         reply(response, 200, { access_token: issuedToken, token_type: 'Bearer' })
+      } else if (path === '/api/desktop/quota' && request.method === 'GET') {
+        if (!signedIn || cloud.quota === 'sign-in-required') signInRequired()
+        else reply(response, 200, cloud.quota)
       } else if (path === '/api/desktop/bootstrap' && request.method === 'GET') {
         if (!signedIn) signInRequired()
         else reply(response, 200, bootstrap(cloud.url, cloud.userName))
@@ -113,6 +118,10 @@ export async function startFakeCloud(): Promise<FakeCloud> {
   const cloud: FakeCloud = {
     url: `http://127.0.0.1:${address.port}`,
     requests: [], devices: [], deviceRequests: [], deviceRequestStatus: 204, tokens: new Set(), droppedPolls: 0, pendingPolls: 0, outcome: 'issue', userName: '林晓',
+    quota: {
+      monthStartDate: '2026-11-01', resetDate: '2026-12-01', timezone: 'Asia/Shanghai',
+      user: { limit: 50, used: 12.5, source: 'default' }, department: { limit: null, used: 30, source: 'none' },
+    },
     polled: count => polls >= count ? Promise.resolve() : new Promise((resolve) => { waiters.push({ count, resolve }) }),
     close: async () => {
       if (!server.listening) return

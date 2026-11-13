@@ -11,7 +11,7 @@ import { mountAccount } from '../src/client/mount.ts'
 
 const contribution: TypertRemoteContribution = { package: '@deepseek-ai/dsh-mindeck-account', descriptors: [] }
 const signedOut: MindeckAccountView = {
-  cloudUrl: 'https://cloud.example.com', status: 'signed-out', user: null, companyName: null, notice: null, attempt: null,
+  cloudUrl: 'https://cloud.example.com', status: 'signed-out', user: null, companyName: null, notice: null, attempt: null, quota: null,
 }
 
 /** Host state frames the fake `watch` stream delivers in order. */
@@ -55,6 +55,7 @@ async function fixture() {
     startSignIn: vi.fn(async (_version: string): Promise<RemoteResult<MindeckAccountView>> => ok(signedOut)),
     cancelSignIn: vi.fn(async (): Promise<RemoteResult<MindeckAccountView>> => ok(signedOut)),
     signOut: vi.fn(async (): Promise<RemoteResult<MindeckAccountView>> => ok(signedOut)),
+    refreshQuota: vi.fn(async (): Promise<RemoteResult<MindeckAccountView>> => ok(signedOut)),
   }
   ctx.provide('remote.mindeckAccount', remote as never)
   ctx.provide('locale', new LocaleRuntime(ctx))
@@ -66,6 +67,7 @@ async function fixture() {
     'settings.section': { kind: 'list', scope: 'root' },
     'settings.section.icon': { kind: 'list', scope: 'root', inline: true },
     'shell.quota-notice': { kind: 'chain', scope: 'root' },
+    'conversation.input.dock': { kind: 'list', scope: 'root' },
   } } as never, () => null)
   return { ctx, frames, remote, unmount }
 }
@@ -75,7 +77,7 @@ function operations(entry: { inject?: unknown } | undefined): MindeckAccountInje
   return (entry.inject as () => MindeckAccountInjected)()
 }
 
-it('registers the gate, launcher, section, its icon, and the quota notice, then withdraws them before the Remote', async () => {
+it('registers the gate, launcher, section, its icon, the quota notice and reminder, then withdraws them before the Remote', async () => {
   const f = await fixture()
   try {
     const dispose = await mountAccount(f.ctx, contribution)
@@ -83,6 +85,7 @@ it('registers the gate, launcher, section, its icon, and the quota notice, then 
     expect(f.ctx.slots.entries('settings.launcher')).toHaveLength(1)
     expect(f.ctx.slots.entries('settings.section')).toHaveLength(1)
     expect(f.ctx.slots.entries('settings.section.icon').map(entry => entry.options.id)).toEqual(['mindeck-account'])
+    expect(f.ctx.slots.entries('conversation.input.dock').map(entry => entry.options.id)).toEqual(['mindeck-quota'])
     const [quota] = f.ctx.slots.entries('shell.quota-notice')
     const notice = { message: 'm', dismiss: () => {}, keepOpen: () => () => {} }
     expect(quota?.select?.({ ...notice, code: 'QUOTA' } as never)).toMatchObject({ code: 'QUOTA' })
@@ -91,6 +94,11 @@ it('registers the gate, launcher, section, its icon, and the quota notice, then 
     expect(face.hooks.account.getSnapshot()).toEqual({ view: undefined, failed: false })
     f.frames.push(signedOut)
     await vi.waitFor(() => { expect(face.hooks.account.getSnapshot().view).toEqual(signedOut) })
+    face.refreshQuota()
+    expect(f.remote.refreshQuota).toHaveBeenCalledOnce()
+    face.dismissReminder('2026-12-01:user:warning')
+    face.dismissReminder('2026-12-01:user:warning')
+    expect(face.hooks.reminders.getSnapshot()).toEqual({ dismissed: ['2026-12-01:user:warning'] })
 
     await dispose()
     expect(f.ctx.slots.entries('shell.overlay')).toHaveLength(0)
@@ -98,6 +106,7 @@ it('registers the gate, launcher, section, its icon, and the quota notice, then 
     expect(f.ctx.slots.entries('settings.section')).toHaveLength(0)
     expect(f.ctx.slots.entries('settings.section.icon')).toHaveLength(0)
     expect(f.ctx.slots.entries('shell.quota-notice')).toHaveLength(0)
+    expect(f.ctx.slots.entries('conversation.input.dock')).toHaveLength(0)
     expect(face.hooks.account.getSnapshot()).toEqual({ view: undefined, failed: false })
     expect(f.unmount).toHaveBeenCalledOnce()
   } finally { await f.ctx.fiber.dispose() }

@@ -18,9 +18,11 @@ import { deadline } from '@deepseek-ai/dsh-timeout'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import {
   type DeviceInfo, type MindeckBootstrap, MindeckCloudError, normalizeCloudUrl, pollDeviceToken, probeCloud,
-  readBootstrap, reportDevice, reportDeviceRequest, requestDeviceCode, signOutDevice,
+  readBootstrap, readQuota, reportDevice, reportDeviceRequest, requestDeviceCode, signOutDevice,
 } from './cloud.ts'
-import type { MindeckAccountErrorCode, MindeckAccountView, MindeckSignInAttempt, MindeckSignInAttemptId } from './types.ts'
+import type {
+  MindeckAccountErrorCode, MindeckAccountView, MindeckQuota, MindeckSignInAttempt, MindeckSignInAttemptId,
+} from './types.ts'
 
 export type * from './types.ts'
 export type { MindeckBootstrap } from './cloud.ts'
@@ -49,6 +51,8 @@ export interface Config {
   cloudUrl: Volatile<string>
   /** Timeout of each request to Mindeck Cloud in milliseconds. */
   requestTimeoutMs: number
+  /** Interval in milliseconds between quota reads while signed in. */
+  quotaRefreshMs: number
 }
 
 /** Credential record holding the desktop session. */
@@ -100,6 +104,8 @@ export default class MindeckAccount extends TypertRemoteService {
       .description('Mindeck Cloud console address, such as https://cloud.example.com.'),
     requestTimeoutMs: z.natural().min(1000).default(15_000)
       .description('Timeout of each request to Mindeck Cloud in milliseconds.'),
+    quotaRefreshMs: z.natural().min(10_000).default(120_000)
+      .description('Interval in milliseconds between quota reads while signed in.'),
   })
 
   private readonly settingsNs: string
@@ -110,6 +116,8 @@ export default class MindeckAccount extends TypertRemoteService {
   private stored: StoredSession | undefined
   private attempt: Attempt | undefined
   private notice: MindeckAccountView['notice'] = null
+  /** Latest quota with the token it was read for, so a quota never outlives its session. */
+  private quota: { readonly token: string; readonly value: MindeckQuota } | undefined
 
   /** @param ctx - Host with the credentials service. @param config - deployment options. */
   constructor(ctx: Context, private readonly config: Config) {
@@ -123,6 +131,7 @@ export default class MindeckAccount extends TypertRemoteService {
     }, 'mindeck-account: sign-in and background requests')
     // Validate the stored session; an unreachable Cloud keeps it for offline use.
     this.track(this.revalidate())
+    this.track(this.pollQuota())
   }
 
   /**
@@ -140,7 +149,20 @@ export default class MindeckAccount extends TypertRemoteService {
       companyName: stored?.bootstrap.company.name ?? null,
       notice: this.notice,
       attempt: this.attempt?.view ?? null,
+      quota: stored !== undefined && this.quota?.token === stored.token ? this.quota.value : null,
     }
+  }
+
+  /**
+   * Read the month-to-date quota from Mindeck Cloud now, as after a refused request or when the account
+   * menu opens. A failed read keeps the previous quota; a rejected token ends the session.
+   * @param signal - caller cancellation.
+   * @returns state with the latest quota.
+   */
+  @Remote
+  async refreshQuota(signal: AbortSignal): Promise<MindeckAccountView> {
+    await this.readQuota(signal)
+    return await this.getState()
   }
 
   /**
@@ -319,6 +341,35 @@ export default class MindeckAccount extends TypertRemoteService {
     this.loaded = Promise.resolve(undefined)
   }
 
+  /** Read the quota while signed in, then again every `quotaRefreshMs` until the plugin stops. */
+  private async pollQuota(): Promise<void> {
+    const { signal } = this.lifetime
+    while (!signal.aborted) {
+      await this.readQuota(signal)
+      try { await sleep(this.config.quotaRefreshMs, undefined, { signal }) }
+      catch { return } // AbortError: the plugin is stopping.
+    }
+  }
+
+  /** Store the current session's quota; failures keep the previous one, and a rejected token ends the session. */
+  private async readQuota(signal: AbortSignal): Promise<void> {
+    let stored: StoredSession | undefined
+    try { stored = await this.load() }
+    catch (error) { this.ctx.logger.warn('mindeck-account: could not read the stored session', error); return }
+    if (stored === undefined) return
+    let quota: MindeckQuota | 'sign-in-required'
+    try { quota = await this.request(signal, request => readQuota(stored.cloudUrl, stored.token, request)) }
+    catch (error) {
+      if (!signal.aborted) this.ctx.logger.info('mindeck-account: could not read the quota; keeping the last one', error)
+      return
+    }
+    if (quota === 'sign-in-required') { await this.rejectToken(stored.token); return }
+    if (this.stored?.token !== stored.token) return
+    if (this.quota?.token === stored.token && JSON.stringify(this.quota.value) === JSON.stringify(quota)) return
+    this.quota = { token: stored.token, value: quota }
+    this.changed()
+  }
+
   /** Refresh cached account details; a rejected token ends the session. */
   private async revalidate(): Promise<void> {
     let stored: StoredSession | undefined
@@ -388,6 +439,7 @@ export default class MindeckAccount extends TypertRemoteService {
       catch (error) { throw new MindeckCloudError('storage', 'the session could not be stored', { cause: error }) }
       issued = undefined
       this.update(attempt, { phase: 'succeeded' }, true)
+      this.track(this.readQuota(this.lifetime.signal))
     } catch (error) {
       if (issued !== undefined) {
         // The session exists on Cloud but was not stored here; end it instead of leaving it orphaned.

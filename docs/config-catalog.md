@@ -2558,7 +2558,7 @@ export interface Config {
 
 - `inject`: `credentials` · `typert`
 - `refs`: `Volatile` (`@deepseek-ai/cordis`)
-- `source`: [`packages/mindeck/mindeck-account/src/index.ts:44`](../packages/mindeck/mindeck-account/src/index.ts)
+- `source`: [`packages/mindeck/mindeck-account/src/index.ts:46`](../packages/mindeck/mindeck-account/src/index.ts)
 
 ```ts config-catalog
 /** Deployment options. */
@@ -2570,6 +2570,8 @@ export interface Config {
   cloudUrl: Volatile<string>
   /** Timeout of each request to Mindeck Cloud in milliseconds. */
   requestTimeoutMs: number
+  /** Interval in milliseconds between quota reads while signed in. */
+  quotaRefreshMs: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-mindeck-account -->

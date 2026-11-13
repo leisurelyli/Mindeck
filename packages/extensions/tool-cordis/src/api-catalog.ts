@@ -2134,6 +2134,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'configured address, signed-in member, and the latest sign-in attempt; never the token.',
       },
       {
+        signature: '@Remote async refreshQuota(signal: AbortSignal): Promise<MindeckAccountView>',
+        description: 'Read the month-to-date quota from Mindeck Cloud now, as after a refused request or when the account menu opens. A failed read keeps the previous quota; a rejected token ends the session.',
+        parameters: [{ name: 'signal', description: 'caller cancellation.' }],
+        returns: 'state with the latest quota.',
+      },
+      {
         signature: '@Remote({ mode: \'stream\' }) async *watch(signal: AbortSignal): AsyncIterable<MindeckAccountView>',
         description: 'Stream account state.',
         parameters: [{ name: 'signal', description: 'stream lifetime; ending it never cancels a sign-in.' }],
@@ -7448,11 +7454,19 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'MindeckAccountView',
-    declaration: 'export interface MindeckAccountView {\n    readonly cloudUrl: string | null;\n    readonly status: \'signed-out\' | \'signed-in\';\n    readonly user: MindeckAccountUser | null;\n    readonly companyName: string | null;\n    readonly notice: \'session-expired\' | null;\n    readonly attempt: MindeckSignInAttempt | null;\n}',
+    declaration: 'export interface MindeckAccountView {\n    readonly cloudUrl: string | null;\n    readonly status: \'signed-out\' | \'signed-in\';\n    readonly user: MindeckAccountUser | null;\n    readonly companyName: string | null;\n    readonly notice: \'session-expired\' | null;\n    readonly attempt: MindeckSignInAttempt | null;\n    readonly quota: MindeckQuota | null;\n}',
   },
   {
     name: 'MindeckBootstrap',
     declaration: 'export type MindeckBootstrap = z.infer<typeof bootstrapSchema>;',
+  },
+  {
+    name: 'MindeckQuota',
+    declaration: 'export interface MindeckQuota {\n    readonly user: MindeckQuotaUsage;\n    readonly department: MindeckQuotaUsage | null;\n    readonly resetDate: string;\n}',
+  },
+  {
+    name: 'MindeckQuotaUsage',
+    declaration: 'export interface MindeckQuotaUsage {\n    readonly used: number;\n    readonly limit: number | null;\n}',
   },
   {
     name: 'MindeckSession',
@@ -7460,7 +7474,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'MindeckSignInAttempt',
-    declaration: 'export interface MindeckSignInAttempt {\n    readonly id: MindeckSignInAttemptId;\n    readonly phase: \'requesting\' | \'waiting\' | \'registering\' | \'succeeded\' | \'cancelled\' | \'failed\';\n    readonly userCode?: string;\n    readonly verificationUrl?: string;\n    readonly expiresAt?: number;\n    readonly errorCode?: MindeckAccountErrorCode;\n}',
+    declaration: 'export interface MindeckSignInAttempt {\n    readonly id: MindeckSignInAttemptId;\n    readonly phase: \'requesting\' | \'waiting\' | \'registering\' | \'succeeded\' | \'cancelled\' | \'failed\';\n    readonly userCode?: string;\n    readonly verificationUrl?: string;\n    readonly expiresAt?: number;\n    readonly retrying?: boolean;\n    readonly errorCode?: MindeckAccountErrorCode;\n}',
   },
   {
     name: 'MindeckSignInAttemptId',

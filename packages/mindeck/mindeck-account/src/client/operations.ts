@@ -11,13 +11,18 @@ export interface MindeckAccountSnapshot {
   readonly failed: boolean
 }
 
+/** Quota reminders the member dismissed in this window, as `resetDate:scope:level` keys. */
+export interface MindeckReminderSnapshot {
+  readonly dismissed: readonly string[]
+}
+
 /** Result of one Client-initiated operation; a failure names the copy that explains it. */
 export type OperationOutcome = { readonly ok: true } | { readonly ok: false; readonly reason: MindeckAccountKey }
 
 /** Operations and hooks shared by the sign-in gate, the settings section, and the launcher. */
 export interface MindeckAccountInjected {
   /** Account state owned by the Host, observed through framework hooks. */
-  hooks: { account: HostObservable<MindeckAccountSnapshot> }
+  hooks: { account: HostObservable<MindeckAccountSnapshot>; reminders: HostObservable<MindeckReminderSnapshot> }
   /**
    * Set the Cloud address, then start signing in.
    * @param input - address typed by the member.
@@ -30,6 +35,10 @@ export interface MindeckAccountInjected {
   cancelSignIn: (id: MindeckSignInAttemptId) => Promise<void>
   /** @returns whether the local session was removed. */
   signOut: () => Promise<OperationOutcome>
+  /** Ask the Host to read the quota now; the account state carries the result. */
+  refreshQuota: () => void
+  /** @param key - reminder to hide until its level or month changes. */
+  dismissReminder: (key: string) => void
 }
 
 const ATTEMPT_ERROR_KEYS: Record<MindeckAccountErrorCode, MindeckAccountKey> = {

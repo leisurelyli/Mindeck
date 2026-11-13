@@ -152,6 +152,26 @@ it('reports declined and expired codes and cancels a waiting attempt', async () 
   expect(next.attempt?.id).not.toBe(id)
 })
 
+it('reads the quota after sign-in and on request, and forgets it with the session', async () => {
+  const f = await fixture()
+  await signIn(f)
+  await vi.waitFor(async () => {
+    expect((await f.state()).quota).toEqual({ user: { used: 12.5, limit: 50 }, department: { used: 30, limit: null }, resetDate: '2026-12-01' })
+  })
+  f.cloud.quota = { resetDate: '2026-12-01', user: { limit: 50, used: 40 }, department: null }
+  expect((await f.account().refreshQuota(new AbortController().signal)).quota)
+    .toEqual({ user: { used: 40, limit: 50 }, department: null, resetDate: '2026-12-01' })
+  f.cloud.quota = { broken: true }
+  expect((await f.account().refreshQuota(new AbortController().signal)).quota?.user.used).toBe(40)
+  await f.account().signOut()
+  expect((await f.state()).quota).toBeNull()
+
+  await signIn(f)
+  f.cloud.quota = 'sign-in-required'
+  const ended = await f.account().refreshQuota(new AbortController().signal)
+  expect(ended).toMatchObject({ status: 'signed-out', notice: 'session-expired', quota: null })
+})
+
 it('ends the session only for the token Mindeck Cloud rejected', async () => {
   const f = await fixture()
   const token = await signIn(f)

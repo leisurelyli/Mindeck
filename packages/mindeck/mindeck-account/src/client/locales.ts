@@ -60,6 +60,15 @@ export const en = {
   quotaDescription: 'You have used this month\'s model quota that your company set for you or your department. Ask your administrator if you need more.',
   quotaUsage: 'View my usage',
   quotaDismiss: 'Got it',
+  quotaReset: '{month}/{day}',
+  quotaMenuUser: 'This month: {used} of {limit}',
+  quotaMenuUnlimited: 'This month: {used}, no limit',
+  quotaMenuDepartment: 'Department: {used} of {limit}',
+  quotaDockUser: 'You have used {percent}% of your model quota this month ({used} of {limit}). It resets on {reset}.',
+  quotaDockDepartment: 'Your department has used {percent}% of its model quota this month ({used} of {limit}). It resets on {reset}.',
+  quotaDockUserOut: 'Your model quota for this month is used up ({used} of {limit}). It resets on {reset}; ask your administrator if you need more.',
+  quotaDockDepartmentOut: 'Your department\'s model quota for this month is used up ({used} of {limit}). It resets on {reset}; ask your administrator if you need more.',
+  quotaDockDismiss: 'Dismiss',
 } as const
 
 /** Account locale keys. */
@@ -125,4 +134,13 @@ export const zh: Record<MindeckAccountKey, string> = {
   quotaDescription: '公司为你或你所在部门设置的本月模型额度已经用完。如需更多额度，请联系管理员。',
   quotaUsage: '查看我的用量',
   quotaDismiss: '知道了',
+  quotaReset: '{month} 月 {day} 日',
+  quotaMenuUser: '本月已用 {used} / {limit}',
+  quotaMenuUnlimited: '本月已用 {used}，不限额度',
+  quotaMenuDepartment: '部门本月已用 {used} / {limit}',
+  quotaDockUser: '本月个人模型额度已用 {percent}%（{used} / {limit}），{reset}起恢复。',
+  quotaDockDepartment: '本月部门模型额度已用 {percent}%（{used} / {limit}），{reset}起恢复。',
+  quotaDockUserOut: '本月个人模型额度已用完（{used} / {limit}），{reset}起恢复；如需更多额度，请联系管理员。',
+  quotaDockDepartmentOut: '本月部门模型额度已用完（{used} / {limit}），{reset}起恢复；如需更多额度，请联系管理员。',
+  quotaDockDismiss: '关闭提醒',
 }

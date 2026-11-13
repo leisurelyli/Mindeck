@@ -4,6 +4,7 @@ import type {} from '@deepseek-ai/dsh-api-remote-access/client'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
+import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
@@ -16,7 +17,8 @@ import { AccountSection, AccountSectionIcon } from './AccountSection.tsx'
 import { QuotaNotice } from './QuotaNotice.tsx'
 import { SignInGate } from './SignInGate.tsx'
 import { en, NS, zh, type MindeckAccountKey } from './locales.ts'
-import type { MindeckAccountInjected, MindeckAccountSnapshot, OperationOutcome } from './operations.ts'
+import type { MindeckAccountInjected, MindeckAccountSnapshot, MindeckReminderSnapshot, OperationOutcome } from './operations.ts'
+import { QuotaDock } from './QuotaDock.tsx'
 
 /** Services required by the account UI. */
 export const inject = ['remote', 'slots', 'locale', 'remoteAccess']
@@ -41,11 +43,12 @@ function failureReason(error: RemoteFailure): MindeckAccountKey {
 function registerUi(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { en, zh }), 'mindeck-account: dictionaries')
   const state = createSnapshotStore<MindeckAccountSnapshot>({ view: undefined, failed: false })
+  const reminders = createSnapshotStore<MindeckReminderSnapshot>({ dismissed: [] })
   const appVersion = process.env.DSH_CLIENT_VERSION ?? ''
   const outcome = (result: { ok: true } | { ok: false; error: RemoteFailure }): OperationOutcome =>
     result.ok ? { ok: true } : { ok: false, reason: failureReason(result.error) }
   const operations: MindeckAccountInjected = {
-    hooks: { account: state },
+    hooks: { account: state, reminders },
     async connect(input) {
       const set = await ctx.remote.mindeckAccount.setCloudUrl(input)
       if (!set.ok) return outcome(set)
@@ -57,6 +60,14 @@ function registerUi(ctx: Context): void {
       if (!result.ok) throw result.error
     },
     async signOut() { return outcome(await ctx.remote.mindeckAccount.signOut()) },
+    refreshQuota() {
+      // A failed refresh keeps the last quota; the periodic Host read tries again.
+      void ctx.remote.mindeckAccount.refreshQuota().catch(() => undefined)
+    },
+    dismissReminder(key) {
+      const { dismissed } = reminders.getSnapshot()
+      if (!dismissed.includes(key)) reminders.set({ dismissed: [...dismissed, key] })
+    },
   }
   ctx.remoteAccess.whenAccess('mindeckAccount/watch', function* () {
     const stream = ctx.remote.$stream<MindeckAccountView>({
@@ -92,6 +103,9 @@ function registerUi(ctx: Context): void {
   ctx.remoteAccess.whenAccess('mindeckAccount/watch', () => ctx.slots.inject('shell.quota-notice', () => ctx.slots.register({
     name: 'shell.quota-notice', locale: NS, select: owner => owner.code === 'QUOTA' ? owner : null, inject: () => operations,
   }, QuotaNotice)))
+  ctx.remoteAccess.whenAccess('mindeckAccount/watch', () => ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
+    name: 'conversation.input.dock', id: 'mindeck-quota', order: -10, locale: NS, inject: () => operations,
+  }, QuotaDock)))
   ctx.remoteAccess.whenAccess('mindeckAccount/watch', () => ctx.slots.inject('settings.section.icon', () => ctx.slots.register({
     name: 'settings.section.icon', id: 'mindeck-account',
   }, AccountSectionIcon)))

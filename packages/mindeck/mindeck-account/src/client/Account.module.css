@@ -59,3 +59,25 @@
 .trigger { user-select: none; display: flex; align-items: center; width: 100%; height: 40px; gap: 8px; padding: 6px; border: 0; box-sizing: border-box; border-radius: var(--dsw-radius-md); background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 14px; cursor: pointer; }
 .trigger[data-collapsed='true'] { width: 36px; height: 36px; justify-content: center; gap: 0; padding: 0; }
 .triggerLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Quota reminder above the composer, sized like the other composer docks. */
+.quotaDock {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 auto;
+  width: calc(100% - var(--dsh-composer-side-clearance) - var(--dsh-composer-side-clearance) - 4 * var(--dsh-composer-dock-inset));
+  max-width: calc(var(--dsh-composer-card-max-width) - 4 * var(--dsh-composer-dock-inset));
+  padding: 6px 6px 6px 12px;
+  border-radius: var(--dsw-radius-lg);
+  background: var(--dsw-alias-bg-skeleton);
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-primary);
+}
+.quotaDockIcon { flex: none; color: var(--dsw-alias-label-tertiary); }
+.quotaDock[data-level='urgent'] .quotaDockIcon, .quotaDock[data-level='out'] .quotaDockIcon { color: var(--dsw-alias-state-error-primary); }
+.quotaDockText { flex: 1 1 auto; min-width: 0; }
+.quotaDockLink { flex: none; color: var(--dsw-alias-state-business-primary); text-decoration: none; white-space: nowrap; }
+@media (hover: hover) { .quotaDockLink:hover { text-decoration: underline; } }
