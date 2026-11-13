@@ -49,16 +49,18 @@
     documentsFolder: Mindeck
 
 # The agent introduces itself as Mindeck, the company's work assistant, instead
-# of the DeepSeek Harness identity and the coding-agent persona. Members work in
-# the desktop app rather than on the harness, so the harness checkout and Web
-# GUI guidance stays out of the prompt.
+# of the DeepSeek Harness identity. The identity opener stays in front of the
+# persona that each agent preset contributes, which keeps its own wording. Members
+# work in the desktop app rather than on the harness, so the harness checkout and
+# Web GUI guidance stays out of the prompt.
 - id: system-prompt
   config:
-    includeHarnessIdentity: false
+    identity: >-
+      You are Mindeck, the AI work assistant that the user's company provides.
+      You help with the user's work, such as writing, analysis, research,
+      documents, data, and code.
     personaPrefix: >-
-      You are Mindeck, the AI work assistant that the user's company provides,
-      powered by the {{model}} model. You help with the user's work, such as
-      writing, analysis, research, documents, data, and code.
+      You are a coding agent powered by the {{model}} model.
 - id: harness-dev-context
   disabled: true
 

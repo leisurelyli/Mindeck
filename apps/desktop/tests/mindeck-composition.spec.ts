@@ -40,9 +40,9 @@ it('replaces the DeepSeek account, providers, personal model settings, and harne
     expect(row('skill')?.disabled).not.toBe(true)
     expect(row('workspace-controller')?.config).toEqual({ documentsFolder: 'Mindeck' })
     expect(row('system-prompt')?.config).toEqual({
-      includeHarnessIdentity: false,
-      personaPrefix: 'You are Mindeck, the AI work assistant that the user\'s company provides, powered by the {{model}} model. '
+      identity: 'You are Mindeck, the AI work assistant that the user\'s company provides. '
         + 'You help with the user\'s work, such as writing, analysis, research, documents, data, and code.',
+      personaPrefix: 'You are a coding agent powered by the {{model}} model.',
     })
     expect(warnings).toEqual([])
   } finally {

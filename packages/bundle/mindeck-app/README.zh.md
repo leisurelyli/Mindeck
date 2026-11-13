@@ -9,7 +9,7 @@ kind: "package-bundle"
 
 ## 概述
 
-此层在原版 Web 应用上展示 Mindeck 图稿。Mindeck Desktop 的自有 profile 包含此层；源码 Web 启动器通过 `--patch` 选择其补丁。它修改展示和智能体人设，安装身份和状态路径仍由 Mindeck 启动器控制。该包同时拥有共享产品描述 `src/product.json`，Desktop 与 Web 启动器从中读取产品名称和构建资源；该描述不提供运行时服务。
+此层在原版 Web 应用上展示 Mindeck 图稿。Mindeck Desktop 的自有 profile 包含此层；源码 Web 启动器通过 `--patch` 选择其补丁。它修改展示和智能体身份，安装身份和状态路径仍由 Mindeck 启动器控制。该包同时拥有共享产品描述 `src/product.json`，Desktop 与 Web 启动器从中读取产品名称和构建资源；该描述不提供运行时服务。
 
 ## 目录
 
@@ -31,7 +31,7 @@ kind: "package-bundle"
 
 成员使用 Mindeck Cloud 账号登录，并使用公司在 Mindeck Cloud 中配置的模型、技能和资源库。此层加入[账号](../../mindeck/mindeck-account/README.zh.md)、[公司模型](../../mindeck/mindeck-models/README.zh.md)、[公司技能](../../mindeck/mindeck-skills/README.zh.md)和[资源库](../../mindeck/mindeck-files/README.zh.md)插件。它禁用 DeepSeek 账号及其登录界面、DeepSeek 模型提供商与联网搜索、来自个人设置的 `llm-pi-ai` 路由，以及填写个人 API Key 的模型设置页。因此每个模型请求都经过 Mindeck Cloud 网关，并按公司额度计量。首次使用时创建的默认工作区位于 `<Documents>/Mindeck`，与官方 DeepSeek Harness 安装的文件夹分开。
 
-智能体以公司工作助手 Mindeck 的身份自我介绍：此层用 Mindeck 人设替换 DeepSeek Harness 身份和编程智能体人设，并禁用向模型说明 harness 检出目录与 Web GUI 的 [harness-dev-context](../../context/harness-dev-context/README.zh.md)。它还禁用 [Session log 上传设置](../../client/ui-settings-session-log/README.zh.md)，因为上传只随发往 DeepSeek API 提供方的请求进行，而此层不包含该提供方。
+智能体以公司工作助手 Mindeck 的身份自我介绍：此层把 DeepSeek Harness 身份开场白换成 Mindeck 的开场白，它位于每个 Agent 预设自己的人设之前；并禁用向模型说明 harness 检出目录与 Web GUI 的 [harness-dev-context](../../context/harness-dev-context/README.zh.md)。它还禁用 [Session log 上传设置](../../client/ui-settings-session-log/README.zh.md)，因为上传只随发往 DeepSeek API 提供方的请求进行，而此层不包含该提供方。
 
 -----
 
@@ -41,7 +41,7 @@ kind: "package-bundle"
 <details>
 <summary>实现细节——点击展开</summary>
 
-manifest（元数据清单）将 `dsh.bundle.patch` 声明为 [`cordis.patch.yml`](cordis.patch.yml)。该补丁按 id 禁用官方品牌和被替换的行，插入 Mindeck 插件，设置工作区控制器的 `documentsFolder`，并把 `system-prompt` 配置替换为 `includeHarnessIdentity: false` 和 Mindeck 的 `personaPrefix`。它不添加服务或可变运行时状态；所选插件负责注册与清理。后续补丁遵循普通 profile 优先级。
+manifest（元数据清单）将 `dsh.bundle.patch` 声明为 [`cordis.patch.yml`](cordis.patch.yml)。该补丁按 id 禁用官方品牌和被替换的行，插入 Mindeck 插件，设置工作区控制器的 `documentsFolder`，并把 `system-prompt` 配置替换为 Mindeck 的 `identity` 和 Web 层的 `personaPrefix`。它不添加服务或可变运行时状态；所选插件负责注册与清理。后续补丁遵循普通 profile 优先级。
 
 </details>
 
@@ -59,25 +59,25 @@ manifest（元数据清单）将 `dsh.bundle.patch` 声明为 [`cordis.patch.yml
 <a id="model-experience"></a>
 ## 模型体验
 
-### Mindeck 人设
+### Mindeck 身份
 
 #### 模型看到什么
 
-系统提示词在部署人设前缀段开头放入下面的人设，`{{model}}` 替换为所选模型的名称。其中没有 DeepSeek Harness 身份句、Web 层的编程智能体人设，也没有 harness 检出目录与 Web GUI 的说明。公司模型、技能和资源库工具来自 Mindeck 插件，见各自 README。
+系统提示词以 `harness:identity` 段中下面的身份开头，随后是会话所用 Agent 预设的人设，例如 `You are a coding agent powered by the {{model}} model.`。其中没有 DeepSeek Harness 身份句，也没有 harness 检出目录与 Web GUI 的说明。公司模型、技能和资源库工具来自 Mindeck 插件，见各自 README。
 
-##### 人设前缀
+##### 身份
 
 ```markdown
-You are Mindeck, the AI work assistant that the user's company provides, powered by the {{model}} model. You help with the user's work, such as writing, analysis, research, documents, data, and code.
+You are Mindeck, the AI work assistant that the user's company provides. You help with the user's work, such as writing, analysis, research, documents, data, and code.
 ```
 
 #### Token 影响
 
-该人设取代身份句、Web 人设，以及 harness-dev-context 的两段提示和两行运行时上下文，因此系统提示词比原版 Web 组合更短。
+身份取代 DeepSeek Harness 那句，约多 30 个 token；harness-dev-context 的两段提示和两行运行时上下文不再出现，因此系统提示词比原版 Web 组合更短。
 
 #### KV Cache 影响
 
-人设对每个模型是固定文本，因此使用同一模型的 Session 共享缓存前缀。
+身份是系统提示词开头的固定文本，不会让各 Session 的缓存前缀分叉。
 
 ## 已知限制与暂缓事项
 
