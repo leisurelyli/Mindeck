@@ -87,6 +87,22 @@ describe('Mindeck browser brand', () => {
     expect(ctx.locale.bind('mindeck')('brand.name')).toBe('brand.name')
   })
 
+  it('words the shared conversation copy for Mindeck in both baseline languages and restores it on disposal', async () => {
+    const { ctx } = await bench()
+    ctx.locale.register('conversation', 'zh', { 'hero.headline': '探索未至之境', 'hero.chooseWorkspace': '选择工作区' })
+    const t = ctx.locale.bind('conversation')
+    const fiber = ctx.plugin(brand)
+    await fiber.await()
+    ctx.locale.setLocale('zh')
+    expect([t('hero.headline'), t('hero.preview'), t('hero.chooseWorkspace')]).toEqual(['开始今天的工作', '企业版', '选择工作区'])
+    expect(t('placeholder.hero')).toBe('描述要完成的工作，输入 / 调用技能与指令，@ 引用文件或对话')
+    ctx.locale.setLocale('en')
+    expect(t('hero.headline')).toBe("Start today's work")
+    await fiber.dispose()
+    ctx.locale.setLocale('zh')
+    expect(t('hero.headline')).toBe('探索未至之境')
+  })
+
   it('waits for the complete brand set when the hero declaration arrives later', async () => {
     const { ctx } = await bench()
     ctx.slots.register({ name: 'root', children: {

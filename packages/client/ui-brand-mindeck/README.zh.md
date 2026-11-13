@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-在侧栏和空白会话首页显示 Mindeck 品牌，在桌面首次引导中展示工作区截图。两个标志均使用提供的 SVG，保留原始蓝色和青色。展示内容为静态，不增加模型请求。
+在侧栏和空白会话首页显示 Mindeck 品牌，在桌面首次引导中展示工作区截图。空白首页标语为“开始今天的工作”并带“企业版”徽标，输入框提示使用办公语气。两个标志均使用提供的 SVG，保留原始蓝色和青色。展示内容为静态，不增加模型请求。
 
 ## 目录
 
@@ -34,6 +34,8 @@ kind: "package-reference"
 此条目没有配置项。选择本包替代 `@deepseek-ai/dsh-client-ui-brand-official`；官方包仍可用于上游组合。品牌选择由组合决定，不依赖客户端构建配置。将部署的 locale `parameters.productName` 设置为 `Mindeck`；品牌字典使用 `{productName}`，未设置时继承共享的上游默认值。本插件遵循宿主指定的标志尺寸，不添加鲸鱼背景。
 
 [账号设置](../ui-settings-account/README.zh.md#desktop-onboarding)声明插图槽位时，欢迎页与额度页共用本包的工作区截图，覆盖英文、中文与明暗主题。没有此声明时，插件仅提供侧栏和会话品牌内容。
+
+插件通过 `ctx.locale.override` 覆盖 `conversation` 命名空间的四条中英文文案：空白首页标语、徽标和两条输入框提示。其他语言保留上游文案。
 
 -----
 

@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Show Mindeck branding in the sidebar and blank conversation home, and workspace screenshots during desktop onboarding. Both marks use the supplied SVG in its original blue and cyan colors. The presentation is static and adds no model requests.
+Show Mindeck branding in the sidebar and blank conversation home, and workspace screenshots during desktop onboarding. The blank home reads "Start today's work" with an "Enterprise" badge, and the composer hints use office wording. Both marks use the supplied SVG in its original blue and cyan colors. The presentation is static and adds no model requests.
 
 ## Table of Contents
 
@@ -34,6 +34,8 @@ Choose this package as the brand row in a deployment's Cordis composition, along
 The row takes no configuration. Select it instead of `@deepseek-ai/dsh-client-ui-brand-official`; the official package remains available for upstream compositions. Selection follows composition rather than the client build profile. Set the deployment's locale `parameters.productName` to `Mindeck`; the brand dictionary uses `{productName}` and inherits the shared upstream default when omitted. The plugin uses each host's requested mark size and adds no whale background.
 
 When [account settings](../ui-settings-account/README.md#desktop-onboarding) declares its illustration slot, the welcome and credit pages share this package's workspace screenshots, with English and Chinese variants for light and dark themes. Without that declaration, the plugin contributes only the sidebar and conversation branding.
+
+The plugin overrides four texts of the `conversation` namespace in Chinese and English through `ctx.locale.override`: the blank-home headline, its badge, and the two composer placeholders. Other languages keep the upstream wording.
 
 -----
 
