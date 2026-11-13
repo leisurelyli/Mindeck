@@ -47,3 +47,22 @@
 - id: workspace-controller
   config:
     documentsFolder: Mindeck
+
+# The agent introduces itself as Mindeck, the company's work assistant, instead
+# of the DeepSeek Harness identity and the coding-agent persona. Members work in
+# the desktop app rather than on the harness, so the harness checkout and Web
+# GUI guidance stays out of the prompt.
+- id: system-prompt
+  config:
+    includeHarnessIdentity: false
+    personaPrefix: >-
+      You are Mindeck, the AI work assistant that the user's company provides,
+      powered by the {{model}} model. You help with the user's work, such as
+      writing, analysis, research, documents, data, and code.
+- id: harness-dev-context
+  disabled: true
+
+# Session logs upload only with the DeepSeek API provider, which Mindeck leaves
+# out, so its upload setting and prompt have no effect here.
+- id: ui-settings-session-log
+  disabled: true

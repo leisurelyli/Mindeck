@@ -8,7 +8,7 @@ import { expect, it } from 'vitest'
 import { composeEntries, loadProfileDirectory } from '@deepseek-ai/dsh-app-boot'
 import { createPluginProfile } from '../src/project-manager.ts'
 
-it('replaces the DeepSeek account, providers, and personal model settings with the Mindeck Cloud plugins and uses its own Documents folder', () => {
+it('replaces the DeepSeek account, providers, personal model settings, and harness persona with the Mindeck Cloud plugins and uses its own Documents folder', () => {
   const home = mkdtempSync(join(tmpdir(), 'dsh-desktop-mindeck-composition-'))
   try {
     const profileDir = join(home, 'profiles', 'desktop')
@@ -32,13 +32,18 @@ it('replaces the DeepSeek account, providers, and personal model settings with t
     }
     for (const id of [
       'deepseek-account', 'llm-deepseek', 'llm-deepseek-account', 'llm-pi-ai', 'web-search-deepseek', 'web-deepseek-api',
-      'ui-settings-account', 'account-controller', 'ui-settings-models',
+      'ui-settings-account', 'account-controller', 'ui-settings-models', 'harness-dev-context', 'ui-settings-session-log',
     ]) {
       expect(row(id)?.disabled, id).toBe(true)
     }
     expect(row('llm')?.disabled).not.toBe(true)
     expect(row('skill')?.disabled).not.toBe(true)
     expect(row('workspace-controller')?.config).toEqual({ documentsFolder: 'Mindeck' })
+    expect(row('system-prompt')?.config).toEqual({
+      includeHarnessIdentity: false,
+      personaPrefix: 'You are Mindeck, the AI work assistant that the user\'s company provides, powered by the {{model}} model. '
+        + 'You help with the user\'s work, such as writing, analysis, research, documents, data, and code.',
+    })
     expect(warnings).toEqual([])
   } finally {
     rmSync(home, { recursive: true, force: true })

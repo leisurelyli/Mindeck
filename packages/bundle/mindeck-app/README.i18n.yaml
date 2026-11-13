@@ -9,26 +9,38 @@
   en: 13a872841610d5b1
   zh: b464be138d3128a0
 /deepseek-ai-dsh-mindeck-app/summary:
-  en: 1210227db16c5f31
-  zh: f2900fbba71c3df3
+  en: 474dfd2f3aa94a18
+  zh: 81346cd2e0af8570
 /deepseek-ai-dsh-mindeck-app/table-of-contents:
   en: d152484eb41ac6b4
   zh: bda879a892f240f0
 /deepseek-ai-dsh-mindeck-app/use-this-package:
-  en: be4d6cc9ca5b7df4
-  zh: 59c829b377853364
+  en: 7e49bd247a15fe13
+  zh: 567f767bfe05e0be
 /deepseek-ai-dsh-mindeck-app/understand-the-implementation:
-  en: db16b9e6dd296d5e
-  zh: 2ed489833a18be6d
+  en: ae3fb59a9cdc60e6
+  zh: 86cb714262a57a56
 /deepseek-ai-dsh-mindeck-app/further-exploration:
   en: 7f4d2046d91642d9
   zh: 4c4828b69fd61d41
 /deepseek-ai-dsh-mindeck-app/model-experience:
-  en: fb7c765e16d698f5
-  zh: 8d549d8546fa4a7f
-/deepseek-ai-dsh-mindeck-app/model-experience/kv-cache-effect:
-  en: 66d3d30ef67ea9da
-  zh: 062cea75f08889da
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-mindeck-app/model-experience/mindeck-persona:
+  en: e7b98d1e0c7711a1
+  zh: a2828b1383e21073
+/deepseek-ai-dsh-mindeck-app/model-experience/mindeck-persona/what-the-model-sees:
+  en: 9c4d8185ab075011
+  zh: 0b5ccf1f45cb8595
+/deepseek-ai-dsh-mindeck-app/model-experience/mindeck-persona/what-the-model-sees/persona-prefix:
+  en: 03432eed0cd64e5a
+  zh: 5b943708e3ae6116
+/deepseek-ai-dsh-mindeck-app/model-experience/mindeck-persona/token-effect:
+  en: ff117590fef878bc
+  zh: 8f23878f3d817f53
+/deepseek-ai-dsh-mindeck-app/model-experience/mindeck-persona/kv-cache-effect:
+  en: 29f7d01bf68bb71c
+  zh: e3f2b4f68a7dbc6e
 /deepseek-ai-dsh-mindeck-app/known-limitations-and-deferred-work:
   en: ffb5a4d7b1047c5d
   zh: 8b20b0afc58727b4
