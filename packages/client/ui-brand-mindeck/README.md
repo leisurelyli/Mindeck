@@ -33,7 +33,7 @@ Choose this package as the brand row in a deployment's Cordis composition, along
 
 The row takes no configuration. Select it instead of `@deepseek-ai/dsh-client-ui-brand-official`; the official package remains available for upstream compositions. Selection follows composition rather than the client build profile. Set the deployment's locale `parameters.productName` to `Mindeck`; the brand dictionary uses `{productName}` and inherits the shared upstream default when omitted. The plugin uses each host's requested mark size and adds no whale background.
 
-When [account settings](../ui-settings-account/README.md#desktop-onboarding) declares its illustration slot, the welcome and credit pages share this package's workspace screenshots, with English and Chinese variants for light and dark themes. Without that declaration, the plugin contributes only the sidebar and conversation branding.
+When [account settings](../ui-settings-account/README.md#desktop-onboarding) declares its illustration slots, the welcome and credit pages and the hero of the shared [first-run page](../ui-settings-account/README.md#pages-for-other-accounts), such as the Mindeck sign-in welcome, share this package's workspace screenshots, with English and Chinese variants for light and dark themes. Without that declaration, the plugin contributes only the sidebar and conversation branding.
 
 The plugin overrides four texts of the `conversation` namespace in Chinese and English through `ctx.locale.override`: the blank-home headline, its badge, and the two composer placeholders. Other languages keep the upstream wording.
 
@@ -47,7 +47,7 @@ The plugin overrides four texts of the `conversation` namespace in Chinese and E
 
 The [browser entry](src/client/index.ts) registers the `mindeck` dictionaries through `locale` and waits for all three slot declarations before filling `sidebar.brand.mark`, `sidebar.brand.name` and `conversation.hero.brand.mark` together. Slot effects remove the complete set when a declaration disappears and restore it on redeclaration; unloading the plugin also removes its dictionaries. The [components](src/client/Brand.tsx) receive geometry and typed translation props. The shared client bundler imports the unchanged [canonical SVG](src/client/assets/mindeck.svg) and emits a package asset URL. The host entry is inert.
 
-The [onboarding illustration](src/client/OnboardingIllustration.tsx) independently fills `desktop.onboarding.illustration` through `ctx.slots.inject` and `register`. It consumes the account-owned `step`, `locale` and `className` inputs through a type-only package dependency; positioning stays with the account step. Both steps use the same four WebP assets. Removing the declaration removes the occupant, redeclaration restores it, and unloading the plugin restores the account package's upstream fallback artwork.
+The [onboarding illustration](src/client/OnboardingIllustration.tsx) independently fills `desktop.onboarding.illustration` and `desktop.onboarding.page.illustration`, each through its own `ctx.slots.inject` and `register`. It consumes the account-owned `step`, `locale` and `className` inputs through a type-only package dependency; positioning stays with the account step. Both steps use the same four WebP assets. Removing a declaration removes its occupant, redeclaration restores it, and unloading the plugin restores the account package's upstream fallback artwork.
 
 </details>
 

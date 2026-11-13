@@ -7,6 +7,7 @@ import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-tes
 import type { MindeckEmployeeCard, MindeckEmployeeCatalog } from '../src/types.ts'
 import { EmployeesPage, type EmployeesPageProps } from '../src/client/EmployeesPage.tsx'
 import { zh } from '../src/client/locales.ts'
+import { starterInsertion } from '../src/client/cards.ts'
 import type { MindeckEmployeesSnapshot } from '../src/client/operations.ts'
 
 afterEach(() => { cleanup() })
@@ -62,4 +63,19 @@ it('starts a conversation from a card or a starter and keeps every action off un
   await act(async () => { f.opened.resolve() })
   fireEvent.click(view.getByRole('button', { name: zh.generalStarter2 }))
   expect(f.start).toHaveBeenLastCalledWith('mindeck-general', zh.generalStarter2)
+})
+
+it('fills an empty draft with a starter and starts a new line after existing text', () => {
+  expect(starterInsertion('  ', '审合同')).toEqual({ text: '审合同', start: 0, end: 2 })
+  expect(starterInsertion('附件见上', '审合同')).toEqual({ text: '\n审合同', start: 4, end: 4 })
+  expect(starterInsertion('附件见上\n', '审合同')).toEqual({ text: '审合同', start: 5, end: 5 })
+})
+
+it('draws the name\'s first character when a portrait fails to load', () => {
+  const view = render(<EmployeesPage {...fixture({ cards: [GENERAL, LEGAL] }).props} />)
+  const card = view.getAllByRole('article')[1]!
+  const image = card.querySelector('img')
+  if (image === null) throw new Error('Expected the legal portrait')
+  fireEvent.error(image)
+  expect(card.querySelector('[data-tint]')?.textContent).toBe('法')
 })

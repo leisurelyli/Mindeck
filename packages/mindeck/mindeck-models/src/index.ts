@@ -91,7 +91,7 @@ export function apply(ctx: Context, config: Config): void {
     resolveApiKey: async () => {
       const current = await token()
       // The transcript shows this message as written; Mindeck Cloud explains its own refusals in Chinese as well.
-      if (current === undefined) throw new LlmError('已退出 Mindeck 公司账号，请登录后重试。', SIGN_IN_REQUIRED_CODE)
+      if (current === undefined) throw new LlmError('已退出 Mindeck 企业账号，请登录后重试。', SIGN_IN_REQUIRED_CODE)
       return current
     },
     auth: piAiAuthFrom(ctx),

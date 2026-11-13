@@ -190,7 +190,7 @@ it('sends the session token to the gateway and reports quota, sign-out, and sess
 
   f.loseSession()
   const signedOut = await assemble(f.ctx, request)
-  expect(signedOut.finish).toMatchObject({ kind: 'error', failure: { code: MindeckModels.SIGN_IN_REQUIRED_CODE, message: '已退出 Mindeck 公司账号，请登录后重试。' } })
+  expect(signedOut.finish).toMatchObject({ kind: 'error', failure: { code: MindeckModels.SIGN_IN_REQUIRED_CODE, message: '已退出 Mindeck 企业账号，请登录后重试。' } })
   expect(gateway.paths).toHaveLength(2)
   f.signIn('desktop-token-1')
 

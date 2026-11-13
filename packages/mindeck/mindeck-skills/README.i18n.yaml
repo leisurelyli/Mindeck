@@ -4,22 +4,22 @@
 #   pnpm run verify-translation-pairing --write packages/mindeck/mindeck-skills/README.md
 /:
   en: d977f2960cd0b7a9
-  zh: ebb71924c68eca91
+  zh: c292b3a35758a576
 /deepseek-ai-dsh-mindeck-skills:
   en: a595a15eeed4129b
   zh: 518b83c2fa870751
 /deepseek-ai-dsh-mindeck-skills/summary:
   en: ee1dfa71b0b14ac7
-  zh: fe89b06ab2a7314b
+  zh: 98928eb277122a91
 /deepseek-ai-dsh-mindeck-skills/table-of-contents:
   en: d152484eb41ac6b4
   zh: ce40cab8e7534137
 /deepseek-ai-dsh-mindeck-skills/use-this-package:
-  en: 94401d314f39a4a3
-  zh: 1ef1aa2a54d4b381
+  en: 27dd24900642a1e4
+  zh: 3248cbca840727a9
 /deepseek-ai-dsh-mindeck-skills/understand-the-implementation:
   en: fbc2e68b0fe3e818
-  zh: c995ff222b890ec3
+  zh: 920e4c80aa8636a5
 /deepseek-ai-dsh-mindeck-skills/further-exploration:
   en: f3ad3ec7e9b070b5
   zh: 80008b60b2bccc78
@@ -28,10 +28,10 @@
   zh: a311da3843709f90
 /deepseek-ai-dsh-mindeck-skills/model-experience/company-skills:
   en: 7edd42536f75bfa6
-  zh: 1660baf54a52a3ca
+  zh: 4301951422d71780
 /deepseek-ai-dsh-mindeck-skills/model-experience/company-skills/what-the-model-sees:
   en: 5af7b41ec934ae87
-  zh: 5b75c7b2bb3b9eee
+  zh: 9ea91d19491a61ea
 /deepseek-ai-dsh-mindeck-skills/model-experience/company-skills/token-effect:
   en: 084a02ad5ed0d8d8
   zh: cece5bc746597a6a
@@ -40,7 +40,7 @@
   zh: 1807c1871d5a5060
 /deepseek-ai-dsh-mindeck-skills/known-limitations-and-deferred-work:
   en: 539c7d1a76cae5be
-  zh: 1beb0f65621465de
+  zh: 9ae1ef38f9d438c3
 /deepseek-ai-dsh-mindeck-skills/known-limitations-and-deferred-work/dev-note:
   en: 0225ba087c5266f3
   zh: 0400e21a2683a23c

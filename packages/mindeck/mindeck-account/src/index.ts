@@ -21,7 +21,7 @@ import { deadline } from '@deepseek-ai/dsh-timeout'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { followChanges } from './changes.ts'
 import {
-  type DeviceInfo, type MindeckBootstrap, MindeckCloudError, normalizeCloudUrl, pollDeviceToken, probeCloud,
+  cloudUrlCandidates, type DeviceInfo, type MindeckBootstrap, MindeckCloudError, normalizeCloudUrl, pollDeviceToken, probeCloud,
   readBootstrap, readQuota, reportDevice, reportDeviceRequest, requestDeviceCode, sendFeedback, signOutDevice,
 } from './cloud.ts'
 import type {
@@ -30,7 +30,7 @@ import type {
 
 export type * from './types.ts'
 export type { MindeckBootstrap } from './cloud.ts'
-export { normalizeCloudUrl } from './cloud.ts'
+export { cloudUrlCandidates, normalizeCloudUrl } from './cloud.ts'
 export { followChanges } from './changes.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -54,6 +54,11 @@ export interface Config {
    * member sets it; the account settings write it through the settings service.
    */
   cloudUrl: Volatile<string>
+  /**
+   * Whether this device showed the Mindeck welcome page. The member's first step sets it, and so does the first
+   * sign-in or a stored session, so the page appears once per device.
+   */
+  welcomed: Volatile<boolean>
   /** Timeout of each request to Mindeck Cloud in milliseconds. */
   requestTimeoutMs: number
   /** Interval in milliseconds between quota reads while signed in. */
@@ -139,6 +144,8 @@ export default class MindeckAccount extends TypertRemoteService {
   static Config = z.object({
     cloudUrl: z.string().default('').volatile()
       .description('Mindeck Cloud console address, such as https://cloud.example.com.'),
+    welcomed: z.boolean().default(false).volatile()
+      .description('Whether this device showed the Mindeck welcome page.'),
     requestTimeoutMs: z.natural().min(1000).default(15_000)
       .description('Timeout of each request to Mindeck Cloud in milliseconds.'),
     quotaRefreshMs: z.natural().min(10_000).default(120_000)
@@ -187,6 +194,7 @@ export default class MindeckAccount extends TypertRemoteService {
     const user = stored?.bootstrap.user
     return {
       cloudUrl: this.cloudUrl() ?? null,
+      welcomed: this.config.welcomed.get(),
       status: stored === undefined ? 'signed-out' : 'signed-in',
       user: user === undefined ? null : { ...user },
       companyName: stored?.bootstrap.company.name ?? null,
@@ -235,24 +243,38 @@ export default class MindeckAccount extends TypertRemoteService {
   }
 
   /**
-   * Set the Mindeck Cloud address after checking that it answers as one. Only while signed out.
-   * @param input - address typed by the member; a missing scheme means HTTPS.
+   * Set the Mindeck Cloud address after checking that it answers as one. Only while signed out. An address with a
+   * page path, such as an invitation link, resolves to the shortest path prefix that answers as a Mindeck Cloud.
+   * @param input - address typed or pasted by the member; a missing scheme means HTTPS.
    * @param signal - caller cancellation.
-   * @returns state with the new address.
+   * @returns state with the resolved address.
    */
   @Remote
   async setCloudUrl(input: string, signal: AbortSignal): Promise<MindeckAccountView> {
     if (await this.load() !== undefined) throw new RemoteError('mindeck-account/signed-in', 'sign out before changing the Cloud address', {})
-    const cloudUrl = normalizeCloudUrl(input)
-    if (cloudUrl === undefined) {
+    const address = normalizeCloudUrl(input)
+    if (address === undefined) {
       throw new RemoteError('mindeck-account/invalid-cloud-url', 'not an HTTP(S) address', { reason: 'format' })
     }
-    try {
-      await this.request(signal, request => probeCloud(cloudUrl, request))
-    } catch (error) {
-      if (!(error instanceof MindeckCloudError)) throw error
-      const reason = error.code === 'unreachable' ? 'unreachable' : 'not-mindeck-cloud'
-      throw new RemoteError('mindeck-account/invalid-cloud-url', error.message, { reason }, { cause: error })
+    let cloudUrl: string | undefined
+    let refusal: MindeckCloudError | undefined
+    for (const candidate of cloudUrlCandidates(address)) {
+      try {
+        await this.request(signal, request => probeCloud(candidate, request))
+        cloudUrl = candidate
+        break
+      } catch (error) {
+        if (!(error instanceof MindeckCloudError)) throw error
+        // Every candidate shares one origin, so an unreachable one means the rest are too.
+        if (error.code === 'unreachable') {
+          throw new RemoteError('mindeck-account/invalid-cloud-url', error.message, { reason: 'unreachable' }, { cause: error })
+        }
+        refusal = error
+      }
+    }
+    if (cloudUrl === undefined) {
+      throw new RemoteError('mindeck-account/invalid-cloud-url', refusal?.message ?? 'not a Mindeck Cloud',
+        { reason: 'not-mindeck-cloud' }, { cause: refusal })
     }
     const settings = this.ctx.get('settings')
     try {
@@ -263,6 +285,17 @@ export default class MindeckAccount extends TypertRemoteService {
       throw new RemoteError('mindeck-account/settings', 'the Cloud address could not be saved', {}, { cause: error })
     }
     this.changed()
+    return await this.getState()
+  }
+
+  /**
+   * Record that this device showed the welcome page, so it does not appear again.
+   * @returns the state with `welcomed` set.
+   * @throws RemoteError `mindeck-account/settings` when the profile settings could not be written.
+   */
+  @Remote
+  async finishWelcome(): Promise<MindeckAccountView> {
+    await this.markWelcomed()
     return await this.getState()
   }
 
@@ -353,6 +386,19 @@ export default class MindeckAccount extends TypertRemoteService {
     return normalizeCloudUrl(this.config.cloudUrl.get())
   }
 
+  /** Persist `welcomed`; a device that already has it writes nothing. */
+  private async markWelcomed(): Promise<void> {
+    if (this.config.welcomed.get()) return
+    const settings = this.ctx.get('settings')
+    try {
+      if (settings === undefined) throw new Error('the settings service is not mounted')
+      await settings.update(this.settingsNs, { welcomed: true })
+    } catch (error) {
+      this.ctx.logger.warn('mindeck-account: could not save that the welcome page was shown', error)
+      throw new RemoteError('mindeck-account/settings', 'the welcome state could not be saved', {}, { cause: error })
+    }
+  }
+
   private async load(): Promise<StoredSession | undefined> {
     this.loaded ??= (async () => {
       let record
@@ -422,6 +468,10 @@ export default class MindeckAccount extends TypertRemoteService {
     try { stored = await this.load() }
     catch (error) { this.ctx.logger.warn('mindeck-account: could not read the stored session', error); return }
     if (stored === undefined) return
+    // A device that signed in before the welcome page existed has no use for it.
+    this.track(this.markWelcomed().catch((_error: unknown) => {
+      // markWelcomed logged the failure; the next start tries again.
+    }))
     let bootstrap: MindeckBootstrap | 'sign-in-required'
     try { bootstrap = await this.request(this.lifetime.signal, signal => readBootstrap(stored.cloudUrl, stored.token, signal)) }
     catch (error) {
@@ -486,6 +536,9 @@ export default class MindeckAccount extends TypertRemoteService {
       issued = undefined
       this.update(attempt, { phase: 'succeeded' }, true)
       this.track(this.readQuota(this.lifetime.signal))
+      this.track(this.markWelcomed().catch((_error: unknown) => {
+        // markWelcomed logged the failure; a later sign-out may show the welcome page again.
+      }))
     } catch (error) {
       if (issued !== undefined) {
         // The session exists on Cloud but was not stored here; end it instead of leaving it orphaned.

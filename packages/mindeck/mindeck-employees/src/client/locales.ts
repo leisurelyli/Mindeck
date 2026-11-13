@@ -1,18 +1,15 @@
-/** Copy of the digital-employee cards and page. */
+/** Copy of the digital-employee page. */
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 
-/** Locale namespace of the cards. */
+/** Locale namespace of the page. */
 export const NS = 'mindeckEmployees'
 
 /** English dictionary. */
 export const en = {
-  title: 'Who can help?',
   generalName: 'General assistant',
   generalTagline: 'Writing, analysis, research, files: ask anything',
   draft: 'Draft',
-  showAll: 'All digital employees',
   starters: 'Try asking',
-  selectRefused: 'Could not switch to {name}: {reason}',
   panel: 'Digital employees',
   pageIntro: 'Pick a digital employee to start a new conversation. A suggested question goes into the message box without being sent.',
   startWith: 'Start a conversation with {name}',
@@ -22,18 +19,15 @@ export const en = {
   generalStarter3: 'Turn my meeting notes into a to-do list',
 }
 
-/** Key of one card string. */
+/** Key of one page string. */
 export type MindeckEmployeesKey = keyof typeof en
 
 /** Chinese dictionary. */
 export const zh: Record<MindeckEmployeesKey, string> = {
-  title: '找谁帮忙？',
   generalName: '通用助手',
   generalTagline: '写作、分析、整理资料、处理文件，什么都可以问',
   draft: '草稿',
-  showAll: '全部数字员工',
   starters: '可以这样问',
-  selectRefused: '无法切换到“{name}”：{reason}',
   panel: '数字员工',
   pageIntro: '选一位数字员工开始新对话。点开场问题会填进输入框，由你确认后再发送。',
   startWith: '与“{name}”开始新对话',
@@ -45,7 +39,7 @@ export const zh: Record<MindeckEmployeesKey, string> = {
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
-    /** The digital-employee cards on the new-conversation screen and the digital-employee page. */
+    /** The digital-employee page. */
     mindeckEmployees: MindeckEmployeesKey
   }
 }

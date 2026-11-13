@@ -89,7 +89,7 @@ export function mapGatewayFailure(failure: LlmFailure, token: string | undefined
     case 402:
       return { ...failure, status, code: QUOTA_EXCEEDED_CODE, message }
     case 403:
-      return { ...failure, status, code: ACCOUNT_UNAVAILABLE_CODE, message: read.text ?? '账号暂时无法使用公司模型，请联系管理员。' }
+      return { ...failure, status, code: ACCOUNT_UNAVAILABLE_CODE, message: read.text ?? '账号暂时无法使用企业模型，请联系管理员。' }
     case 404:
       hooks.modelMissing()
       return { ...failure, status, code: 'UNKNOWN_MODEL', message }

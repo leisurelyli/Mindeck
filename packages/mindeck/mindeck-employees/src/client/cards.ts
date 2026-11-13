@@ -1,28 +1,10 @@
-/** Pure layout and draft rules of the digital-employee cards and page. */
-import type { MindeckEmployeeCard, MindeckEmployeeCatalog } from '../types.ts'
-
-/** Cards the row shows; the digital-employee page lists every card. */
-export const COLLAPSED_CARDS = 6
-
-/**
- * Choose the cards to show: the first cards and, when the selected card lies beyond them, the selected card in place
- * of the last one so the selection stays visible.
- * @param cards - every card, general assistant first.
- * @param selected - preset of the Session, if any.
- * @returns the cards to render, in catalog order.
- */
-export function visibleCards(cards: readonly MindeckEmployeeCard[], selected: string | undefined): readonly MindeckEmployeeCard[] {
-  if (cards.length <= COLLAPSED_CARDS) return cards
-  const first = cards.slice(0, COLLAPSED_CARDS)
-  const chosen = cards.find(card => card.presetId === selected)
-  if (chosen === undefined || first.includes(chosen)) return first
-  return [...first.slice(0, COLLAPSED_CARDS - 1), chosen]
-}
+/** Pure listing and draft rules of the digital-employee page. */
+import type { MindeckEmployeeCatalog } from '../types.ts'
 
 /**
  * Whether the company offers at least one digital employee besides the general assistant.
  * @param catalog - the streamed cards, if any.
- * @returns whether the cards and the digital-employee page appear.
+ * @returns whether the digital-employee page and its sidebar row appear.
  */
 export function offersEmployees(catalog: MindeckEmployeeCatalog | undefined): boolean {
   return catalog?.cards.some(card => card.kind === 'employee') === true

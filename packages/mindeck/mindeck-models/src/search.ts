@@ -106,7 +106,7 @@ export class MindeckSearchProvider implements WebSearchProvider {
   readonly title = 'Mindeck'
   readonly description: NonNullable<WebSearchProvider['description']> = {
     en: 'Searches the web through Mindeck Cloud with the key your company configures. Each search counts toward your quota.',
-    zh: '通过 Mindeck Cloud 使用公司配置的密钥联网搜索，每次搜索计入你的额度。',
+    zh: '通过 Mindeck Cloud 使用企业配置的密钥联网搜索，每次搜索计入你的额度。',
   }
 
   /** @param hooks - live status, session, and settings, read at each call. */
@@ -126,9 +126,9 @@ export class MindeckSearchProvider implements WebSearchProvider {
     const status = this.hooks.status()
     const token = await this.hooks.token()
     if (status === undefined || token === undefined) {
-      throw new WebError('已退出 Mindeck 公司账号，请登录后重试。', 'WEB_PROVIDER_UNAVAILABLE')
+      throw new WebError('已退出 Mindeck 企业账号，请登录后重试。', 'WEB_PROVIDER_UNAVAILABLE')
     }
-    if (!status.enabled) throw new WebError('公司没有开启联网搜索。', 'WEB_PROVIDER_UNAVAILABLE')
+    if (!status.enabled) throw new WebError('企业没有开启联网搜索。', 'WEB_PROVIDER_UNAVAILABLE')
     const question = this.hooks.originalQuestion()?.trim().slice(0, ORIGINAL_QUESTION_MAX_CHARS)
     const count = Math.min(this.hooks.count(), request.maxResults ?? Number.POSITIVE_INFINITY)
     const employee = this.hooks.employee()

@@ -9,7 +9,7 @@
 # Mindeck Enterprise: the Mindeck Cloud account, company models, company web
 # search, company skills, the company file library, and the company's digital
 # employees come from Mindeck Cloud.
-# Members sign in through the Mindeck account dialog and use the models and
+# Members sign in through the full-screen Mindeck sign-in and use the models and
 # search the company configures, metered by the Mindeck Cloud gateway. The
 # DeepSeek account stays available as a second sign-in under Settings, with its
 # own models and DeepSeek web search. Personal API-key routes (the official

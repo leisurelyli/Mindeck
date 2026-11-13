@@ -100,6 +100,17 @@ describe('the agent-preset roster store', () => {
     ])
   })
 
+  it('keeps an unlisted preset in the options with its flag, so a Session already on it shows its name', async () => {
+    const controller = derivedController(fakeApi([
+      { id: 'standard', isDefault: true },
+      { id: 'retired', isDefault: false, name: 'Retired', listed: false },
+    ] as never))
+
+    await controller.load()
+
+    expect(controller.store.getSnapshot().options).toEqual([{ id: 'standard' }, { id: 'retired', name: 'Retired', listed: false }])
+  })
+
   it('offers no broken preset: the pickers choose the NEXT session\'s composition', async () => {
     const controller = derivedController(fakeApi([
       { id: 'standard', isDefault: true },

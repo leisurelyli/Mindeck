@@ -113,6 +113,24 @@ describe('declarative preset revisions', () => {
     await expect(ctx.agentPresets.select(agent, 'standard')).rejects.toThrow('already started')
   })
 
+  it('lists an unlisted preset with its flag and refuses selecting it for a Session not already on it', async () => {
+    const ctx = await setup()
+    await declare(ctx, contribution('standard'))
+    await declare(ctx, { ...contribution('retired'), listed: false })
+    const roster = await ctx.agentPresets.remoteExportList()
+    expect(roster.presets.find(row => row.id === 'retired')).toMatchObject({ id: 'retired', listed: false })
+    expect(roster.presets.find(row => row.id === 'standard')).not.toHaveProperty('listed')
+    const blank = await agentOn(ctx, 'blank')
+    await expect(ctx.agentPresets.select(blank, 'retired')).rejects.toMatchObject({ code: 'agent-preset/unlisted' })
+    expect(ctx.agentPresets.composedPreset(blank.ctx)).toBe('standard')
+    expect(ctx.agentPresets.presetForSession(blank.session)).toBeNull()
+
+    const resumed = await agentOn(ctx, 'resumed', 'retired')
+    resumed.session.append('agent-preset/selected', { agentPreset: 'retired' })
+    expect(await ctx.agentPresets.select(resumed, 'retired')).toBe('retired')
+    expect(await ctx.agentPresets.select(resumed, 'standard')).toBe('standard')
+  })
+
   it('inventories active and disabled child entries and declared display metadata', async () => {
     const ctx = await setup()
     await declare(ctx, { ...contribution('standard'), name: 'Standard', description: 'General', order: 2 })

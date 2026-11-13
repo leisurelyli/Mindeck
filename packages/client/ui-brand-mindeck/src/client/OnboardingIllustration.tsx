@@ -8,7 +8,7 @@ import artZhDark from './assets/mindeck-onboarding-welcome-zh-dark.webp'
 import css from './OnboardingIllustration.module.css'
 
 /**
- * Render the same workspace preview on the welcome and credit pages.
+ * Render the same workspace preview on the welcome and credit pages and on a first-run page hero.
  * @param props - Step-owned language and illustration geometry.
  * @returns Decorative light and dark screenshots selected by the active theme.
  */

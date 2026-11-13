@@ -68,13 +68,16 @@ export function quotaText(
   })
 }
 
+/** Two decimals with thousands separators, the way amounts read in both Chinese and English copy. */
+const CNY = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
 /**
  * Format an amount of money for the quota rows.
  * @param value - amount in CNY.
- * @returns the amount as `¥12.50`.
+ * @returns the amount as `¥2,012.50`.
  */
 export function formatCny(value: number): string {
-  return `¥${value.toFixed(2)}`
+  return `¥${CNY.format(value)}`
 }
 
 /**

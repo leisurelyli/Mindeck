@@ -109,6 +109,21 @@ export function normalizeCloudUrl(input: string): string | undefined {
   return `${url.origin}${url.pathname.replace(/\/+$/, '')}`
 }
 
+/** Most path segments of an address that {@link cloudUrlCandidates} tries below its origin. */
+const MAX_CANDIDATE_SEGMENTS = 5
+
+/**
+ * List the addresses where a Mindeck Cloud may live for an address that may point at one of its pages, such as an
+ * invitation link: the origin first, then each longer path prefix, so a Cloud served at the origin answers first.
+ * @param cloudUrl - a normalized address.
+ * @returns the origin and up to five path prefixes, shortest first.
+ */
+export function cloudUrlCandidates(cloudUrl: string): string[] {
+  const url = new URL(cloudUrl)
+  const segments = url.pathname.split('/').filter(segment => segment !== '').slice(0, MAX_CANDIDATE_SEGMENTS)
+  return [url.origin, ...segments.map((_, index) => `${url.origin}/${segments.slice(0, index + 1).join('/')}`)]
+}
+
 async function send(url: string, init: RequestInit, signal: AbortSignal): Promise<Response> {
   try {
     return await fetch(url, { ...init, redirect: 'error', signal })

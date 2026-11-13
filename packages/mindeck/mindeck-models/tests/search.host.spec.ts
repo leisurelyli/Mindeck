@@ -155,7 +155,7 @@ it('offers no search while the company has it off, cannot be selected after sign
   f.cloud.state.enabled = false
   f.refresh()
   await vi.waitFor(async () => { expect(await f.ready()).toBe(false) })
-  await expect(f.ctx.web.search({ query: '天气' })).rejects.toThrow(new WebError('公司没有开启联网搜索。', 'WEB_PROVIDER_UNAVAILABLE'))
+  await expect(f.ctx.web.search({ query: '天气' })).rejects.toThrow(new WebError('企业没有开启联网搜索。', 'WEB_PROVIDER_UNAVAILABLE'))
 
   f.cloud.state.enabled = true
   f.refresh()

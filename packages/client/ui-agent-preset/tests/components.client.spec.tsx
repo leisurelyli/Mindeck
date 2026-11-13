@@ -115,6 +115,19 @@ describe('the new-session chip', () => {
     expect(actions.select).toHaveBeenCalledWith('cordis')
   })
 
+  it('offers an unlisted preset only while it is the current choice, and still names it', () => {
+    const options = [{ id: 'standard' }, { id: 'retired', name: 'Retired helper', listed: false as const }]
+    renderSeat({ options })
+    fireEvent.click(screen.getByRole('button'))
+    expect(screen.getAllByRole('menuitem').map(item => item.textContent)).toEqual([expect.stringContaining('Standard mode')])
+    cleanup()
+
+    renderSeat({ options, current: 'retired' })
+    expect(screen.getByRole('button').textContent).toContain('Retired helper')
+    fireEvent.click(screen.getByRole('button'))
+    expect(screen.getAllByRole('menuitem')).toHaveLength(2)
+  })
+
   it('keeps a named custom preset that overrides a development preset id', () => {
     renderSeat({ options: [{ id: 'ptc', name: 'My workflow' }] }, undefined, undefined, false)
     fireEvent.click(screen.getByRole('button'))

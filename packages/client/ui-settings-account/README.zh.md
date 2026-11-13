@@ -67,6 +67,22 @@ Desktop preload 标记在账号凭证已存储后启用引导。进度属于本�
 
 访问控制：账号状态流、额度提醒、设置启动器、账号设置分区与模型登录入口只在当前 Peer 可以调用 `account/watch` 时存在；桌面引导与平台页面不受此控制。失去该权限时，这一轮发出的账号读取作废，待授权的浏览器标签页关闭，账号视图、详情、头像与登录对话框状态清空；之后再次授权时，账号分区等新流的第一帧到达后才重新出现。owner 始终有权限。
 
+<a id="pages-for-other-accounts"></a>
+### 供其他账号使用的页面
+
+其他账号插件（例如企业账号）可以通过组件工厂，用本包自己的外观绘制登录页和设置页；桌面端和浏览器都可用，与 DeepSeek 账号状态无关。调用方传入已本地化的文字；这些工厂随插件注册，也随插件撤销。
+
+| 工厂 | 输入 | 绘制内容 |
+|---|---|---|
+| `desktop.onboarding.page` | `OnboardingPageInput` | 全屏引导舞台：`hero`（文字和插图，与欢迎页相同）、`centered`（文字、调用方的 `body` 和操作按钮）或 `status`；设置 `onSubmit` 时整页是表单，可选页脚“上一步”，以及 180ms 的退出淡出 |
+| `settings.account.page` | `AccountPageInput` | 账号页的内容列 |
+| `settings.account.identity` | `AccountIdentityInput` | 身份卡：圆形头像、名称、状态行，以及右侧的链接或控件 |
+| `settings.account.rows` | `AccountRowsInput` | 由分隔线隔开的“标签—值”行卡片 |
+| `settings.account.links` | `AccountLinksInput` | 描边链接按钮；没有 `href` 的条目渲染为按钮 |
+| `settings.account.amount` | `AccountAmountInput` | 余额字号的金额 |
+
+`page` 值变化时，页面重放切换动画并聚焦标题，除非正文里的控件已经取得焦点。页面挂载期间通过 `dshOnboarding` 向桌面端申请引导窗口宽度。hero 插图来自根作用域单槽位 `desktop.onboarding.page.illustration`，owner 输入与欢迎步骤相同，未占用时使用上游欢迎页插图。各引导舞台共享应用根节点的 inert 和隐藏状态，因此重叠的舞台无论以什么顺序结束，都要等最后一个结束才显示根节点。DeepSeek 账号页通过同一组部件渲染，标记和类名不变。
+
 <a id="understand-the-implementation"></a>
 ## 理解实现
 

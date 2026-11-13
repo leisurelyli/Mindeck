@@ -6,6 +6,8 @@ export interface AgentPreset {
   readonly name?: string
   readonly description?: string
   readonly order?: number
+  /** `false` when the preset is not offered for new conversations; see `PresetDefinition.listed`. */
+  readonly listed?: false
   readonly broken?: string
 }
 

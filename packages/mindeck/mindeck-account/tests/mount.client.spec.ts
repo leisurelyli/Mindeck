@@ -9,10 +9,11 @@ import type { MindeckAccountView } from '../src/types.ts'
 import type { AccountView } from '@deepseek-ai/dsh-deepseek-account/types'
 import type { MindeckAccountInjected } from '../src/client/operations.ts'
 import { mountAccount } from '../src/client/mount.ts'
+import { MindeckOnboarding } from '../src/client/MindeckOnboarding.tsx'
 
 const contribution: TypertRemoteContribution = { package: '@deepseek-ai/dsh-mindeck-account', descriptors: [] }
 const signedOut: MindeckAccountView = {
-  cloudUrl: 'https://cloud.example.com', status: 'signed-out', user: null, companyName: null, notice: null, attempt: null, quota: null, adminContact: null, personalDeepSeek: false,
+  cloudUrl: 'https://cloud.example.com', welcomed: true, status: 'signed-out', user: null, companyName: null, notice: null, attempt: null, quota: null, adminContact: null, personalDeepSeek: false,
 }
 
 /** Host state frames the fake `watch` stream delivers in order. */
@@ -57,6 +58,7 @@ async function fixture() {
     cancelSignIn: vi.fn(async (): Promise<RemoteResult<MindeckAccountView>> => ok(signedOut)),
     signOut: vi.fn(async (): Promise<RemoteResult<MindeckAccountView>> => ok(signedOut)),
     refreshQuota: vi.fn(async (): Promise<RemoteResult<MindeckAccountView>> => ok(signedOut)),
+    finishWelcome: vi.fn(async (): Promise<RemoteResult<MindeckAccountView>> => ok(signedOut)),
   }
   ctx.provide('remote.mindeckAccount', remote as never)
   ctx.provide('locale', new LocaleRuntime(ctx))
@@ -78,17 +80,19 @@ function operations(entry: { inject?: unknown } | undefined): MindeckAccountInje
   return (entry.inject as () => MindeckAccountInjected)()
 }
 
-it('registers the gate, launcher, section, its icon, the quota notice and reminder, then withdraws them before the Remote', async () => {
+it('registers the sign-in stage, launcher, section, its icon, the quota notice and reminder, then withdraws them before the Remote', async () => {
   const f = await fixture()
   try {
     const dispose = await mountAccount(f.ctx, contribution)
-    expect(f.ctx.slots.entries('shell.overlay')).toHaveLength(1)
+    expect(f.ctx.slots.entries('shell.overlay').map(entry => entry.component)).toEqual([MindeckOnboarding])
     expect(f.ctx.slots.entries('settings.launcher')).toHaveLength(1)
     // The DeepSeek account launcher registers at the default priority beside it; the lower priority renders.
     const deepseekLauncher = f.ctx.slots.register({ name: 'settings.launcher' } as never, () => null)
     expect(f.ctx.slots.entries('settings.launcher').map(entry => entry.options.priority ?? 0).sort()).toEqual([-1, 0])
     deepseekLauncher()
-    expect(f.ctx.slots.entries('settings.section')).toHaveLength(1)
+    // Before the base DeepSeek account page (order -10), which takes the DeepSeek name beside it.
+    expect(f.ctx.slots.entries('settings.section').map(entry => entry.options)).toMatchObject([{ id: 'mindeck-account', order: -20 }])
+    expect(f.ctx.locale.bind('settings.account')('nav')).toBe('DeepSeek account')
     expect(f.ctx.slots.entries('settings.section.icon').map(entry => entry.options.id)).toEqual(['mindeck-account'])
     expect(f.ctx.slots.entries('conversation.input.dock').map(entry => entry.options.id)).toEqual(['mindeck-quota'])
     const [quota] = f.ctx.slots.entries('shell.quota-notice')
@@ -101,6 +105,8 @@ it('registers the gate, launcher, section, its icon, the quota notice and remind
     await vi.waitFor(() => { expect(face.hooks.account.getSnapshot().view).toEqual(signedOut) })
     face.refreshQuota()
     expect(f.remote.refreshQuota).toHaveBeenCalledOnce()
+    face.finishWelcome()
+    expect(f.remote.finishWelcome).toHaveBeenCalledOnce()
     face.dismissReminder('2026-12-01:user:warning')
     face.dismissReminder('2026-12-01:user:warning')
     expect(face.hooks.reminders.getSnapshot()).toEqual({ dismissed: ['2026-12-01:user:warning'] })
@@ -113,6 +119,7 @@ it('registers the gate, launcher, section, its icon, the quota notice and remind
     expect(f.ctx.slots.entries('shell.quota-notice')).toHaveLength(0)
     expect(f.ctx.slots.entries('conversation.input.dock')).toHaveLength(0)
     expect(face.hooks.account.getSnapshot()).toEqual({ view: undefined, failed: false })
+    expect(f.ctx.locale.bind('settings.account')('nav')).toBe('nav')
     expect(f.unmount).toHaveBeenCalledOnce()
   } finally { await f.ctx.fiber.dispose() }
 })

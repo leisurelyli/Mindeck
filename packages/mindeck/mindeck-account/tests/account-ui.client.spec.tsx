@@ -1,31 +1,29 @@
 // @vitest-environment jsdom
-/** The sign-in gate and the settings page follow Host state and report outcomes in the member's words. */
+/** The settings page, the quota dialog and reminder, and the launcher follow Host state and report outcomes in the member's words. */
 import { afterEach, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { brandString } from '@deepseek-ai/dsh-brand'
-import type { MindeckAccountView, MindeckSignInAttemptId } from '../src/types.ts'
+import type { MindeckAccountView } from '../src/types.ts'
 import { en } from '../src/client/locales.ts'
 import type { MindeckAccountSnapshot, MindeckReminderSnapshot, OperationOutcome } from '../src/client/operations.ts'
-import { SignInGate, type SignInGateProps } from '../src/client/SignInGate.tsx'
 import { AccountSection, type AccountSectionProps } from '../src/client/AccountSection.tsx'
 import { QuotaNotice, type QuotaNoticeProps } from '../src/client/QuotaNotice.tsx'
-import { cloudUrlInText } from '../src/client/address.ts'
 import { QuotaDock, type QuotaDockProps } from '../src/client/QuotaDock.tsx'
 import { AccountMenu, type AccountMenuProps } from '../src/client/AccountMenu.tsx'
 import type { MindeckQuota } from '../src/types.ts'
 import type { PersonalDeepSeekSnapshot } from '../src/client/personal-deepseek.ts'
 import type { AccountView, SignInAttemptId } from '@deepseek-ai/dsh-deepseek-account/types'
+import { baseFactories, noFactories } from './base-factories.client.tsx'
 
 afterEach(cleanup)
 
-const attemptId = brandString<MindeckSignInAttemptId>('attempt-1')
 const signedOut: MindeckAccountView = {
-  cloudUrl: null, status: 'signed-out', user: null, companyName: null, notice: null, attempt: null, quota: null, adminContact: null, personalDeepSeek: false,
+  cloudUrl: null, welcomed: true, status: 'signed-out', user: null, companyName: null, notice: null, attempt: null, quota: null, adminContact: null, personalDeepSeek: false,
 }
 const signedIn: MindeckAccountView = {
-  cloudUrl: 'https://cloud.example.com', status: 'signed-in', companyName: '星河科技', notice: null, attempt: null, quota: null, adminContact: null, personalDeepSeek: false,
+  cloudUrl: 'https://cloud.example.com', welcomed: true, status: 'signed-in', companyName: '星河科技', notice: null, attempt: null, quota: null, adminContact: null, personalDeepSeek: false,
   user: { id: 'user-1', name: '林晓', email: 'lin@example.com', role: 'admin', department: null },
 }
 
@@ -40,9 +38,6 @@ function fixture(view: MindeckAccountView | undefined, failed = false) {
   const personal = createSnapshotStore<PersonalDeepSeekSnapshot>({ available: true, view: deepseekSignedOut, failed: false })
   const ok: OperationOutcome = { ok: true }
   const operations = {
-    connect: vi.fn(async (_input: string): Promise<OperationOutcome> => ok),
-    startSignIn: vi.fn(async (): Promise<OperationOutcome> => ok),
-    cancelSignIn: vi.fn(async (_id: MindeckSignInAttemptId) => {}),
     signOut: vi.fn(async (): Promise<OperationOutcome> => ok),
     refreshQuota: vi.fn(() => {}),
     sendFeedback: vi.fn(async (_text: string): Promise<OperationOutcome> => ok),
@@ -54,141 +49,44 @@ function fixture(view: MindeckAccountView | undefined, failed = false) {
   // Global standard hooks are unused by these components; the renderer supplies them in production.
   const props = {
     t: makeTranslate(en), useAccount: bindSnapshotSelector(account), useReminders: bindSnapshotSelector(reminders),
-    usePersonal: bindSnapshotSelector(personal),
+    usePersonal: bindSnapshotSelector(personal), renderFactorySlot: baseFactories,
     close: () => {}, wide: true, openSettings: () => {}, appVersion: '0.3.0', ...operations,
-  } as SignInGateProps & AccountSectionProps & Omit<QuotaNoticeProps, 'matched'> & QuotaDockProps & AccountMenuProps
+  } as AccountSectionProps & Omit<QuotaNoticeProps, 'matched'> & QuotaDockProps & AccountMenuProps
   const set = (next: MindeckAccountView) => { act(() => { account.set({ view: next, failed: false }) }) }
   const setPersonal = (next: AccountView) => { act(() => { personal.set({ available: true, view: next, failed: false }) }) }
   return { props, operations, set, setPersonal }
 }
 
-it('stays hidden until the state arrives and while signed in', () => {
-  const loading = fixture(undefined)
-  const view = render(<SignInGate {...loading.props} />)
-  expect(view.queryByRole('dialog')).toBeNull()
-  cleanup()
-  const member = fixture(signedIn)
-  expect(render(<SignInGate {...member.props} />).queryByRole('dialog')).toBeNull()
-  cleanup()
-  const broken = fixture(undefined, true)
-  expect(render(<SignInGate {...broken.props} />).getByRole('alert').textContent).toBe(en.streamFailed)
-})
-
-it('asks for the Cloud address, keeps the input on failure, and starts sign-in when it is accepted', async () => {
-  const f = fixture(signedOut)
-  const view = render(<SignInGate {...f.props} />)
-  expect(view.getByRole('dialog', { name: en.gateTitle })).toBeTruthy()
-  const input = view.getByLabelText(en.cloudUrlLabel)
-  const submit = view.getByRole('button', { name: en.continue })
-  expect(submit.hasAttribute('disabled')).toBe(true)
-  f.operations.connect.mockResolvedValueOnce({ ok: false, reason: 'notMindeckCloud' })
-  fireEvent.change(input, { target: { value: 'cloud.example.com' } })
-  fireEvent.click(submit)
-  expect(await view.findByRole('alert')).toHaveProperty('textContent', en.notMindeckCloud)
-  expect(f.operations.connect).toHaveBeenCalledWith('cloud.example.com')
-  expect((input as HTMLInputElement).value).toBe('cloud.example.com')
-
-  fireEvent.change(input, { target: { value: 'cloud.example.com ' } })
-  expect(view.queryByRole('alert')).toBeNull()
-  fireEvent.click(view.getByRole('button', { name: en.continue }))
-  await vi.waitFor(() => { expect(f.operations.connect).toHaveBeenCalledTimes(2) })
-  f.set({ ...signedOut, cloudUrl: 'https://cloud.example.com', attempt: { id: attemptId, phase: 'requesting' } })
-  expect(view.getByRole('status').textContent).toContain(en.requesting)
-})
-
-it('shows the code to confirm in the browser and cancels the attempt', async () => {
-  const f = fixture({
-    ...signedOut, cloudUrl: 'https://cloud.example.com',
-    attempt: { id: attemptId, phase: 'waiting', userCode: 'ABCDEFGH', verificationUrl: 'https://cloud.example.com/device?user_code=ABCDEFGH' },
-  })
-  const view = render(<SignInGate {...f.props} />)
-  expect(view.getByText('ABCD-EFGH')).toBeTruthy()
-  const open = view.getByRole('link', { name: en.openBrowser })
-  expect(open.getAttribute('href')).toBe('https://cloud.example.com/device?user_code=ABCDEFGH')
-  expect(open.getAttribute('target')).toBe('_blank')
-  fireEvent.click(view.getByRole('button', { name: en.cancel }))
-  await vi.waitFor(() => { expect(f.operations.cancelSignIn).toHaveBeenCalledWith(attemptId) })
-  f.set({ ...signedOut, cloudUrl: 'https://cloud.example.com', attempt: { id: attemptId, phase: 'cancelled' } })
-  expect(view.getByRole('button', { name: en.signIn })).toBeTruthy()
-  expect(view.queryByRole('alert')).toBeNull()
-})
-
-it('counts the code down, says when it reconnects, and opens the browser once in the window that chose Sign in', async () => {
-  const open = vi.spyOn(window, 'open').mockReturnValue(null)
-  try {
-    const ready: MindeckAccountView = { ...signedOut, cloudUrl: 'https://cloud.example.com' }
-    const url = 'https://cloud.example.com/device?user_code=ABCDEFGH'
-    const attempt = { id: attemptId, phase: 'waiting', userCode: 'ABCDEFGH', verificationUrl: url, expiresAt: Date.now() + 125_000 } as const
-    const waiting: MindeckAccountView = { ...ready, attempt }
-    // Two windows show the same attempt; only the second one chose Sign in.
-    const watcher = fixture(ready)
-    render(<SignInGate {...watcher.props} />)
-    const f = fixture(ready)
-    render(<SignInGate {...f.props} />)
-    fireEvent.click(screen.getAllByRole('button', { name: en.signIn })[1] as HTMLElement)
-    await vi.waitFor(() => { expect(f.operations.startSignIn).toHaveBeenCalledOnce() })
-    watcher.set(waiting)
-    f.set(waiting)
-    expect(open).toHaveBeenCalledOnce()
-    expect(open).toHaveBeenCalledWith(url, '_blank', 'noopener,noreferrer')
-    expect(screen.getAllByText('The code expires in 2:05.')).toHaveLength(2)
-
-    f.set({ ...ready, attempt: { ...attempt, retrying: true } })
-    expect(screen.getByText(en.reconnecting).getAttribute('role')).toBe('status')
-    expect(open).toHaveBeenCalledOnce()
-    expect(watcher.operations.startSignIn).not.toHaveBeenCalled()
-  } finally {
-    open.mockRestore()
-  }
-})
-
-it('takes the Cloud address out of a pasted account message', () => {
-  expect(cloudUrlInText('Mindeck Cloud 地址：https://cloud.example.com/mindeck。账号：lin@example.com')).toBe('https://cloud.example.com/mindeck')
-  expect(cloudUrlInText('Open https://cloud.example.com. Then sign in')).toBe('https://cloud.example.com')
-  expect(cloudUrlInText('cloud.example.com')).toBeUndefined()
-  const f = fixture(signedOut)
-  const view = render(<SignInGate {...f.props} />)
-  const input = view.getByLabelText(en.cloudUrlLabel) as HTMLInputElement
-  fireEvent.paste(input, { clipboardData: { getData: () => '你的 Mindeck 账号已开通。\nMindeck Cloud 地址：https://cloud.example.com\n账号：lin@example.com' } })
-  expect(input.value).toBe('https://cloud.example.com')
-  // The console's activation message also links the sign-in page and the installer after the address.
-  fireEvent.change(input, { target: { value: '' } })
-  fireEvent.paste(input, { clipboardData: { getData: () => [
-    '你的 Mindeck 账号已开通。',
-    'Mindeck Cloud 地址：https://cloud.example.com',
-    '邮箱：lin@example.com',
-    '初始密码：Ab3dEf6hJk9m',
-    '1. 在浏览器打开 https://cloud.example.com/sign-in 登录，按提示设置自己的密码。',
-    '2. 下载并安装 Mindeck 桌面端：Windows 版 https://downloads.example.com/Mindeck-Setup.exe',
-    '3. 打开桌面端，把这段消息整段粘贴到地址框，点“登录”，在浏览器里允许登录。',
-  ].join('\n') } })
-  expect(input.value).toBe('https://cloud.example.com')
-})
-
-it('explains a failed attempt or an ended session and lets the member retry or change the address', async () => {
-  const f = fixture({ ...signedOut, cloudUrl: 'https://cloud.example.com', attempt: { id: attemptId, phase: 'failed', errorCode: 'account-unavailable' } })
-  const view = render(<SignInGate {...f.props} />)
-  expect(view.getByRole('alert').textContent).toBe(en.accountUnavailable)
-  fireEvent.click(view.getByRole('button', { name: en.retry }))
-  await vi.waitFor(() => { expect(f.operations.startSignIn).toHaveBeenCalledOnce() })
-
-  f.set({ ...signedOut, cloudUrl: 'https://cloud.example.com', notice: 'session-expired' })
-  expect(view.getByRole('alert').textContent).toBe(en.sessionExpired)
-  fireEvent.click(view.getByRole('button', { name: en.changeCloud }))
-  expect((view.getByLabelText(en.cloudUrlLabel) as HTMLInputElement).value).toBe('https://cloud.example.com')
-  fireEvent.click(view.getByRole('button', { name: en.cancel }))
-  expect(view.getByText('https://cloud.example.com')).toBeTruthy()
-})
-
-it('shows the member and company in Settings and keeps the dialog open when sign-out fails', async () => {
-  const f = fixture(signedIn)
+it('shows the member, the company, and this month\'s usage with the base account page parts', () => {
+  const f = fixture({ ...signedIn, quota: { user: { used: 1234.5, limit: 2000 }, department: { used: 300, limit: 10_000 }, companyBudgetPercent: null, resetDate: '2026-12-01' } })
   const view = render(<AccountSection {...f.props} />)
-  expect(view.getByText('林晓')).toBeTruthy()
-  expect(view.getByText('星河科技')).toBeTruthy()
-  expect(view.getByText(en.noDepartment)).toBeTruthy()
-  expect(view.getByText(en.admin)).toBeTruthy()
-  expect(view.getByRole('link', { name: en.openConsole }).getAttribute('href')).toBe('https://cloud.example.com')
+  const page = view.getByRole('region', { name: en.nav })
+  expect(page.className).toContain('section')
+  expect(within(page).getByText('林晓')).toBeTruthy()
+  expect(within(page).getByText('lin@example.com').getAttribute('role')).toBe('status')
+  expect(within(page).getByRole('link', { name: en.openConsole }).getAttribute('href')).toBe('https://cloud.example.com')
+  expect(within(page).getByText('星河科技')).toBeTruthy()
+  expect(within(page).getByText(en.noDepartment)).toBeTruthy()
+  expect(within(page).getByText(en.admin)).toBeTruthy()
+  expect(within(page).getByText('¥1,234.50')).toBeTruthy()
+  expect(within(page).getByText('of ¥2,000.00')).toBeTruthy()
+  expect(within(page).getAllByText('Resets on 12/1')).toHaveLength(2)
+  expect(within(page).getByText('of ¥10,000.00')).toBeTruthy()
+  expect(within(page).getByText('https://cloud.example.com')).toBeTruthy()
+  expect(within(page).getByRole('link', { name: en.help }).getAttribute('href')).toBe('https://cloud.example.com/help')
+  cleanup()
+  // A member opens Mindeck Cloud rather than the admin console; without a quota read there is no usage row.
+  const plain = fixture({ ...signedIn, user: { ...signedIn.user!, role: 'user', department: { id: 'd1', name: '市场部' } } })
+  const memberView = render(<AccountSection {...plain.props} />)
+  expect(memberView.getByRole('link', { name: en.openCloud })).toBeTruthy()
+  expect(memberView.getByText('市场部')).toBeTruthy()
+  expect(memberView.queryByText(en.usage)).toBeNull()
+})
 
+it('keeps the sign-out dialog open when sign-out fails, and leaves Settings once signed out', async () => {
+  const f = fixture(signedIn)
+  const close = vi.fn()
+  const view = render(<AccountSection {...f.props} close={close} />)
   f.operations.signOut.mockResolvedValueOnce({ ok: false, reason: 'storage' })
   fireEvent.click(view.getByRole('button', { name: en.signOut }))
   const dialog = view.getByRole('dialog', { name: en.signOutTitle })
@@ -197,17 +95,21 @@ it('shows the member and company in Settings and keeps the dialog open when sign
   fireEvent.click(within(dialog).getByRole('button', { name: en.signOut }))
   await vi.waitFor(() => { expect(view.queryByRole('dialog')).toBeNull() })
   expect(f.operations.signOut).toHaveBeenCalledTimes(2)
+  expect(close).not.toHaveBeenCalled()
   f.set(signedOut)
-  expect(view.getByLabelText(en.cloudUrlLabel)).toBeTruthy()
+  expect(close).toHaveBeenCalledOnce()
+  expect(view.getByText(en.signedOutSection)).toBeTruthy()
+  expect(view.queryByLabelText(en.cloudUrlLabel)).toBeNull()
 })
 
-it('offers a personal DeepSeek account in Settings only while the company allows one', async () => {
+it('offers a personal DeepSeek account on the account page only while the company allows one', async () => {
   const f = fixture(signedIn)
   const view = render(<AccountSection {...f.props} />)
-  expect(view.queryByRole('region', { name: en.personalTitle })).toBeNull()
+  expect(view.queryByText(en.personalTitle)).toBeNull()
   f.set({ ...signedIn, personalDeepSeek: true })
-  const block = view.getByRole('region', { name: en.personalTitle })
-  expect(block.textContent).toContain(en.personalDescription)
+  expect(view.getByText(en.personalTitle)).toBeTruthy()
+  const status = () => view.getAllByRole('status').map(node => node.textContent)
+  expect(status()).toContain(en.personalDescription)
   fireEvent.click(view.getByRole('button', { name: en.personalSignIn }))
   await waitFor(() => { expect(f.operations.startPersonalSignIn).toHaveBeenCalledOnce() })
 
@@ -216,7 +118,7 @@ it('offers a personal DeepSeek account in Settings only while the company allows
     ...deepseekSignedOut,
     attempt: { id: brandString<SignInAttemptId>('ds-1'), phase: 'waiting-browser', authorizeUrl: 'https://platform.deepseek.com/authorize?x=1' },
   })
-  expect(view.getByRole('status').textContent).toBe(en.personalWaiting)
+  expect(status()).toContain(en.personalWaiting)
   // The window that asked opens the authorization page once and keeps a link to it.
   expect(open).toHaveBeenCalledOnce()
   expect(view.getByRole('link', { name: en.openBrowser }).getAttribute('href')).toBe('https://platform.deepseek.com/authorize?x=1')
@@ -225,9 +127,17 @@ it('offers a personal DeepSeek account in Settings only while the company allows
   expect(f.operations.cancelPersonalSignIn).toHaveBeenCalledOnce()
 
   f.setPersonal({ ...deepseekSignedOut, status: 'credential-stored' })
-  expect(view.getByRole('status').textContent).toBe(en.personalSignedIn)
+  expect(status()).toContain(en.personalSignedIn)
   fireEvent.click(view.getByRole('button', { name: en.personalSignOut }))
   await waitFor(() => { expect(f.operations.signOutPersonal).toHaveBeenCalledOnce() })
+})
+
+it('keeps the member and sign-out in plain form in a composition without the base page parts', () => {
+  const f = fixture(signedIn)
+  const view = render(<AccountSection {...f.props} renderFactorySlot={noFactories} />)
+  expect(view.getByRole('region', { name: en.nav }).textContent).toContain('林晓 · lin@example.com')
+  fireEvent.click(view.getByRole('button', { name: en.signOut }))
+  expect(view.getByRole('dialog', { name: en.signOutTitle })).toBeTruthy()
 })
 
 it('names the used-up limit and its reset date with a link to the member usage page, and keeps the generic warning while signed out', () => {
@@ -283,7 +193,7 @@ it('reminds from 75% of the limit that runs out first, again from 95% and when u
   f.set(withQuota({ user: { used: 48, limit: 50 }, department: null, companyBudgetPercent: null, resetDate: '2026-12-01' }))
   expect(view.getByRole('status').getAttribute('data-level')).toBe('urgent')
   f.set(withQuota({ user: { used: 1, limit: null }, department: { used: 1000, limit: 1000 }, companyBudgetPercent: null, resetDate: '2026-12-01' }))
-  expect(view.getByRole('status').textContent).toContain('Your department\'s model quota for this month is used up (¥1000.00 of ¥1000.00).')
+  expect(view.getByRole('status').textContent).toContain('Your department\'s model quota for this month is used up (¥1,000.00 of ¥1,000.00).')
   f.set(withQuota({ user: { used: 0, limit: 0 }, department: null, companyBudgetPercent: null, resetDate: '2026-12-01' }))
   expect(view.getByRole('status').getAttribute('data-level')).toBe('out')
   f.set(withQuota({ user: { used: 99, limit: null }, department: null, companyBudgetPercent: null, resetDate: '2026-12-01' }))
@@ -303,7 +213,7 @@ it('shows this month\'s quota in the account menu and refreshes it when the menu
   fireEvent.click(view.getByRole('button', { name: en.menu }))
   expect(f.operations.refreshQuota).toHaveBeenCalledOnce()
   expect(await screen.findByText('This month: ¥12.50 of ¥50.00')).toBeTruthy()
-  expect(screen.getByText('Department: ¥300.00 of ¥1000.00')).toBeTruthy()
+  expect(screen.getByText('Department: ¥300.00 of ¥1,000.00')).toBeTruthy()
   cleanup()
   const unlimited = fixture(withQuota({ user: { used: 3, limit: null }, department: null, companyBudgetPercent: null, resetDate: '2026-12-01' }))
   render(<AccountMenu {...unlimited.props} />)

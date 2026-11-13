@@ -1,13 +1,14 @@
 /** Account settings renders safe Host state and explicit login actions. */
 import { Big } from 'big.js'
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
-import { Button, IconRightUpOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { AccountDetails, AccountView, SignInAttemptId } from '@deepseek-ai/dsh-deepseek-account/types'
 import type { PropsRuntime, PropsLocale, InjectFace, HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
 import type { PlatformPage, PlatformPages } from './platform-pages.ts'
 import { formatBalance } from './formatBalance.ts'
 import { AccountAvatar } from './AccountAvatar.tsx'
+import { AccountAmount, AccountIdentity, AccountLinks, AccountPage, AccountRows, type AccountRowInput } from './AccountParts.tsx'
 import type { AccountAvatarSnapshot } from './account-avatar.ts'
 import { authorizeUrlWithTheme } from './authorize-url.ts'
 import type { BonusNotice } from './bonus-notices.ts'
@@ -126,7 +127,7 @@ export function AccountSection({ t, useAccount, useTheme, start, cancel, openPla
    * @param event - click on a Platform destination link.
    * @returns nothing; on Desktop the embedded page replaces the pending navigation.
    */
-  const openUsage = (event: MouseEvent<HTMLAnchorElement>): void => {
+  const openUsage = (event: MouseEvent<HTMLElement>): void => {
     if (openPlatformPage !== undefined && signedIn) { event.preventDefault(); showPage(openPlatformPage, 'usage') }
   }
   /**
@@ -160,22 +161,45 @@ export function AccountSection({ t, useAccount, useTheme, start, cancel, openPla
       </div>
     </section>
   )
+  const amounts = (values: readonly { currency: string; balance: string }[]) => <AccountAmount values={values.map(wallet => ({
+    key: wallet.currency, text: formatBalance(wallet.balance, wallet.currency === 'CNY' ? '¥' : '$'),
+  }))} />
+  const rows: AccountRowInput[] = [{
+    key: 'balance', label: t('balance'),
+    value: signedIn && wallets !== undefined && wallets.length > 0
+      ? amounts(wallets)
+      : !signedIn || details?.balance === undefined
+        ? <span className={css.unavailable}>{t(!signedIn ? 'balanceSignedOut' : 'loading')}</span>
+        : platformLink(t('balanceUnavailable'), css.unavailableLink),
+  }]
+  if (signedIn && showBonusRow) rows.push({
+    key: 'bonus', label: t('bonusBalance'),
+    value: <span className={css.bonusValue}>
+      {bonusWallets.length > 0
+        ? amounts(bonusWallets)
+        : details?.balance === undefined
+          ? <span className={css.unavailable}>{t('loading')}</span>
+          : platformLink(t('balanceUnavailable'), css.unavailableLink)}
+    </span>,
+  })
+  rows.push({
+    key: 'more', label: t('more'), muted: true,
+    value: <AccountLinks links={[
+      { key: 'usage', label: t('usage'), href: state?.links.usageUrl, disabled: state === undefined, onClick: openUsage },
+      {
+        key: 'top-up', label: t('topUp'), primary: true, href: state?.links.topUpUrl, disabled: state === undefined,
+        onClick: (event) => { if (openPlatformPage !== undefined && signedIn) { event.preventDefault(); showPage(openPlatformPage, 'top-up') } },
+      },
+    ]} />,
+  })
   return (
-    <section className={css.section} aria-label={t('nav')}>
-      <div className={css.card}>
-        <div className={css.identity}>
-          <span className={css.avatar} data-avatar-status={signedIn ? avatar?.status : undefined}>
-            <AccountAvatar avatar={signedIn ? avatar : undefined} avatarFailed={avatarFailed} />
-          </span>
-          <div className={css.identityCopy}>
-            <span className={css.name}>{signedIn ? profile?.name ?? t('signedIn') : t('signedOut')}</span>
-            <span className={css.status} role="status">{status}</span>
-          </div>
-        </div>
-        {signedIn && <a className={css.accountInfo} href={new URL('/', state.links.usageUrl).href} target="_blank" rel="noopener noreferrer">
-          {t('accountInfo')}<IconRightUpOutlineRegular size={12} />
-        </a>}
-      </div>
+    <AccountPage label={t('nav')}>
+      <AccountIdentity
+        avatar={<AccountAvatar avatar={signedIn ? avatar : undefined} avatarFailed={avatarFailed} />}
+        avatarStatus={signedIn ? avatar?.status : undefined}
+        name={signedIn ? profile?.name ?? t('signedIn') : t('signedOut')}
+        status={status}
+        link={signedIn ? { label: t('accountInfo'), href: new URL('/', state.links.usageUrl).href } : undefined} />
       {active && <div className={css.actions}>
         {attempt.authorizeUrl && <a className={css.linkButton} href={authorizeUrlWithTheme(attempt.authorizeUrl, colorScheme)}
           target="_blank" rel="noreferrer">
@@ -184,43 +208,7 @@ export function AccountSection({ t, useAccount, useTheme, start, cancel, openPla
         <Button variant="outline" disabled={busy || attempt.phase === 'committing'}
           onClick={() => { void run(() => cancel(attempt.id)) }}>{t('cancel')}</Button>
       </div>}
-      <div className={css.balanceCard}>
-        <div className={css.row}>
-          <span>{t('balance')}</span>
-          {signedIn && wallets !== undefined && wallets.length > 0
-            ? <span className={css.amount}>{wallets.map(wallet => <span key={wallet.currency}>
-              {formatBalance(wallet.balance, wallet.currency === 'CNY' ? '¥' : '$')}
-            </span>)}</span>
-            : !signedIn || details?.balance === undefined
-              ? <span className={css.unavailable}>{t(!signedIn ? 'balanceSignedOut' : 'loading')}</span>
-              : platformLink(t('balanceUnavailable'), css.unavailableLink)}
-        </div>
-        {signedIn && showBonusRow && <>
-          <div className={css.divider} />
-          <div className={css.row}>
-            <span>{t('bonusBalance')}</span>
-            <span className={css.bonusValue}>
-              {bonusWallets.length > 0
-                ? <span className={css.amount}>{bonusWallets.map(wallet => <span key={wallet.currency}>
-                  {formatBalance(wallet.balance, wallet.currency === 'CNY' ? '¥' : '$')}
-                </span>)}</span>
-                : details?.balance === undefined
-                  ? <span className={css.unavailable}>{t('loading')}</span>
-                  : platformLink(t('balanceUnavailable'), css.unavailableLink)}
-            </span>
-          </div>
-        </>}
-        <div className={css.divider} />
-        <div className={css.row}>
-          <span className={css.secondary}>{t('more')}</span>
-          <div className={css.links}>
-            {platformLink(t('usage'), css.linkButton)}
-            <a className={`${css.linkButton} ${css.primary}`} href={state?.links.topUpUrl} aria-disabled={state === undefined}
-              target="_blank" rel="noreferrer"
-              onClick={(event) => { if (openPlatformPage !== undefined && signedIn) { event.preventDefault(); showPage(openPlatformPage, 'top-up') } }}>{t('topUp')}</a>
-          </div>
-        </div>
-      </div>
-    </section>
+      <AccountRows rows={rows} />
+    </AccountPage>
   )
 }

@@ -519,7 +519,7 @@ const SERVICE_ROLES: ServiceRole[] = [
     title: 'Mindeck digital employees',
     mode: 'service',
     consumers: ['mindeck-models'],
-    note: 'Registers the general assistant and each digital employee as an agent preset, streams the employee cards to the new-conversation screen, and names the employee of a live conversation for gateway requests.',
+    note: 'Registers the general assistant and each digital employee as an agent preset, streams the employee cards to the digital-employee page, and names the employee of a live conversation for gateway requests.',
   },
   {
     key: 'mindeckSkills',

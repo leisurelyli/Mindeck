@@ -241,7 +241,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: '@Remote(\'select\') async select(agent: Agent, agentPreset: string): Promise<string>',
-        description: 'Select a preset before a session starts its first turn. A Session whose log records the preset and whose Agent runs its current revision keeps its composition; nothing is logged or announced.',
+        description: 'Select a preset before a session starts its first turn. A Session whose log records the preset and whose Agent runs its current revision keeps its composition; nothing is logged or announced. An unlisted preset is refused unless the Session already records it.',
         parameters: [{ name: 'agent', description: 'Target Agent.' }, { name: 'agentPreset', description: 'Requested identity.' }],
         returns: 'Committed preset identity.',
       },
@@ -2153,9 +2153,16 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: '@Remote async setCloudUrl(input: string, signal: AbortSignal): Promise<MindeckAccountView>',
-        description: 'Set the Mindeck Cloud address after checking that it answers as one. Only while signed out.',
-        parameters: [{ name: 'input', description: 'address typed by the member; a missing scheme means HTTPS.' }, { name: 'signal', description: 'caller cancellation.' }],
-        returns: 'state with the new address.',
+        description: 'Set the Mindeck Cloud address after checking that it answers as one. Only while signed out. An address with a page path, such as an invitation link, resolves to the shortest path prefix that answers as a Mindeck Cloud.',
+        parameters: [{ name: 'input', description: 'address typed or pasted by the member; a missing scheme means HTTPS.' }, { name: 'signal', description: 'caller cancellation.' }],
+        returns: 'state with the resolved address.',
+      },
+      {
+        signature: '@Remote async finishWelcome(): Promise<MindeckAccountView>',
+        description: 'Record that this device showed the welcome page, so it does not appear again.',
+        parameters: [],
+        returns: 'the state with `welcomed` set.',
+        throws: ['RemoteError `mindeck-account/settings` when the profile settings could not be written.'],
       },
       {
         signature: '@Remote async startSignIn(appVersion: string): Promise<MindeckAccountView>',
@@ -2190,8 +2197,8 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   },
   {
     key: 'mindeckEmployees',
-    summary: 'Registers the general assistant and the member\'s digital employees as agent presets and lists them for the new-conversation screen.',
-    description: 'Registers the general assistant and the member\'s digital employees as agent presets and lists them for the new-conversation screen.',
+    summary: 'Registers the general assistant and the member\'s digital employees as agent presets and lists them for the digital-employee page.',
+    description: 'Registers the general assistant and the member\'s digital employees as agent presets and lists them for the digital-employee page.',
     methods: [
       {
         signature: 'employeeForSession(sessionId: SessionId): string | undefined',
@@ -2201,7 +2208,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: '@Remote({ mode: \'stream\' }) async *watch(signal: AbortSignal): AsyncIterable<MindeckEmployeeCatalog>',
-        description: 'Stream the cards of the new-conversation screen.',
+        description: 'Stream the cards of the digital-employee page.',
         parameters: [{ name: 'signal', description: 'stream lifetime.' }],
         returns: 'the current cards, then every change.',
       },
@@ -5717,7 +5724,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'AgentPresetRow',
-    declaration: 'export interface AgentPresetRow {\n    readonly id: string;\n    readonly isDefault: boolean;\n    readonly name?: string;\n    readonly description?: string;\n    readonly broken?: string;\n}',
+    declaration: 'export interface AgentPresetRow {\n    readonly id: string;\n    readonly isDefault: boolean;\n    readonly name?: string;\n    readonly description?: string;\n    readonly listed?: false;\n    readonly broken?: string;\n}',
   },
   {
     name: 'AgentResolver',
@@ -7505,7 +7512,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'MindeckAccountView',
-    declaration: 'export interface MindeckAccountView {\n    readonly cloudUrl: string | null;\n    readonly status: \'signed-out\' | \'signed-in\';\n    readonly user: MindeckAccountUser | null;\n    readonly companyName: string | null;\n    readonly notice: \'session-expired\' | null;\n    readonly attempt: MindeckSignInAttempt | null;\n    readonly quota: MindeckQuota | null;\n    readonly adminContact: string | null;\n    readonly personalDeepSeek: boolean;\n}',
+    declaration: 'export interface MindeckAccountView {\n    readonly cloudUrl: string | null;\n    readonly welcomed: boolean;\n    readonly status: \'signed-out\' | \'signed-in\';\n    readonly user: MindeckAccountUser | null;\n    readonly companyName: string | null;\n    readonly notice: \'session-expired\' | null;\n    readonly attempt: MindeckSignInAttempt | null;\n    readonly quota: MindeckQuota | null;\n    readonly adminContact: string | null;\n    readonly personalDeepSeek: boolean;\n}',
   },
   {
     name: 'MindeckBootstrap',
@@ -7893,7 +7900,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'PresetDefinition',
-    declaration: 'export interface PresetDefinition {\n    readonly id: string;\n    readonly name?: string;\n    readonly description?: string;\n    readonly order?: number;\n    readonly plugins: readonly (Omit<EntryOptions, \'id\' | \'disabled\'> & {\n        id?: string;\n        disabled?: EntryOptions[\'disabled\'] | JsExpr;\n    })[];\n}',
+    declaration: 'export interface PresetDefinition {\n    readonly id: string;\n    readonly name?: string;\n    readonly description?: string;\n    readonly order?: number;\n    readonly listed?: false;\n    readonly plugins: readonly (Omit<EntryOptions, \'id\' | \'disabled\'> & {\n        id?: string;\n        disabled?: EntryOptions[\'disabled\'] | JsExpr;\n    })[];\n}',
   },
   {
     name: 'PresetOption',

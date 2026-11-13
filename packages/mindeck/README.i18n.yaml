@@ -4,19 +4,19 @@
 #   pnpm run verify-translation-pairing --write packages/mindeck/README.md
 /:
   en: 18a3ca0b583762e6
-  zh: ac1eb576e40d81ab
+  zh: c714f04cab30151f
 /mindeck-mindeck-enterprise:
   en: ae467332eddec354
   zh: 35ab07d14d4f0ae5
 /mindeck-mindeck-enterprise/summary:
   en: c79319d61fd3c1e9
-  zh: c7fbce5822c3c20d
+  zh: fd71627275df2f08
 /mindeck-mindeck-enterprise/table-of-contents:
   en: 1eb35b015a6c423f
   zh: a8a3dceee2c9e943
 /mindeck-mindeck-enterprise/packages:
-  en: 25758cd026c5f918
-  zh: 0ba662e7bef01756
+  en: 06e27e473394d9f5
+  zh: 35c1575bca9167a7
 /mindeck-mindeck-enterprise/related-documentation:
   en: c27cfee663eea5e4
   zh: 8c4882277077691b

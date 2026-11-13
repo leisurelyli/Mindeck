@@ -64,6 +64,8 @@ export interface MindeckQuota {
 export interface MindeckAccountView {
   /** Configured Mindeck Cloud address, or null until one is set. */
   readonly cloudUrl: string | null
+  /** Whether this device already showed the welcome page; false only before the member's first step. */
+  readonly welcomed: boolean
   readonly status: 'signed-out' | 'signed-in'
   /** Cached identity of the signed-in member; null while signed out. */
   readonly user: MindeckAccountUser | null

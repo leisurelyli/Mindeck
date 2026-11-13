@@ -14,6 +14,8 @@ export interface AgentPresetRow {
   readonly name?: string
   /** One sentence on what this preset is for. */
   readonly description?: string
+  /** `false` when pickers omit the preset for new conversations; a Session already on it keeps it. */
+  readonly listed?: false
   /** Why this preset cannot compose a session; absent when it can. */
   readonly broken?: string
 }
@@ -42,6 +44,8 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'agent-preset/not-found': { readonly agentPreset: string; readonly available: readonly string[] }
     /** The id is unusable, already taken, or its composition cannot be installed. */
     'agent-preset/invalid': { readonly agentPreset: string; readonly reason: string }
+    /** The preset is not offered for new conversations, and the session is not already on it. */
+    'agent-preset/unlisted': { readonly sessionId: SessionId; readonly agentPreset: string }
     /** The session's conversation has started, so its composition is fixed. */
     'agent-preset/locked': { readonly sessionId: SessionId; readonly agentPreset: string }
   }

@@ -7,6 +7,11 @@ export interface PresetDefinition {
   readonly name?: string
   readonly description?: string
   readonly order?: number
+  /**
+   * `false` keeps the preset out of selection for new conversations: pickers omit it and `select` refuses it for a
+   * Session not already on it. Sessions that recorded it still resume on it and show its name.
+   */
+  readonly listed?: false
   readonly plugins: readonly (Omit<EntryOptions, 'id' | 'disabled'> & { id?: string; disabled?: EntryOptions['disabled'] | JsExpr })[]
 }
 

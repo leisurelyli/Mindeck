@@ -1,8 +1,8 @@
 /**
  * Digital employees for Mindeck Desktop. The plugin registers the built-in general assistant and each digital
  * employee the company sets up in Mindeck Cloud as an agent preset built on a base preset's plugins with its own
- * persona, keeps each member's employees in a local cache, and streams the employee cards to the new-conversation
- * screen. Employees that leave the Cloud listing stay registered as retired, so their conversations continue.
+ * persona, keeps each member's employees in a local cache, and streams the employee cards to the digital-employee
+ * page. Employees that leave the Cloud listing stay registered as retired, so their conversations continue.
  * @module @deepseek-ai/dsh-mindeck-employees
  */
 import { join, resolve } from 'node:path'
@@ -68,7 +68,7 @@ interface Registration {
   readonly dispose: () => Promise<void>
 }
 
-/** Registers the general assistant and the member's digital employees as agent presets and lists them for the new-conversation screen. */
+/** Registers the general assistant and the member's digital employees as agent presets and lists them for the digital-employee page. */
 export default class MindeckEmployees extends TypertRemoteService {
   static inject = ['agentPresets', 'mindeckAccount', 'typert']
   static Config: z<Config> = z.object({
@@ -135,7 +135,7 @@ export default class MindeckEmployees extends TypertRemoteService {
   }
 
   /**
-   * Stream the cards of the new-conversation screen.
+   * Stream the cards of the digital-employee page.
    * @param signal - stream lifetime.
    * @returns the current cards, then every change.
    */

@@ -44,6 +44,8 @@ export interface AgentPresetOption {
   name?: string
   /** One sentence on what the preset is for. */
   description?: string
+  /** `false` when pickers offer the preset only to a Session already on it. */
+  listed?: false
 }
 
 /** Whether a shipped preset requires the Coding Tools preference.
@@ -102,7 +104,9 @@ export async function beginRosterRead<S extends { status: string; error: string 
 }
 
 /**
- * The roster entries as the pickers render them: healthy presets only.
+ * The roster entries as the pickers render them: healthy presets only. Unlisted
+ * presets stay in the options so a Session already on one shows its name;
+ * {@link offeredOption} decides which options a menu offers.
  *
  * The chip exists to choose the NEXT session's composition, and a broken
  * preset cannot compose one — offering it would defer the discovery of that
@@ -117,13 +121,24 @@ export async function beginRosterRead<S extends { status: string; error: string 
  * @returns one option per selectable preset, in roster order.
  */
 export function presetOptions(
-  presets: readonly { id: string; name?: string; description?: string; broken?: string }[],
+  presets: readonly { id: string; name?: string; description?: string; listed?: false; broken?: string }[],
 ): AgentPresetOption[] {
   return presets.filter(preset => preset.broken === undefined).map(preset => ({
     id: preset.id,
     ...preset.name === undefined ? {} : { name: preset.name },
     ...preset.description === undefined ? {} : { description: preset.description },
+    ...preset.listed === false ? { listed: false as const } : {},
   }))
+}
+
+/**
+ * Whether a picker offers one option: listed presets always, an unlisted one only while it is the current choice.
+ * @param option - one roster option.
+ * @param current - the picker's current choice.
+ * @returns whether the option appears in the picker.
+ */
+export function offeredOption(option: Pick<AgentPresetOption, 'id' | 'listed'>, current: string): boolean {
+  return option.listed !== false || option.id === current
 }
 
 /** Agent-preset roster snapshot for the display surfaces. */

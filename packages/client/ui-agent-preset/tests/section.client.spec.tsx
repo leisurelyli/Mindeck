@@ -92,6 +92,13 @@ it('replaces the default preset group tag with its new-task default status', () 
   expect(within(standard).queryByText(en.setDefault)).toBeNull()
   expect(within(rowFor('mine')).getByText(en.customGroup)).toBeTruthy()
 })
+it('hides an unlisted preset as a default choice unless it already is the default', () => {
+  view({ rows: [{ id: 'standard', isDefault: true }, { id: 'retired', name: 'Retired', listed: false, isDefault: false }] })
+  expect(document.querySelector('[data-agent-preset-id="retired"]')).toBeNull()
+  cleanup()
+  view({ rows: [{ id: 'standard', isDefault: false }, { id: 'retired', name: 'Retired', listed: false, isDefault: true }] })
+  expect(screen.getByRole('button', { name: `${en.inUse}: Retired` })).toBeTruthy()
+})
 it('omits an empty group instead of leaving a heading behind', () => {
   view({ rows: [{ id: 'standard', isDefault: true }] })
   expect(screen.getByRole('heading', { name: en.builtInGroup })).toBeTruthy()

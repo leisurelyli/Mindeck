@@ -13,6 +13,7 @@ import { afterEach, expect, it } from 'vitest'
 import { DesktopOnboardingEntry } from '../../ui-settings-account/src/client/DesktopOnboardingEntry.tsx'
 import { en, zh } from '../../ui-settings-account/src/client/locales.ts'
 import type { DesktopOnboardingState } from '../../ui-settings-account/src/client/onboarding-contract.ts'
+import { MindeckOnboardingIllustration } from '../src/client/OnboardingIllustration.tsx'
 import * as brand from '../src/client/index.ts'
 
 const contexts: Context[] = []
@@ -112,6 +113,19 @@ it('waits for the illustration declaration independently of sidebar and hero slo
   expect(ctx.slots.entries('desktop.onboarding.illustration')).toHaveLength(1)
   await fiber.dispose()
   expect(ctx.slots.entries('desktop.onboarding.illustration')).toHaveLength(0)
+})
+
+it('fills the first-run page illustration once its Factory declares it, and leaves with the plugin', async () => {
+  const { ctx } = await bench({ step: 'welcome', locale: 'zh' })
+  const fiber = ctx.plugin(brand)
+  await fiber.await()
+  expect(ctx.slots.entries('desktop.onboarding.page.illustration')).toHaveLength(0)
+  const declared = ctx.slots.register({ name: 'root', children: { 'desktop.onboarding.page.illustration': { kind: 'single', scope: 'root' } } } as never, () => null)
+  await Promise.resolve()
+  expect(ctx.slots.entries('desktop.onboarding.page.illustration').map(entry => entry.component)).toEqual([MindeckOnboardingIllustration])
+  await fiber.dispose()
+  expect(ctx.slots.entries('desktop.onboarding.page.illustration')).toHaveLength(0)
+  declared()
 })
 
 it('loads the onboarding illustration from the real brand YAML composition and removes it on shutdown', async () => {

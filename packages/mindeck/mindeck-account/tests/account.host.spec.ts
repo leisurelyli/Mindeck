@@ -49,7 +49,9 @@ it('checks that an address is a Mindeck Cloud before storing it', async () => {
   await expect(f.account().startSignIn('1.2.3')).rejects.toMatchObject({ code: 'mindeck-account/no-cloud-url' })
   await expect(f.account().setCloudUrl('ftp://files.example.com', signal))
     .rejects.toMatchObject({ code: 'mindeck-account/invalid-cloud-url', details: { reason: 'format' } })
-  await expect(f.account().setCloudUrl(`${f.cloud.url}/elsewhere`, signal))
+  const nested = await startFakeCloud({ basePath: '/mindeck' })
+  cleanups.push(() => nested.close())
+  await expect(f.account().setCloudUrl(`${new URL(nested.url).origin}/elsewhere`, signal))
     .rejects.toMatchObject({ code: 'mindeck-account/invalid-cloud-url', details: { reason: 'not-mindeck-cloud' } })
   const closed = await startFakeCloud()
   await closed.close()
@@ -61,6 +63,32 @@ it('checks that an address is a Mindeck Cloud before storing it', async () => {
   expect(view.cloudUrl).toBe(f.cloud.url)
   expect(f.updates).toEqual([{ ns: 'MindeckAccount', patch: { cloudUrl: f.cloud.url } }])
   expect(f.live.entry.options.config).toMatchObject({ cloudUrl: f.cloud.url })
+})
+
+it('resolves a pasted page link, such as an invitation, to the Mindeck Cloud it belongs to', async () => {
+  const f = await fixture({ cloudUrl: '' })
+  const signal = new AbortController().signal
+  expect((await f.account().setCloudUrl(`${f.cloud.url}/invite/abc123`, signal)).cloudUrl).toBe(f.cloud.url)
+  expect(f.cloud.requests.filter(request => request.endsWith('/api/desktop/bootstrap'))).toEqual(['GET /api/desktop/bootstrap'])
+
+  const nested = await startFakeCloud({ basePath: '/mindeck' })
+  cleanups.push(() => nested.close())
+  expect((await f.account().setCloudUrl(`${nested.url}/invite/abc123`, signal)).cloudUrl).toBe(nested.url)
+  // The origin answers first and is not a Cloud; the first path prefix is.
+  expect(nested.requests).toEqual(['GET /outside-base-path', 'GET /api/desktop/bootstrap'])
+})
+
+it('shows the welcome page until the member starts, signs in, or this device already has a session', async () => {
+  const f = await fixture()
+  expect((await f.state()).welcomed).toBe(false)
+  expect((await f.account().finishWelcome()).welcomed).toBe(true)
+  expect(f.updates).toEqual([{ ns: 'MindeckAccount', patch: { welcomed: true } }])
+  await f.account().finishWelcome()
+  expect(f.updates).toHaveLength(1)
+
+  const fresh = await fixture()
+  await signIn(fresh)
+  await vi.waitFor(async () => { expect((await fresh.state()).welcomed).toBe(true) })
 })
 
 it('signs in with a device code, reports the device, and stores the session without exposing its token', async () => {

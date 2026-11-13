@@ -228,6 +228,22 @@
 .cardTitle { font-size: 20px; line-height: 28px; font-weight: 400; }
 .cardDescription { margin-top: 8px; font-size: 15px; line-height: 21px; font-weight: 300; color: var(--dsw-alias-label-tertiary); }
 .processIcon { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin-bottom: 12px; }
+/* Centered single-column page of the desktop.onboarding.page Factory: anchored near the optical center so content
+   that grows, such as a field error, extends downward instead of shifting the heading. */
+.form {
+  display: flex;
+  flex-direction: column;
+  width: min(calc(100% - 2 * var(--page-padding)), 440px);
+  top: max(48px, calc(50% - 200px));
+  transform: translateX(-50%);
+}
+
+.form .copy { text-align: center; }
+.form .copy h1 { font-size: 28px; line-height: 39px; }
+.formBody { margin-top: 40px; }
+.formActions { display: flex; justify-content: center; gap: 16px; margin-top: 40px; }
+.formActions > button { flex: 1; max-width: 240px; }
+
 .primaryAction { position: absolute; top: 100%; width: 100%; min-height: 44px; display: flex; justify-content: center; margin-top: 100px; }
 .primaryAction > button { width: min(240px, 100%); }
 .primaryAction > button[aria-disabled='true'] { cursor: wait; }
@@ -277,6 +293,8 @@
   .primaryAction { margin-top: 40px; }
 
   .creditActions { margin-top: 32px; }
+
+  .formBody, .formActions { margin-top: 32px; }
 }
 
 @media (max-width: 1200px) {

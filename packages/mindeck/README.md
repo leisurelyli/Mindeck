@@ -26,11 +26,11 @@ The account package owns the Cloud session; the others read it for every Cloud r
 
 | Package | Role | ctx key |
 |---|---|---|
-| [`mindeck-account/`](mindeck-account/README.md) | Cloud address, device sign-in, the stored session, and the sign-in gate | `ctx.mindeckAccount` |
+| [`mindeck-account/`](mindeck-account/README.md) | Cloud address, device sign-in, the stored session, the full-screen sign-in, and the Account page | `ctx.mindeckAccount` |
 | [`mindeck-models/`](mindeck-models/README.md) | Company models as model routes through the metered Cloud gateway | — |
 | [`mindeck-skills/`](mindeck-skills/README.md) | Company skills cached on the device, served by a skill provider, and listed on the skills page | `ctx.mindeckSkills` |
 | [`mindeck-files/`](mindeck-files/README.md) | File-library tools, the right-sidebar panel, the File library page, and `library:` references | `ctx.mindeckFiles` |
-| [`mindeck-employees/`](mindeck-employees/README.md) | Digital employees as agent presets, the general assistant, the new-conversation cards, and the Digital employees page | `ctx.mindeckEmployees` |
+| [`mindeck-employees/`](mindeck-employees/README.md) | Digital employees as agent presets, the general assistant, and the Digital employees page | `ctx.mindeckEmployees` |
 
 -----
 

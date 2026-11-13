@@ -67,6 +67,22 @@ The welcome page requires Get started. The credit page always appears. A positiv
 
 Access: the account stream, quota notice, settings launcher, account settings section, and models sign-in entry exist only while the current Peer may call `account/watch`; Desktop onboarding and the platform page are not gated. Losing that access discards the account reads that grant started, closes a pending authorization tab, and clears the account view, details, picture, and sign-in dialog state; a later grant shows the account section again once its first frame arrives. The owner always has access.
 
+<a id="pages-for-other-accounts"></a>
+### Pages for other accounts
+
+Another account plugin, such as a company account, draws its sign-in and settings page with this package's own frame through Component Factories, on Desktop and in a browser, whatever the DeepSeek account state. Callers pass localized text; the factories register with the plugin and leave with it.
+
+| Factory | Input | Draws |
+|---|---|---|
+| `desktop.onboarding.page` | `OnboardingPageInput` | The full-screen onboarding stage: `hero` (copy and artwork, as on the welcome page), `centered` (copy, caller `body`, actions), or `status`; a form when `onSubmit` is set, an optional footer back control, and the 180ms exit fade |
+| `settings.account.page` | `AccountPageInput` | The Account page column |
+| `settings.account.identity` | `AccountIdentityInput` | The identity card: round avatar, name, status line, and a right-edge link or controls |
+| `settings.account.rows` | `AccountRowsInput` | A card of label-value rows with dividers |
+| `settings.account.links` | `AccountLinksInput` | Outlined link buttons; an entry without `href` renders a button |
+| `settings.account.amount` | `AccountAmountInput` | Amounts in the balance type scale |
+
+A page's new `page` value replays the page transition and focuses its heading, unless a body control took focus. While mounted, a page asks Desktop for the onboarding window width through `dshOnboarding`. Its hero artwork comes from the root-scoped single slot `desktop.onboarding.page.illustration`, with the welcome step's owner input and the upstream welcome artwork as fallback. Onboarding stages share the application root's inert and hidden state, so overlapping stages that end in either order reveal it only after the last one. The DeepSeek Account page renders through the same parts with the same markup and class names.
+
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 

@@ -1,5 +1,5 @@
 ---
-description: "在本机保存公司在 Mindeck Cloud 中提供的技能副本，作为技能提供方使用，并在技能页中列出。"
+description: "在本机保存企业在 Mindeck Cloud 中提供的技能副本，作为技能提供方使用，并在技能页中列出。"
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-使用公司在 Mindeck Cloud 中发布的技能。Mindeck 桌面端登录期间，本插件在本机保存成员可用技能的副本，并像自定义技能目录中的技能一样提供它们。退出登录后副本随即删除。左侧栏的**技能**页按公司设置的名称和分类列出它们，推荐技能排在最前，可以查看每个技能的说明，并用它开始新对话。
+使用企业在 Mindeck Cloud 中发布的技能。Mindeck 桌面端登录期间，本插件在本机保存成员可用技能的副本，并像自定义技能目录中的技能一样提供它们。退出登录后副本随即删除。左侧栏的**技能**页按企业设定的名称和分类列出它们，推荐技能排在最前，可以查看每个技能的说明，并用它开始新对话。
 
 ## 目录
 
@@ -25,11 +25,11 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
-在 Host 上于 [Mindeck 账号](../mindeck-account/README.zh.md)和技能注册表之后挂载本插件，Mindeck 应用组合包已完成这一步。公司技能以 `mindeck` 提供方、`custom` 来源出现：项目技能优先于它们，它们又优先于成员自己的同名用户技能。
+在 Host 上于 [Mindeck 账号](../mindeck-account/README.zh.md)和技能注册表之后挂载本插件，Mindeck 应用组合包已完成这一步。企业技能以 `mindeck` 提供方、`custom` 来源出现：项目技能优先于它们，它们又优先于成员自己的同名用户技能。
 
 每次登录或退出后，以及每隔 `refreshIntervalMs`（默认十分钟），插件都会刷新。它只下载内容有变化的技能，并删除成员已不再可用的技能。下载失败的技能保留之前的副本，等待下次刷新。`maxSkillBytes` 和 `maxSkillFiles` 限制单个技能，`requestTimeoutMs` 限制每次请求，`cacheDir` 可把缓存从默认位置（DeepSeek Harness 主目录下的 `mindeck`）移走。
 
-Client 入口 `@deepseek-ai/dsh-mindeck-skills/client` 在左侧栏“插件”之前加入**技能**，其页面显示在主区域。页面写明提供技能的公司和技能数量，先在**公司推荐**下列出推荐技能，再按中文读音顺序列出各分类，最后在**其他**下列出未分类的技能；推荐技能不会在其分类中重复出现。搜索匹配名称、分类、描述以及 Mindeck Cloud 下发的拼音，因此输入 `zb` 能找到“周报助手”。**使用**通过 [Mindeck 账号](../mindeck-account/README.zh.md)的 `mindeckComposer` 打开一个空白对话，把 `/name ` 放在草稿开头（替换已经在那里的技能），光标留在输入框；**查看说明**在对话框中显示技能的 `SKILL.md`，对话框中也可以直接开始对话。在对话中输入 `/` 也会列出这些技能。Mindeck Cloud 应答之前，页面列出随缓存保存的技能。
+Client 入口 `@deepseek-ai/dsh-mindeck-skills/client` 在左侧栏“插件”之前加入**技能**，其页面显示在主区域。页面写明提供技能的企业和技能数量，先在**企业推荐**下列出推荐技能，再按中文读音顺序列出各分类，最后在**其他**下列出未分类的技能；推荐技能不会在其分类中重复出现。搜索匹配名称、分类、描述以及 Mindeck Cloud 下发的拼音，因此输入 `zb` 能找到“周报助手”。**使用**通过 [Mindeck 账号](../mindeck-account/README.zh.md)的 `mindeckComposer` 打开一个空白对话，把 `/name ` 放在草稿开头（替换已经在那里的技能），光标留在输入框；**查看说明**在对话框中显示技能的 `SKILL.md`，对话框中也可以直接开始对话。在对话中输入 `/` 也会列出这些技能。Mindeck Cloud 应答之前，页面列出随缓存保存的技能。
 
 -----
 
@@ -41,7 +41,7 @@ Client 入口 `@deepseek-ai/dsh-mindeck-skills/client` 在左侧栏“插件”�
 
 缓存目录包含 `skills/`（每个技能一个目录）、`staging/` 和 `skills.json`；后者记录云端地址、成员、每个技能的内容哈希，以及已安装技能的列表信息（显示名称、分类、描述、推荐和拼音）。一次同步会列出 `GET {endpoints.skills}`，对哈希不同或缺少 `SKILL.md` 的技能下载 `GET {endpoints.skills}/{name}`，检查每个路径和大小限制，把文件写入 `staging/`，再改名覆盖缓存中的目录。清单属于其他成员或其他云端地址时，同步前先清空缓存；退出登录时整体清空。401 会把令牌报告给 `mindeckAccount.rejectToken`。
 
-`ctx.mindeckSkills.watch()` 通过 `mindeckSkills` Remote 推送 `MindeckSkillCatalog`：公司名称和按云端顺序排列的已安装技能；没有本地副本的技能不会列出。`ctx.mindeckSkills.instructions(name)` 返回已安装公司技能的 `SKILL.md` 正文（与技能注册表提供的内容相同，不含 front matter）；成员没有该技能的本地副本，或另一提供方的同名技能优先时，以 `mindeck-skills/not-found` 失败。客户端在拥有 `mindeckSkills/watch` 访问权限期间，在根 `main` 插槽注册页面，并以 order -20 在 `sidebar.panellist` 注册这一行。
+`ctx.mindeckSkills.watch()` 通过 `mindeckSkills` Remote 推送 `MindeckSkillCatalog`：企业名称和按云端顺序排列的已安装技能；没有本地副本的技能不会列出。`ctx.mindeckSkills.instructions(name)` 返回已安装企业技能的 `SKILL.md` 正文（与技能注册表提供的内容相同，不含 front matter）；成员没有该技能的本地副本，或另一提供方的同名技能优先时，以 `mindeck-skills/not-found` 失败。客户端在拥有 `mindeckSkills/watch` 访问权限期间，在根 `main` 插槽注册页面，并以 order -20 在 `sidebar.panellist` 注册这一行。
 
 [skill-filesystem](../../skill/skill-filesystem/README.zh.md) 的 `FileSystemSkillProvider` 以 `skills/` 作为唯一根目录提供技能，不监视目录；每次改变缓存的同步之后，插件使技能目录失效。路径必须是相对路径、使用 `/`、不含 `.` 和 `..` 段，并避开 Windows 无法保存的名称；仅大小写不同的文件名会被拒绝。
 
@@ -61,11 +61,11 @@ Client 入口 `@deepseek-ai/dsh-mindeck-skills/client` 在左侧栏“插件”�
 <a id="model-experience"></a>
 ## 模型体验
 
-### 公司技能
+### 企业技能
 
 #### What the model sees
 
-每个公司技能到达模型的方式与自定义技能目录中的技能相同：名称和描述出现在技能目录中，使用技能时提供其 `SKILL.md` 正文。
+每个企业技能到达模型的方式与自定义技能目录中的技能相同：名称和描述出现在技能目录中，使用技能时提供其 `SKILL.md` 正文。
 
 #### Token effect
 
@@ -81,7 +81,7 @@ Client 入口 `@deepseek-ai/dsh-mindeck-skills/client` 在左侧栏“插件”�
 
 - 同一 Mindeck 主目录下的两个 Host 同时同步时，可能各自替换同一技能目录，以最后一次替换为准。
 - 云端格式不含文件权限；技能中的脚本写入时没有可执行位。
-- 页面只列出公司技能；内置技能和成员自己的技能只出现在对话的 `/` 菜单中。
+- 页面只列出企业技能；内置技能和成员自己的技能只出现在对话的 `/` 菜单中。
 
 -----
 

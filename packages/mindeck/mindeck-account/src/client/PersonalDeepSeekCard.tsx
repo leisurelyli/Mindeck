@@ -1,24 +1,26 @@
-/** Optional personal DeepSeek account block on the company account page, shown while the company allows it. */
+/** Optional personal DeepSeek account card on the account page, shown while the company allows it. */
 import { useEffect, useRef, useState } from 'react'
-import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { InjectFace } from '@deepseek-ai/dsh-client-ui-slots'
+import { FishLogo } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { AccountLinkInput } from '@deepseek-ai/dsh-client-ui-settings-account/client'
+import type { InjectFace, PropsRenderFactories } from '@deepseek-ai/dsh-client-ui-slots'
 import type { MindeckAccountKey } from './locales.ts'
 import type { MindeckAccountInjected } from './operations.ts'
 import { personalSignInActive } from './personal-deepseek.ts'
-import css from './Account.module.css'
 
-/** Props of the personal account block. */
+/** Props of the personal account card. */
 export type PersonalDeepSeekCardProps =
   Pick<InjectFace<MindeckAccountInjected>, 'usePersonal' | 'startPersonalSignIn' | 'cancelPersonalSignIn' | 'signOutPersonal'>
+  & Pick<PropsRenderFactories, 'renderFactorySlot'>
   & { readonly t: (key: MindeckAccountKey) => string }
 
 /**
- * The member signs in to or out of a personal DeepSeek account and reads what that means for cost and data.
- * @param props - personal account state, its actions, and localized copy.
- * @returns the block.
+ * The member signs in to or out of a personal DeepSeek account and reads what that means for cost and data. Balance,
+ * usage, and top-up stay on the base DeepSeek account page.
+ * @param props - personal account state, its actions, the base account page parts, and localized copy.
+ * @returns the identity card of the personal account.
  */
 export function PersonalDeepSeekCard(
-  { usePersonal, startPersonalSignIn, cancelPersonalSignIn, signOutPersonal, t }: PersonalDeepSeekCardProps,
+  { usePersonal, startPersonalSignIn, cancelPersonalSignIn, signOutPersonal, renderFactorySlot, t }: PersonalDeepSeekCardProps,
 ) {
   const { available, view, failed } = usePersonal(snapshot => snapshot)
   const [busy, setBusy] = useState(false)
@@ -44,28 +46,26 @@ export function PersonalDeepSeekCard(
     openedFor.current = attempt?.id ?? null
     window.open(authorizeUrl, '_blank', 'noopener,noreferrer')
   }, [authorizeUrl, attempt?.id])
-  const ended = view?.attempt?.phase === 'failed' || view?.attempt?.phase === 'expired'
-  const status: MindeckAccountKey | undefined = !available || failed ? 'personalUnavailable'
-    : error ?? (active ? 'personalWaiting' : ended ? 'personalFailed' : view?.status === 'credential-stored' ? 'personalSignedIn' : undefined)
-  return <section className={css.card} aria-label={t('personalTitle')}>
-    <div className={css.panel}>
-      <div className={css.copy}>
-        <span className={css.name}>{t('personalTitle')}</span>
-        <span className={css.secondary}>{t('personalDescription')}</span>
-      </div>
-      {status !== undefined && <p className={error !== undefined || status === 'personalFailed' ? css.error : css.secondary} role="status">
-        {t(status)}
-      </p>}
-      {available && view !== undefined && <div className={css.actions}>
-        {active
-          ? <Button variant="outline" disabled={busy} onClick={() => { void cancelPersonalSignIn() }}>{t('cancel')}</Button>
-          : view.status === 'credential-stored'
-            ? <Button variant="outline" disabled={busy} onClick={() => { void run(signOutPersonal) }}>{t('personalSignOut')}</Button>
-            : <Button variant="outline" disabled={busy} onClick={() => { requestedHere.current = true; void run(startPersonalSignIn) }}>
-              {t('personalSignIn')}
-            </Button>}
-        {authorizeUrl !== undefined && <a className={css.primaryLink} href={authorizeUrl} target="_blank" rel="noreferrer">{t('openBrowser')}</a>}
-      </div>}
-    </div>
-  </section>
+  const ended = attempt?.phase === 'failed' || attempt?.phase === 'expired'
+  const signedIn = view?.status === 'credential-stored'
+  const status: MindeckAccountKey = !available || failed ? 'personalUnavailable'
+    : error ?? (active ? 'personalWaiting' : ended ? 'personalFailed' : signedIn ? 'personalSignedIn' : 'personalDescription')
+  const links: AccountLinkInput[] = !available || view === undefined ? []
+    : active
+      ? [
+        { key: 'cancel', label: t('cancel'), disabled: busy, onClick: () => { void cancelPersonalSignIn() } },
+        ...authorizeUrl === undefined ? [] : [{ key: 'open', label: t('openBrowser'), primary: true, href: authorizeUrl }],
+      ]
+      : signedIn
+        ? [{ key: 'sign-out', label: t('personalSignOut'), disabled: busy, onClick: () => { void run(signOutPersonal) } }]
+        : [{
+          key: 'sign-in', label: t('personalSignIn'), disabled: busy,
+          onClick: () => { requestedHere.current = true; void run(startPersonalSignIn) },
+        }]
+  return renderFactorySlot('settings.account.identity', {
+    avatar: <FishLogo size={18} />,
+    name: t('personalTitle'),
+    status: t(status),
+    actions: links.length === 0 ? undefined : renderFactorySlot('settings.account.links', { links }),
+  })
 }

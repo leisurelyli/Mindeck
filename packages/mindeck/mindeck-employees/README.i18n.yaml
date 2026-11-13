@@ -3,23 +3,23 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/mindeck/mindeck-employees/README.md
 /:
-  en: 5151b56f0b9e018f
-  zh: 41ff9ee4e8ac54e8
+  en: 1064e4ba4f19e39b
+  zh: 27778b7925a9bd19
 /deepseek-ai-dsh-mindeck-employees:
   en: 2fdb2c3e2aecf1b6
   zh: b87e42def79e0608
 /deepseek-ai-dsh-mindeck-employees/summary:
-  en: 281e1494cedf51db
-  zh: ad48eb27d18165ec
+  en: a0536bda39c6dc69
+  zh: e8fbe2b1dcaafbf5
 /deepseek-ai-dsh-mindeck-employees/table-of-contents:
   en: d152484eb41ac6b4
   zh: ce40cab8e7534137
 /deepseek-ai-dsh-mindeck-employees/use-this-package:
-  en: ecf74b0b36441f10
-  zh: 886e1a0f05c783fb
+  en: 5cfa603e63568f6c
+  zh: 5422e99c53a2d756
 /deepseek-ai-dsh-mindeck-employees/understand-the-implementation:
-  en: fcbcf750d8f94668
-  zh: 41ac718d12219484
+  en: 7402e21754986830
+  zh: 4dd44d00af572a1c
 /deepseek-ai-dsh-mindeck-employees/further-exploration:
   en: 28c8bd97df597dae
   zh: ec561edac7896ccb
@@ -31,13 +31,13 @@
   zh: ff4bc519d767207c
 /deepseek-ai-dsh-mindeck-employees/model-experience/digital-employee-persona/what-the-model-sees:
   en: 3d393d4ef434c07d
-  zh: 61a0cc69081f53d9
+  zh: 65e73c16ed4bc217
 /deepseek-ai-dsh-mindeck-employees/model-experience/digital-employee-persona/what-the-model-sees/employee-persona:
   en: 6efe01a8c0df2123
   zh: 1d7198dca98ff48b
 /deepseek-ai-dsh-mindeck-employees/model-experience/digital-employee-persona/token-effect:
   en: 671d70a15fdce10d
-  zh: 980de3acc1a3ea61
+  zh: 02d531a07441093b
 /deepseek-ai-dsh-mindeck-employees/model-experience/digital-employee-persona/kv-cache-effect:
   en: afddcea5d80a6141
   zh: e8db71d24573ef88
@@ -54,8 +54,8 @@
   en: 8935fa9dd1c83789
   zh: 60bc0f4d9d349c62
 /deepseek-ai-dsh-mindeck-employees/known-limitations-and-deferred-work:
-  en: ebdccd6c56132e19
-  zh: 7fbffb7189362249
+  en: 5daaba24897fc641
+  zh: cc93603d39e3ec20
 /deepseek-ai-dsh-mindeck-employees/known-limitations-and-deferred-work/dev-note:
   en: 0225ba087c5266f3
   zh: 53f5adbcc7db8671

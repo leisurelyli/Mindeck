@@ -1,4 +1,4 @@
-/** Digital-employee listing shared by the Host plugin and the new-conversation cards. */
+/** Digital-employee listing shared by the Host plugin and the digital-employee page. */
 
 /** The built-in general assistant, which Mindeck registers whether or not the member is signed in. */
 export interface MindeckGeneralView {
@@ -26,10 +26,10 @@ export interface MindeckEmployeeView {
   readonly draft: boolean
 }
 
-/** One card on the new-conversation screen. */
+/** One card on the digital-employee page. */
 export type MindeckEmployeeCard = MindeckGeneralView | MindeckEmployeeView
 
-/** The cards the new-conversation screen offers. */
+/** The cards the digital-employee page offers. */
 export interface MindeckEmployeeCatalog {
   /** The general assistant first, then the company's current employees in Mindeck Cloud order; retired employees are left out. */
   readonly cards: readonly MindeckEmployeeCard[]

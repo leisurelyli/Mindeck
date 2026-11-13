@@ -93,7 +93,8 @@ export function generalDefinition(rows: PresetRows, persona: string): PresetDefi
  * @param rows - the base preset's rows.
  * @param employee - the cached employee.
  * @param index - its position among the member's employees, current ones first.
- * @returns the employee's preset; a retired employee keeps its persona so earlier conversations continue unchanged.
+ * @returns the employee's preset; a retired employee keeps its persona so earlier conversations continue unchanged, and
+ * is unlisted so the preset picker no longer offers it for new conversations.
  */
 export function employeeDefinition(rows: PresetRows, employee: CachedEmployee, index: number): PresetDefinition {
   const plugins = withPersona(rows, employeePersona(employee))
@@ -101,7 +102,7 @@ export function employeeDefinition(rows: PresetRows, employee: CachedEmployee, i
   if (employee.retired) {
     return {
       id, name: `${employee.name}（已停用）`, description: '管理员已停用这位数字员工，可以继续之前的对话。',
-      order: RETIRED_ORDER + index, plugins,
+      order: RETIRED_ORDER + index, listed: false, plugins,
     }
   }
   return {

@@ -1,0 +1,29 @@
+/* Bodies of the Mindeck sign-in pages inside the base first-run page; the page owns the copy, actions, and footer. */
+.connect { display: flex; flex-direction: column; gap: 20px; text-align: start; }
+
+.notice { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 14px; border-radius: var(--dsw-radius-lg); background: var(--dsw-alias-bg-skeleton); color: var(--dsw-alias-label-primary); font-size: 14px; line-height: 22px; }
+.notice > svg { flex: none; margin-top: 3px; color: var(--dsw-alias-label-tertiary); }
+.notice[data-tone='error'] > svg { color: var(--dsw-alias-state-error-primary); }
+
+.field { display: flex; flex-direction: column; gap: 8px; }
+.label { color: var(--dsw-alias-label-secondary); font-size: 14px; line-height: 22px; }
+/* Field height and curve match the page's 44px actions. */
+.input { box-sizing: border-box; width: 100%; height: 44px; padding: 0 14px; border-radius: 12px; }
+.input input { font-size: 15px; }
+.field:has([aria-invalid='true']) .input { border-color: var(--dsw-alias-state-error-primary); }
+.hint, .error { margin: 0; font-size: 13px; line-height: 20px; }
+.hint { color: var(--dsw-alias-label-tertiary); }
+.error { color: var(--dsw-alias-state-error-primary); }
+
+.confirm { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.code { display: block; box-sizing: border-box; width: 100%; padding: 20px 0; border-radius: 16px; background: var(--dsw-alias-bg-skeleton); color: var(--dsw-alias-label-primary); font-family: var(--ds-font-family-code); font-size: 32px; line-height: 40px; font-weight: 500; letter-spacing: 0.14em; text-align: center; user-select: all; }
+/* Without a code the card carries the progress line, at the code's height. */
+.code[data-pending] { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; color: var(--dsw-alias-label-tertiary); font-family: inherit; font-size: 14px; font-weight: 400; letter-spacing: normal; user-select: none; }
+.confirm + .error { margin-top: 12px; text-align: center; }
+
+/* The countdown and the reconnecting line share one height, so the actions stay put when the connection drops. */
+.status { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 22px; margin: 0; color: var(--dsw-alias-label-tertiary); font-size: 13px; line-height: 20px; }
+.status > .spinner { width: 14px; height: 14px; }
+.spinner { flex: none; width: 16px; height: 16px; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }

@@ -20,7 +20,7 @@ export interface MindeckReminderSnapshot {
 /** Result of one Client-initiated operation; a failure names the copy that explains it. */
 export type OperationOutcome = { readonly ok: true } | { readonly ok: false; readonly reason: MindeckAccountKey }
 
-/** Operations and hooks shared by the sign-in gate, the settings section, and the launcher. */
+/** Operations and hooks shared by the sign-in stage, the settings section, and the launcher. */
 export interface MindeckAccountInjected {
   /** Account state owned by the Host, observed through framework hooks. */
   hooks: {
@@ -37,6 +37,8 @@ export interface MindeckAccountInjected {
   connect: (input: string) => Promise<OperationOutcome>
   /** @returns whether a sign-in attempt started or is already running. */
   startSignIn: () => Promise<OperationOutcome>
+  /** Record that this device showed the welcome page; a failure leaves it to show again at the next start. */
+  finishWelcome: () => void
   /** @param id - attempt to cancel. @returns after the attempt stopped. */
   cancelSignIn: (id: MindeckSignInAttemptId) => Promise<void>
   /** @returns whether the local session was removed. */

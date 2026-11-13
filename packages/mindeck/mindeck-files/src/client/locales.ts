@@ -79,7 +79,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 /** Chinese panel dictionary. */
 export const zh: Record<MindeckFilesKey, string> = {
   title: '资源库',
-  guideDescription: '浏览公司和部门的文件，并加入对话。',
+  guideDescription: '浏览企业和部门的文件，并加入对话。',
   root: '资源库',
   personal: '我的文件',
   shares: '共享给我',
@@ -120,12 +120,12 @@ export const zh: Record<MindeckFilesKey, string> = {
   loading: '正在加载…',
   retry: '重试',
   signedOut: '登录 Mindeck 后即可使用资源库',
-  notConfigured: '公司尚未启用资源库',
+  notConfigured: '企业尚未启用资源库',
   notFound: '这个文件夹已不存在',
   denied: '你没有这个文件夹的访问权限',
   unavailable: '资源库暂时无法访问，请稍后重试',
   failed: '操作失败，请重试',
-  pageIntro: '你自己、部门和公司的文件都在这里。可以上传、查找，或在新对话中使用。',
+  pageIntro: '你自己、部门和企业的文件都在这里。可以上传、查找，或在新对话中使用。',
   spaces: '空间',
   searchAllPlaceholder: '在全部空间中搜索文件名',
   searchResults: '“{query}”的搜索结果',
@@ -138,5 +138,5 @@ export const zh: Record<MindeckFilesKey, string> = {
   columnLocation: '位置',
   emptyHint: '把电脑上的文件拖到这里，或点“上传文件”',
   readOnlyHint: '你可以查看和使用这里的文件，但不能上传到这个文件夹',
-  notConfiguredHint: '请联系公司管理员在 Mindeck Cloud 中启用',
+  notConfiguredHint: '请联系企业管理员在 Mindeck Cloud 中启用',
 }

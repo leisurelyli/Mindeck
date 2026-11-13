@@ -104,7 +104,9 @@ export function AgentPresetSection({
     {state.error === null ? null : <p className={css.error} role="alert">{state.error}</p>}
     {([true, false] as const).map((builtIn) => {
       const rows = state.rows.filter(row => isBuiltInPreset(row) === builtIn
-        && (developerTools || !requiresCodingTools(row)))
+        && (developerTools || !requiresCodingTools(row))
+        // An unlisted preset is not offered as a default; one that already is stays visible as the current choice.
+        && (row.listed !== false || row.isDefault))
       const entry = builtIn ? null : creatorButton
       if (rows.length === 0 && entry === null) return null
       return <section key={String(builtIn)} className={css.group}>

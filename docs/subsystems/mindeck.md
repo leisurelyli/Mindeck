@@ -8,19 +8,23 @@ The [Mindeck package group](../../packages/mindeck/README.md) connects Mindeck D
 
 | Owner | Responsibility |
 |---|---|
-| [mindeck-account](../../packages/mindeck/mindeck-account/README.md) | `ctx.mindeckAccount`: the Cloud address, device sign-in, the stored Cloud session, and the sign-in gate; the Client's `ctx.mindeckComposer`, through which the Mindeck pages open conversations |
+| [mindeck-account](../../packages/mindeck/mindeck-account/README.md) | `ctx.mindeckAccount`: the Cloud address, device sign-in, the stored Cloud session, the full-screen sign-in, and Settings → Account; the Client's `ctx.mindeckComposer`, through which the Mindeck pages open conversations |
 | [mindeck-models](../../packages/mindeck/mindeck-models/README.md) | The member's company models as model routes through the Cloud gateway, with quota and sign-in failures, and the `mindeck-search` web search provider, which searches through the gateway's `/gateway/v1/tools/search` only while the company has turned search on |
 | [mindeck-skills](../../packages/mindeck/mindeck-skills/README.md) | The member's company skills, cached on the device and served by a skill provider while signed in, and the Skills page |
 | [mindeck-files](../../packages/mindeck/mindeck-files/README.md) | `ctx.mindeckFiles`: the file-library tools, the right-sidebar panel, the File library page, and `library:` references in messages |
-| [mindeck-employees](../../packages/mindeck/mindeck-employees/README.md) | `ctx.mindeckEmployees`: the general assistant and the company's digital employees as agent presets with their own persona, the new-conversation cards, the Digital employees page, and the employee of a live conversation |
+| [mindeck-employees](../../packages/mindeck/mindeck-employees/README.md) | `ctx.mindeckEmployees`: the general assistant and the company's digital employees as agent presets with their own persona, the Digital employees page, and the employee of a live conversation |
 
 ## Account session
 
 `ctx.mindeckAccount.session()` returns the signed-in member's Cloud URL, access token, and bootstrap data, or `undefined` when signed out. Consumers read it for each Cloud request and call `rejectToken(token)` when Cloud rejects that token; the service ends the stored session only while it still holds that token, so a newer sign-in survives a late rejection. `mindeck-account/changed` announces every sign-in, sign-out, and rejected token, and consumers refresh from `session()` instead of reading the event payload.
 
+## Sign-in and the Account page
+
+mindeck-account draws its pages with Factories that [ui-settings-account](../../packages/client/ui-settings-account/README.md#pages-for-other-accounts) registers: the full-screen sign-in on the first-run page `desktop.onboarding.page`, with the Mindeck artwork from ui-brand-mindeck, and Settings → Account on the `settings.account.*` account page parts, so both match the DeepSeek account pages. Settings lists the company account first and renames the DeepSeek account page to **DeepSeek account**.
+
 ## Digital employees
 
-`ctx.mindeckEmployees` registers `mindeck-general` and one `mindeck-employee-<Cloud id>` agent preset per digital employee, each the base preset's plugin rows with its own persona; the bundle makes `mindeck-general` the default. Employees that leave the Cloud listing stay registered as retired, so their conversations resume. `employeeForSession(sessionId)` returns the Cloud id of a live conversation's employee; mindeck-models sends it as `x-mindeck-employee` on gateway model requests and company searches, so Mindeck Cloud can attribute their usage.
+`ctx.mindeckEmployees` registers `mindeck-general` and one `mindeck-employee-<Cloud id>` agent preset per digital employee, each the base preset's plugin rows with its own persona; the bundle makes `mindeck-general` the default. Employees that leave the Cloud listing stay registered as retired and unlisted (`listed: false`), so new conversations cannot choose them while their conversations resume under their name. `employeeForSession(sessionId)` returns the Cloud id of a live conversation's employee; mindeck-models sends it as `x-mindeck-employee` on gateway model requests and company searches, so Mindeck Cloud can attribute their usage.
 
 ## Sidebar pages
 
@@ -72,12 +76,20 @@ Mindeck Cloud account service and its Remote namespace.
 @Remote({ mode: 'stream' }) async *watch(signal: AbortSignal): AsyncIterable<MindeckAccountView>
 
 /**
- * Set the Mindeck Cloud address after checking that it answers as one. Only while signed out.
- * @param input - address typed by the member; a missing scheme means HTTPS.
+ * Set the Mindeck Cloud address after checking that it answers as one. Only while signed out. An address with a
+ * page path, such as an invitation link, resolves to the shortest path prefix that answers as a Mindeck Cloud.
+ * @param input - address typed or pasted by the member; a missing scheme means HTTPS.
  * @param signal - caller cancellation.
- * @returns state with the new address.
+ * @returns state with the resolved address.
  */
 @Remote async setCloudUrl(input: string, signal: AbortSignal): Promise<MindeckAccountView>
+
+/**
+ * Record that this device showed the welcome page, so it does not appear again.
+ * @returns the state with `welcomed` set.
+ * @throws RemoteError `mindeck-account/settings` when the profile settings could not be written.
+ */
+@Remote async finishWelcome(): Promise<MindeckAccountView>
 
 /**
  * Join the running sign-in or start device authorization. The Client opens the returned
@@ -120,7 +132,7 @@ Source: [`packages/mindeck/mindeck-account/src/index.ts`](../../packages/mindeck
 
 ### `ctx.mindeckEmployees` — `MindeckEmployees`
 
-Registers the general assistant and the member's digital employees as agent presets and lists them for the new-conversation screen.
+Registers the general assistant and the member's digital employees as agent presets and lists them for the digital-employee page.
 
 ```ts cordis-catalog
 /**
@@ -132,7 +144,7 @@ Registers the general assistant and the member's digital employees as agent pres
 employeeForSession(sessionId: SessionId): string | undefined
 
 /**
- * Stream the cards of the new-conversation screen.
+ * Stream the cards of the digital-employee page.
  * @param signal - stream lifetime.
  * @returns the current cards, then every change.
  */

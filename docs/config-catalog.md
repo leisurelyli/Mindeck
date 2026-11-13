@@ -158,7 +158,7 @@ export type Config = PresetDefinition
 
 - `inject`: `loader` · `sessionProjections` · `agents`
 - `refs`: `Volatile` (`@deepseek-ai/cordis`)
-- `source`: [`packages/preset/agent-preset-registry/src/preset.ts:13`](../packages/preset/agent-preset-registry/src/preset.ts)
+- `source`: [`packages/preset/agent-preset-registry/src/preset.ts:15`](../packages/preset/agent-preset-registry/src/preset.ts)
 
 ```ts config-catalog
 /** Registry selection policy. */
@@ -2568,6 +2568,11 @@ export interface Config {
    * member sets it; the account settings write it through the settings service.
    */
   cloudUrl: Volatile<string>
+  /**
+   * Whether this device showed the Mindeck welcome page. The member's first step sets it, and so does the first
+   * sign-in or a stored session, so the page appears once per device.
+   */
+  welcomed: Volatile<boolean>
   /** Timeout of each request to Mindeck Cloud in milliseconds. */
   requestTimeoutMs: number
   /** Interval in milliseconds between quota reads while signed in. */

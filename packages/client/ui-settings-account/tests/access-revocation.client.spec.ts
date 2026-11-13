@@ -53,6 +53,8 @@ it('withdraws every account surface and the account stream on revocation, and re
       describe: () => ({ subscribe: () => () => {}, getSnapshot: () => ({ error: null }) }),
     },
     slots: {
+      // Page part and first-run page Factories; these flows read none of them.
+      registerFactory: () => () => {},
       inject: (_name: string, install: () => (() => void) | undefined) => {
         const dispose = install()
         return () => { dispose?.() }
@@ -128,6 +130,8 @@ it('drops reads a revoked grant started, and the next grant shows no account sec
       describe: () => ({ subscribe: () => () => {}, getSnapshot: () => ({ error: null }) }),
     },
     slots: {
+      // Page part and first-run page Factories; these flows read none of them.
+      registerFactory: () => () => {},
       inject: (_name: string, install: () => (() => void) | undefined) => {
         const dispose = install()
         return () => { dispose?.() }
@@ -218,6 +222,8 @@ function revocationHarness(scripts: StreamScript[]) {
     },
     theme: { getTheme: () => ({ active: { colorScheme: 'light' } }) },
     slots: {
+      // Page part and first-run page Factories; these flows read none of them.
+      registerFactory: () => () => {},
       inject: (_name: string, install: () => (() => void) | undefined) => {
         const dispose = install()
         return () => { dispose?.() }

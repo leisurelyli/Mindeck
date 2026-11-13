@@ -33,7 +33,7 @@ kind: "package-reference"
 
 此条目没有配置项。选择本包替代 `@deepseek-ai/dsh-client-ui-brand-official`；官方包仍可用于上游组合。品牌选择由组合决定，不依赖客户端构建配置。将部署的 locale `parameters.productName` 设置为 `Mindeck`；品牌字典使用 `{productName}`，未设置时继承共享的上游默认值。本插件遵循宿主指定的标志尺寸，不添加鲸鱼背景。
 
-[账号设置](../ui-settings-account/README.zh.md#desktop-onboarding)声明插图槽位时，欢迎页与额度页共用本包的工作区截图，覆盖英文、中文与明暗主题。没有此声明时，插件仅提供侧栏和会话品牌内容。
+[账号设置](../ui-settings-account/README.zh.md#desktop-onboarding)声明插图槽位时，欢迎页、额度页以及共享[首次引导页](../ui-settings-account/README.zh.md#pages-for-other-accounts)的主视觉（例如 Mindeck 登录的欢迎页）共用本包的工作区截图，覆盖英文、中文与明暗主题。没有此声明时，插件仅提供侧栏和会话品牌内容。
 
 插件通过 `ctx.locale.override` 覆盖 `conversation` 命名空间的四条中英文文案：空白首页标语、徽标和两条输入框提示。其他语言保留上游文案。
 
@@ -47,7 +47,7 @@ kind: "package-reference"
 
 [浏览器入口](src/client/index.ts) 通过 `locale` 注册 `mindeck` 字典，等待三个槽位全部声明后，一起填充 `sidebar.brand.mark`、`sidebar.brand.name` 和 `conversation.hero.brand.mark`。槽位效果在声明消失时撤销整组占用，重新声明后恢复；卸载插件同时移除其字典。[组件](src/client/Brand.tsx) 通过属性接收尺寸和类型化翻译函数。共享客户端打包器导入未修改的[规范 SVG](src/client/assets/mindeck.svg)，生成包资源地址。宿主入口不执行操作。
 
-[引导插图](src/client/OnboardingIllustration.tsx)通过 `ctx.slots.inject` 和 `register` 独立填充 `desktop.onboarding.illustration`。它通过仅类型依赖接收账号包拥有的 `step`、`locale` 和 `className`，定位仍由账号步骤负责。两个步骤共用四张 WebP 资源。声明消失时撤销占用，重新声明后恢复；卸载插件后恢复账号包提供的上游默认图稿。
+[引导插图](src/client/OnboardingIllustration.tsx)通过 `ctx.slots.inject` 和 `register` 分别独立填充 `desktop.onboarding.illustration` 和 `desktop.onboarding.page.illustration`。它通过仅类型依赖接收账号包拥有的 `step`、`locale` 和 `className`，定位仍由账号步骤负责。两个步骤共用四张 WebP 资源。某个声明消失时撤销其占用，重新声明后恢复；卸载插件后恢复账号包提供的上游默认图稿。
 
 </details>
 

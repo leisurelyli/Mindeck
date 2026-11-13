@@ -56,8 +56,9 @@ it('names the general assistant, drafts, and retired employees in the roster, in
   })
   const retired = employeeDefinition(rows, { ...legal, retired: true }, 2)
   expect(retired).toMatchObject({
-    id: 'mindeck-employee-e1', name: '法务专员（已停用）', description: '管理员已停用这位数字员工，可以继续之前的对话。',
+    id: 'mindeck-employee-e1', name: '法务专员（已停用）', description: '管理员已停用这位数字员工，可以继续之前的对话。', listed: false,
   })
+  expect(employeeDefinition(rows, legal, 0)).not.toHaveProperty('listed')
   expect(retired.order).toBeGreaterThan(employeeDefinition(rows, legal, 500).order ?? 0)
   expect(retired.plugins).toEqual(employeeDefinition(rows, legal, 0).plugins)
 })

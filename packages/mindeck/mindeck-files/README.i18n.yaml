@@ -4,19 +4,19 @@
 #   pnpm run verify-translation-pairing --write packages/mindeck/mindeck-files/README.md
 /:
   en: 9074864cd2f05730
-  zh: 90d02e003e4c305a
+  zh: 55f75cf98dbfcf7b
 /deepseek-ai-dsh-mindeck-files:
   en: 5c3e65208abe991f
   zh: 63fa87ca2fd9e2b3
 /deepseek-ai-dsh-mindeck-files/summary:
   en: 26a419ddaf4e206d
-  zh: c5111311161ebb82
+  zh: c06b1b94bc8ce41e
 /deepseek-ai-dsh-mindeck-files/table-of-contents:
   en: d152484eb41ac6b4
   zh: ce40cab8e7534137
 /deepseek-ai-dsh-mindeck-files/use-this-package:
   en: 9ca189a2d84899d3
-  zh: 4380777b7e8af33d
+  zh: 0669b182c28a4992
 /deepseek-ai-dsh-mindeck-files/understand-the-implementation:
   en: 2953f5907f7e375d
   zh: fc2a1d41ddd57ebf
@@ -37,7 +37,7 @@
   zh: 21d66668b42ddba7
 /deepseek-ai-dsh-mindeck-files/model-experience/file-library-tools/kv-cache-effect:
   en: 3a9d8f9cf9bf8f84
-  zh: 4f739e789435f5c2
+  zh: fe73d471e4a6f356
 /deepseek-ai-dsh-mindeck-files/known-limitations-and-deferred-work:
   en: b1a3d3da8440fe83
   zh: 6a89a4af709d33da

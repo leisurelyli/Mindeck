@@ -667,7 +667,8 @@ async recompose(ctx: Context, id: string): Promise<AgentPreset>
 
 /** Select a preset before a session starts its first turn. A Session whose
  * log records the preset and whose Agent runs its current revision keeps its
- * composition; nothing is logged or announced.
+ * composition; nothing is logged or announced. An unlisted preset is refused
+ * unless the Session already records it.
  * @param agent Target Agent.
  * @param agentPreset Requested identity.
  * @returns Committed preset identity.

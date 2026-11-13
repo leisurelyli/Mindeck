@@ -1,4 +1,4 @@
-/** Mindeck artwork for brand slots and desktop onboarding illustrations, and Mindeck wording for shared conversation copy. */
+/** Mindeck artwork for brand slots and first-run page illustrations, and Mindeck wording for shared conversation copy. */
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
@@ -12,7 +12,8 @@ import { conversation, en, zh } from './locales.ts'
 export const inject = ['slots', 'locale']
 
 /**
- * Register the brand set and optional onboarding artwork as their hosts declare slots, and word the shared
+ * Register the brand set and optional onboarding artwork, for the DeepSeek steps and for the shared first-run page, as
+ * their hosts declare slots, and word the shared
  * conversation copy for Mindeck.
  * @param ctx - Client plugin context.
  */
@@ -21,6 +22,8 @@ export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.override('conversation', conversation), 'ui-brand-mindeck: conversation copy')
   ctx.slots.inject('desktop.onboarding.illustration', () =>
     ctx.slots.register({ name: 'desktop.onboarding.illustration' }, MindeckOnboardingIllustration))
+  ctx.slots.inject('desktop.onboarding.page.illustration', () =>
+    ctx.slots.register({ name: 'desktop.onboarding.page.illustration' }, MindeckOnboardingIllustration))
   ctx.slots.inject('sidebar.brand.mark', () =>
     ctx.slots.inject('sidebar.brand.name', () =>
       ctx.slots.inject('conversation.hero.brand.mark', function* () {

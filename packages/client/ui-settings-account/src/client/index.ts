@@ -22,6 +22,8 @@ import { AccountPlatformHost, type AccountPlatformHostInjected } from './Account
 import { AccountMenu } from './AccountMenu.tsx'
 import { createPlatformPages, type PlatformPages } from './platform-pages.ts'
 import { AccountSection, type AccountSnapshot, type AccountSectionInjected } from './AccountSection.tsx'
+import { AccountAmount, AccountIdentity, AccountLinks, AccountPage, AccountRows } from './AccountParts.tsx'
+import { OnboardingPage } from './OnboardingPage.tsx'
 import { createBonusNoticeController } from './bonus-notices.ts'
 import { accountClientMetadata } from './client-metadata.ts'
 import { en, ja, es, fr, de, ru, pt, zh, type AccountKey } from './locales.ts'
@@ -36,7 +38,10 @@ export type { AccountSectionInjected, AccountSectionProps } from './AccountSecti
 export type { AccountMenuProps } from './AccountMenu.tsx'
 export type { AccountSnapshot } from './AccountSection.tsx'
 export type { AccountKey } from './locales.ts'
-export type { DesktopOnboardingIllustrationOwnerProps } from './onboarding-contract.ts'
+export type { DesktopOnboardingIllustrationOwnerProps, OnboardingPageAction, OnboardingPageInput } from './onboarding-contract.ts'
+export type {
+  AccountAmountInput, AccountIdentityInput, AccountLinkInput, AccountLinksInput, AccountPageInput, AccountRowInput, AccountRowsInput,
+} from './AccountParts.tsx'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap { 'settings.account': AccountKey }
@@ -49,6 +54,17 @@ export function apply(ctx: Context): void {
   const desktop = 'dshDesktop' in globalThis
   ctx.effect(() => ctx.locale.register('settings.account', { en, zh, ja, es, fr, de, ru, pt }), 'account: dictionaries')
   const t = ctx.locale.bind('settings.account')
+  // Account-neutral page parts for other account pages; they follow this plugin, not the DeepSeek account state.
+  ctx.effect(() => ctx.slots.registerFactory({ name: 'settings.account.page', scope: 'root' }, AccountPage), 'account: page factory')
+  ctx.effect(() => ctx.slots.registerFactory({ name: 'settings.account.identity', scope: 'root' }, AccountIdentity), 'account: identity factory')
+  ctx.effect(() => ctx.slots.registerFactory({ name: 'settings.account.rows', scope: 'root' }, AccountRows), 'account: rows factory')
+  ctx.effect(() => ctx.slots.registerFactory({ name: 'settings.account.links', scope: 'root' }, AccountLinks), 'account: links factory')
+  ctx.effect(() => ctx.slots.registerFactory({ name: 'settings.account.amount', scope: 'root' }, AccountAmount), 'account: amount factory')
+  // The first-run page frame for other sign-in flows, on Desktop and in a browser; the DeepSeek flow below draws its own pages.
+  ctx.effect(() => ctx.slots.registerFactory({
+    name: 'desktop.onboarding.page', scope: 'root',
+    children: { 'desktop.onboarding.page.illustration': { kind: 'single', scope: 'root' } },
+  }, OnboardingPage), 'account: onboarding page factory')
   const page = globalThis as Partial<Record<typeof CONTACT_CONFIG_GLOBAL, unknown>>
   const config = ContactConfig(page[CONTACT_CONFIG_GLOBAL] ?? {})
   let snapshot: AccountSnapshot = {

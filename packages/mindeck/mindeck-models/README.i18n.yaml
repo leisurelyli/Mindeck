@@ -4,22 +4,22 @@
 #   pnpm run verify-translation-pairing --write packages/mindeck/mindeck-models/README.md
 /:
   en: 91c758d78733a68e
-  zh: 7f631f220bca7494
+  zh: ec2e75bb746a0105
 /deepseek-ai-dsh-mindeck-models:
   en: 2b4baa5c16c95c23
   zh: 0b7320d13d0b6ea6
 /deepseek-ai-dsh-mindeck-models/summary:
   en: 33e9f555a0470b1d
-  zh: 974466a17ee97001
+  zh: d36d189bd8237f5d
 /deepseek-ai-dsh-mindeck-models/table-of-contents:
   en: d152484eb41ac6b4
   zh: ce40cab8e7534137
 /deepseek-ai-dsh-mindeck-models/use-this-package:
-  en: 9b82b580ae164e8d
-  zh: 191a91bbeda9290a
+  en: b44f9a8666e82dab
+  zh: 75f3398aaa486c73
 /deepseek-ai-dsh-mindeck-models/understand-the-implementation:
   en: 3f1bf228c0dd7b4c
-  zh: 6507ef013039721a
+  zh: 9dafbb3f3276a318
 /deepseek-ai-dsh-mindeck-models/further-exploration:
   en: 1bfd4c3b4db9f704
   zh: 4af0f22c15ec1bde
@@ -28,7 +28,7 @@
   zh: a311da3843709f90
 /deepseek-ai-dsh-mindeck-models/model-experience/company-model-requests:
   en: dcc8f56de10320df
-  zh: 2464e29f3a3aa32a
+  zh: 957912a9d8236e0e
 /deepseek-ai-dsh-mindeck-models/model-experience/company-model-requests/what-the-model-sees:
   en: b82d8e1468e0d30c
   zh: 47d50605ee231489
@@ -40,10 +40,10 @@
   zh: e442e0df238d9e73
 /deepseek-ai-dsh-mindeck-models/model-experience/company-web-search:
   en: bab989bedde42fe4
-  zh: 39c36947151c2ba4
+  zh: 1c761b3dde02e6a5
 /deepseek-ai-dsh-mindeck-models/model-experience/company-web-search/what-the-model-sees:
   en: 19434d6871b497ef
-  zh: a91324b2330d487e
+  zh: baff8f78cad3e067
 /deepseek-ai-dsh-mindeck-models/model-experience/company-web-search/token-effect:
   en: ab974a1359b47c59
   zh: 1ffe227709686212

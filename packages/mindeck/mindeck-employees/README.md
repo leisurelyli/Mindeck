@@ -1,5 +1,5 @@
 ---
-description: "Register the digital employees a company sets up in Mindeck Cloud as agent presets with their own persona, and offer them on the new-conversation screen."
+description: "Register the digital employees a company sets up in Mindeck Cloud as agent presets with their own persona, and offer them on a Digital employees page."
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Start a conversation with one of the company's digital employees. An administrator sets up each one in Mindeck Cloud: a job title, an avatar, a tagline, role instructions, up to four starter requests, and suggested company skills. This plugin registers each employee as an agent preset that uses the base preset's plugins with the employee's role as its persona, and registers the general assistant `mindeck-general`, which new Mindeck conversations start with. Cards above a blank conversation's message box switch it to an employee, and the **Digital employees** page in the left sidebar starts a new conversation with any of them.
+Start a conversation with one of the company's digital employees. An administrator sets up each one in Mindeck Cloud: a job title, an avatar, a tagline, role instructions, up to four starter requests, and suggested company skills. This plugin registers each employee as an agent preset with the employee's role as its persona, and the general assistant `mindeck-general`, which new Mindeck conversations start with. The **Digital employees** page in the left sidebar starts a conversation with any of them, and the base preset picker on a blank conversation switches between them.
 
 ## Table of Contents
 
@@ -38,11 +38,9 @@ Mount the plugin on the Host after the [Mindeck account](../mindeck-account/READ
 
 The roster names the general assistant **通用助手**, ordered first. Each employee is `mindeck-employee-<Cloud id>`, named by its job title with its tagline as the description; an administrator's own draft, which only that administrator receives, adds **（草稿）**. The plugin refreshes after each sign-in or sign-out, every `refreshIntervalMs`, and after a failed refresh as `retryIntervalMs` describes; a 401 ends the desktop session. A Mindeck Cloud whose bootstrap names no `endpoints.employees` offers no employees.
 
-A conversation resumes only while its preset is registered, so an employee that leaves the Cloud listing stays registered as retired: **（已停用）** after its name, the description 管理员已停用这位数字员工，可以继续之前的对话。, ordered last, with its last persona. At start, the plugin registers the employees it saved before it asks Mindeck Cloud. Signing out keeps them. When another member signs in on the same computer, the previous member's employees leave and the new member's saved ones register.
+A conversation resumes only while its preset is registered, so an employee that leaves the Cloud listing stays registered as retired: **（已停用）** after its name, the description 管理员已停用这位数字员工，可以继续之前的对话。, ordered last, with its last persona, and `listed: false`, so the preset picker shows it only on a conversation already using it and the registry refuses selecting it for another. At start, the plugin registers the employees it saved before it asks Mindeck Cloud. Signing out keeps them. When another member signs in on the same computer, the previous member's employees leave and the new member's saved ones register.
 
-The Client entry `@deepseek-ai/dsh-mindeck-employees/client` adds the **Who can help?** cards to `conversation.input.dock`. They appear while the conversation has no turn and the company offers at least one employee: the general assistant first, then up to five employees, and with more employees **全部数字员工** opens the Digital employees page. The selected card is the conversation's preset; choosing another calls `agentPresets.select`, and a refusal appears in a notice. The selected employee's starter requests appear below the cards; one fills an empty message box or follows its text on a new line, and is never sent. Avatars are bundled head crops by avatar key; an unknown key or an image that fails to load shows the name's first character on a tinted square. In a narrow window the cards drop their taglines and stay in two columns, and only the first two starter requests appear.
-
-While the company offers at least one employee, the Client entry also adds **数字员工** to the left sidebar before Plugins, with its page in the main column. The page shows the general assistant first, then each current employee with a half-body portrait, its tagline, and its starter requests; retired employees are not listed, a draft carries **草稿**, and the general assistant's card offers three general requests. Choosing a card opens a blank conversation under its preset through the [Mindeck account](../mindeck-account/README.md)'s `mindeckComposer`, in the current Workspace, with the cursor in the message box; choosing a starter request also puts it in the message box, unsent. Every action on the page waits until that conversation shows. The sidebar row leaves when the company offers no employee or the member signs out.
+While the company offers at least one employee, the Client entry `@deepseek-ai/dsh-mindeck-employees/client` adds **数字员工** to the left sidebar before Plugins, with its page in the main column. The page shows the general assistant first, then each current employee with a half-body portrait (a bundled image by avatar key; an unknown key or an image that fails to load shows the name's first character on a tinted square), its tagline, and its starter requests; retired employees are not listed, a draft carries **草稿**, and the general assistant's card offers three general requests. Choosing a card opens a blank conversation under its preset through the [Mindeck account](../mindeck-account/README.md)'s `mindeckComposer`, in the current Workspace, with the cursor in the message box; choosing a starter request also puts it in the message box, unsent. Every action on the page waits until that conversation shows. The sidebar row leaves when the company offers no employee or the member signs out.
 
 Other Host plugins read `ctx.mindeckEmployees.employeeForSession(sessionId)`, the Cloud id of a live conversation's employee, or undefined for the general assistant and other presets; [mindeck-models](../mindeck-models/README.md) names it in gateway requests.
 
@@ -60,7 +58,7 @@ All registration changes run in one refresh loop. A refresh compares each wanted
 
 `employees.json` in `cacheDir` records the last signed-in member and, for each member (Cloud address and user id), the employees in Cloud order followed by the retired ones. A Cloud listing replaces the member's current employees; cached ones missing from it become retired. Entries with an id outside `[A-Za-z0-9_-]`, without a name, or repeating an id are skipped; starters are trimmed and capped at four, and skill names must be valid skill names.
 
-`ctx.mindeckEmployees.watch()` streams `MindeckEmployeeCatalog` over the `mindeckEmployees` Remote: the general assistant, then the current employees whose preset registered, without retired ones. `employeeForSession` reads the Session's preset through `agentPresets.presetForSession` and answers only for employees of the member whose presets are registered. The Client registers the page in the root `main` slot and its `sidebar.panellist` row at order -30 together when the streamed catalog first lists an employee, and disposes both when it lists none; **全部数字员工** calls `layout.selectPanel` with that panel id.
+`ctx.mindeckEmployees.watch()` streams `MindeckEmployeeCatalog` over the `mindeckEmployees` Remote: the general assistant, then the current employees whose preset registered, without retired ones. `employeeForSession` reads the Session's preset through `agentPresets.presetForSession` and answers only for employees of the member whose presets are registered. The Client registers the page in the root `main` slot and its `sidebar.panellist` row at order -30 together when the streamed catalog first lists an employee, and disposes both when it lists none.
 
 </details>
 
@@ -122,8 +120,8 @@ The persona is fixed deployment text, so it does not change between requests or 
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- **Retired employees stay registered** — they are cached and registered without end, and the base preset menu still lists them last with （已停用）, so a member can start a new conversation with one.
-- **The base preset menu lists the roster it last read** — it reads the roster when a new conversation opens, so employees that arrive while it is open appear there only in the next one; the cards update at once.
+- **Retired employees stay registered** — they are cached and registered without end, so the roster grows with every employee a company retires; the picker hides them, but nothing removes them.
+- **The base preset menu lists the roster it last read** — it reads the roster when a new conversation opens, so employees that arrive while it is open appear there only in the next one; the Digital employees page updates at once.
 - **Each employee mounts a full plugin tree** — the registry composes every preset eagerly, so memory and start time grow with the number of employees.
 - **Resuming before registration fails** — a conversation with an employee opened before the saved employees register at start, or one with another member's employee, reports the preset as unknown until it registers.
 - **One cache file per home** — two Hosts of the same Mindeck home that refresh at the same moment each replace `employees.json`; the last write wins.

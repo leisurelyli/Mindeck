@@ -35,6 +35,8 @@ it.each(['accepted', 'refused', 'disconnected', 'pending'] as const)('initialize
       describe: () => ({ subscribe: () => () => {}, getSnapshot: () => ({ error: null }) }),
     },
     slots: {
+      // Page part and first-run page Factories; these flows read none of them.
+      registerFactory: () => () => {},
       inject: (_name: string, install: () => (() => void) | undefined) => {
         const dispose = install()
         if (dispose) disposers.push(dispose)

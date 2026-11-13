@@ -8,6 +8,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+import type {} from '@deepseek-ai/dsh-client-ui-settings-account/client'
 import type {} from '@deepseek-ai/dsh-mindeck-account/remote'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { RemoteFailure, TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
@@ -16,8 +17,8 @@ import { AccountMenu } from './AccountMenu.tsx'
 import { composerInject, createMindeckComposer } from './composer.ts'
 import { AccountSection, AccountSectionIcon } from './AccountSection.tsx'
 import { QuotaNotice } from './QuotaNotice.tsx'
-import { SignInGate } from './SignInGate.tsx'
-import { en, NS, zh, type MindeckAccountKey } from './locales.ts'
+import { MindeckOnboarding } from './MindeckOnboarding.tsx'
+import { deepseekAccount, en, NS, zh, type MindeckAccountKey } from './locales.ts'
 import type { MindeckAccountInjected, MindeckAccountSnapshot, MindeckReminderSnapshot, OperationOutcome } from './operations.ts'
 import { QuotaDock } from './QuotaDock.tsx'
 import { followPersonalDeepSeek } from './personal-deepseek.ts'
@@ -47,6 +48,8 @@ function failureReason(error: RemoteFailure): MindeckAccountKey {
 
 function registerUi(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { en, zh }), 'mindeck-account: dictionaries')
+  // The base account page shows the personal DeepSeek account beside this page, so it takes the DeepSeek name.
+  ctx.effect(() => ctx.locale.override('settings.account', deepseekAccount), 'mindeck-account: DeepSeek account page name')
   // The Mindeck pages open conversations through this service whether or not the member is signed in.
   ctx.inject(composerInject, (child) => { child.provide('mindeckComposer', createMindeckComposer(child)) })
   const state = createSnapshotStore<MindeckAccountSnapshot>({ view: undefined, failed: false })
@@ -63,6 +66,10 @@ function registerUi(ctx: Context): void {
       return outcome(await ctx.remote.mindeckAccount.startSignIn(appVersion))
     },
     async startSignIn() { return outcome(await ctx.remote.mindeckAccount.startSignIn(appVersion)) },
+    finishWelcome() {
+      // A failed write leaves the welcome page to show again at the next start; the Host logs it.
+      void ctx.remote.mindeckAccount.finishWelcome().catch(() => undefined)
+    },
     async cancelSignIn(id) {
       const result = await ctx.remote.mindeckAccount.cancelSignIn(id)
       if (!result.ok) throw result.error
@@ -104,15 +111,16 @@ function registerUi(ctx: Context): void {
   })
   ctx.remoteAccess.whenAccess('mindeckAccount/watch', () => ctx.slots.inject('shell.overlay', () => ctx.slots.register({
     name: 'shell.overlay', id: 'mindeck-account.sign-in', locale: NS, inject: () => operations,
-  }, SignInGate)))
+  }, MindeckOnboarding)))
   // The company account owns the sidebar launcher; a lower priority shadows the DeepSeek account launcher, whose
-  // sign-in stays in its Settings section.
+  // sign-in and sign-out stay on this account page.
   ctx.remoteAccess.whenAccess('mindeckAccount/watch', () => ctx.slots.inject('settings.launcher', () => ctx.slots.register({
     name: 'settings.launcher', priority: -1, locale: NS, inject: () => operations,
   }, AccountMenu)))
   const t = ctx.locale.bind(NS)
   ctx.remoteAccess.whenAccess('mindeckAccount/watch', () => ctx.slots.inject('settings.section', () => ctx.slots.register({
-    name: 'settings.section', id: 'mindeck-account', order: -10, label: () => t('nav'), locale: NS, inject: () => operations,
+    // Before the base DeepSeek account page (order -10), so the company account leads the navigation.
+    name: 'settings.section', id: 'mindeck-account', order: -20, label: () => t('nav'), locale: NS, inject: () => operations,
   }, AccountSection)))
   // A company quota failure from the Mindeck Cloud gateway; the DeepSeek account reports its own code.
   ctx.remoteAccess.whenAccess('mindeckAccount/watch', () => ctx.slots.inject('shell.quota-notice', () => ctx.slots.register({

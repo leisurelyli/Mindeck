@@ -62,15 +62,18 @@ function reply(response: ServerResponse, status: number, value: unknown): void {
 
 /**
  * Start a fake Mindeck Cloud on a loopback port.
+ * @param options.basePath - path the Cloud is served under, such as `/mindeck`; other paths answer 404.
  * @returns the running Cloud; close it in teardown.
  */
-export async function startFakeCloud(): Promise<FakeCloud> {
+export async function startFakeCloud(options: { basePath?: string } = {}): Promise<FakeCloud> {
+  const basePath = options.basePath ?? ''
   let polls = 0
   const waiters: Array<{ count: number; resolve: () => void }> = []
   let issued = 0
   const server = createServer((request, response) => {
     void (async () => {
-      const path = new URL(request.url ?? '/', 'http://localhost').pathname
+      const requested = new URL(request.url ?? '/', 'http://localhost').pathname
+      const path = requested.startsWith(`${basePath}/`) ? requested.slice(basePath.length) : basePath === '' ? requested : '/outside-base-path'
       cloud.requests.push(`${request.method} ${path}`)
       const payload = await body(request)
       const token = /^Bearer (.+)$/.exec(request.headers.authorization ?? '')?.[1]
@@ -126,7 +129,7 @@ export async function startFakeCloud(): Promise<FakeCloud> {
   const address = server.address()
   if (address === null || typeof address === 'string') throw new Error('Expected a loopback listener')
   const cloud: FakeCloud = {
-    url: `http://127.0.0.1:${address.port}`,
+    url: `http://127.0.0.1:${address.port}${basePath}`,
     requests: [], devices: [], deviceRequests: [], deviceRequestStatus: 204, feedback: [], feedbackStatus: 200, tokens: new Set(), droppedPolls: 0, pendingPolls: 0, outcome: 'issue', userName: '林晓',
     quota: {
       monthStartDate: '2026-11-01', resetDate: '2026-12-01', timezone: 'Asia/Shanghai',
