@@ -127,6 +127,12 @@ const BUILT_IN_LOCALES: readonly LocaleDefinition[] = Object.freeze(
   LOCALE_IDS.map(id => Object.freeze({ id, ...BUILT_IN_LOCALE_METADATA[id] })),
 )
 
+/** Entries one `override` call laid over a namespace at one locale. */
+interface LocaleOverlay {
+  readonly locale: string
+  readonly entries: Readonly<Partial<LocaleDict>>
+}
+
 /** Case-insensitive key for BCP 47-style ids. */
 function localeKey(value: string): string {
   return value.toLowerCase()
@@ -169,6 +175,8 @@ function syncDocumentLanguage(snapshot: LocaleSnapshot): void {
 export class LocaleRuntime {
   private readonly parameters: LocaleParameters
   private dicts = new Map<string, Map<string, LocaleDict>>()
+  /** Per-namespace overlays in registration order; the latest overlay that has a key wins at its locale. */
+  private overlays = new Map<string, LocaleOverlay[]>()
   private bound = new Map<string, Translate>()
   private catalog = new Map<string, LocaleDefinition>()
   private fallbackChains = new Map<string, readonly LocaleId[]>()
@@ -452,6 +460,40 @@ export class LocaleRuntime {
   }
 
   /**
+   * Replace chosen texts of a namespace another plugin owns, for a product
+   * that rebrands shared UI copy. Each overlay applies at its own locale in
+   * the fallback chain, so a Chinese overlay never hides English text for an
+   * English reader, and among overlays for one locale the latest registration
+   * wins. Keys the overlay omits keep the owner's text. Unlike
+   * {@link register}, the namespace and locale need no prior registration and
+   * may already be occupied.
+   * @param ns - a namespace merged into LocaleNamespaceMap.
+   * @param dicts - per-locale partial dictionaries.
+   * @returns disposer removing this call's overlays (idempotent).
+   */
+  override<N extends Extract<keyof LocaleNamespaceMap, string>>(
+    ns: N,
+    dicts: Partial<Record<LocaleId, Partial<LocaleDictOf<N>>>>,
+  ): () => void {
+    const added = Object.entries(dicts).flatMap(([locale, entries]): LocaleOverlay[] => {
+      if (!LOCALE_ID_PATTERN.test(locale)) throw new Error(`locale id "${locale}" is not a BCP 47-style tag`)
+      return entries === undefined ? [] : [{ locale: localeKey(locale), entries }]
+    })
+    const list = this.overlays.get(ns) ?? []
+    this.overlays.set(ns, list)
+    list.push(...added)
+    this.publish(this.snapshot.active, false)
+    let disposed = false
+    return () => {
+      if (disposed) return
+      disposed = true
+      const remaining = list.filter(overlay => !added.includes(overlay))
+      list.splice(0, list.length, ...remaining)
+      this.publish(this.snapshot.active, false)
+    }
+  }
+
+  /**
    * Bind a declared namespace to a translate function typed to its
    * dictionary key union (plus the shared common vocabulary) — the same key
    * domain the framework-injected `t` seat carries. The returned reference
@@ -488,8 +530,11 @@ export class LocaleRuntime {
 
   private lookup(ns: string, key: string, chain: readonly LocaleId[]): string | undefined {
     const locales = this.dicts.get(ns)
+    const overlays = this.overlays.get(ns) ?? []
     for (const locale of chain) {
-      const value = locales?.get(localeKey(locale))?.[key]
+      const id = localeKey(locale)
+      const value = overlays.findLast(overlay => overlay.locale === id && overlay.entries[key] !== undefined)?.entries[key]
+        ?? locales?.get(id)?.[key]
       if (value !== undefined) return value
     }
     return undefined

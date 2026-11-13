@@ -57,6 +57,7 @@ Mindeck 企业版插件位于 `packages/mindeck/`。下列共享文件带有 Min
 | `packages/api/workspace-controller/src/index.ts`、`packages/api/workspace-controller/src/default-directory.ts` | 增加 `documentsFolder` 配置，指定 Documents 下的文件夹，默认 `deepseek-harness`。 | Mindeck 组合包把默认工作区建在 `<Documents>/Mindeck`，而不是官方产品的文件夹。 |
 | `packages/api/remotes/src/remote-events.ts`、`packages/client/ui-skill/src/client/index.ts` | 把 `skills/change` 转发给客户端；`/` 技能菜单收到后丢弃缓存的目录。 | 登录后同步的公司技能无需重启即可出现在已打开会话的 `/` 菜单中。 |
 | `scripts/gen-cordis-catalog.ts`、`scripts/gen-doc-graphs.ts`、`docs/subsystems/README.*` | 为 Mindeck 服务登记子系统页面、类型链接例外和服务角色；生成的目录与关系图包含它们。 | 目录与关系图生成器会拒绝没有文档归属的服务、事件作用域和服务类型。 |
+| `packages/client/locale/src/client/index.ts` | 增加 `ctx.locale.override(ns, dicts)`，按 locale 为其他插件拥有的命名空间叠加覆盖。 | Mindeck 在品牌插件中替换共享界面文案，例如空白会话的标语。 |
 | `apps/desktop/src/main.ts` | 读取产品描述的 `nativeWelcome`；为 `false` 时，启动只读取语言偏好并打开工作区，不监听 DeepSeek 账号。 | Mindeck 禁用了 DeepSeek 账号，原生欢迎无法读取其状态；成员在工作区内通过 Mindeck 账号登录。 |
 
 <a id="synchronization-record"></a>

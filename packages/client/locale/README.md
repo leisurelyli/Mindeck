@@ -39,6 +39,10 @@ Native shells may provide `__DSH_LOCALE__` with an asynchronous `read()` and an 
 
 Call `ctx.locale.register(ns, { zh, en, ja })` with a namespace merged into `LocaleNamespaceMap`; the compiler checks every key against the namespace's typed key union and requires both baseline locales (`zh` and `en`). Additional locale ids are optional, and their dictionaries are checked against the same namespace keys. Consumers translate through `ctx.locale.bind(ns)` or the framework-injected `t` seat. A dictionary registered after the UI is already mounted is picked up without a remount. Re-registering an occupied namespace/locale pair throws, even with the same dictionary. Preserve named placeholders, slash commands, and API field names verbatim in translations; `pnpm run check:i18n` checks first-party dictionaries and rejects zero-width spaces (U+200B) and byte-order marks (U+FEFF) in locale resources.
 
+### Overriding owned texts
+
+A product that rebrands shared UI copy calls `ctx.locale.override(ns, { zh: { key: '…' }, en: { key: '…' } })` with partial dictionaries for a namespace another plugin owns. Each overlay applies at its own locale in the fallback chain, so a Chinese overlay does not hide English text for an English reader. Among overlays for one locale the latest registration wins, keys the overlay omits keep the owner's text, and the returned disposer restores them. Register the overlay as an owned effect.
+
 ### Resolving package text
 
 Use `ctx.locale.resolveText(text)` for [`LocalizedText`](../../util/package-manifest/README.md), such as installed plugin titles and descriptions. Literal strings are returned unchanged. Translation maps use lowercase language ids, require an `en` fallback, and follow the active language's declared fallback chain. They do not consult or register namespace dictionaries.
@@ -99,7 +103,7 @@ The provisional locale comes from the browser (`navigator.languages` matched by 
 
 Document language synchronization writes `<html lang>` only when its value changes; dictionary-only revisions leave the attribute untouched.
 
-The typed object form requires complete dictionaries for both baseline locales. The per-locale form lets language packs register each namespace independently. For each key, lookup walks the active language's declared fallback chain in the requested namespace, repeats that chain in `common`, then displays the key itself. Bound translate functions retain stable identity per namespace so they can ride inject surfaces without breaking memoization.
+The typed object form requires complete dictionaries for both baseline locales. The per-locale form lets language packs register each namespace independently. For each key, lookup walks the active language's declared fallback chain in the requested namespace, checking that locale's overlays from the latest before its dictionary, repeats that chain in `common`, then displays the key itself. Bound translate functions retain stable identity per namespace so they can ride inject surfaces without breaking memoization.
 
 The Host projects resolved parameters through `webserver/index-inject` as `__DSH_LOCALE_PARAMETERS__` in the initial table. The public `./parameters` entry validates that carrier and creates detached, read-only defaults. `LocaleRuntime` reads the current document's parameters by default when its fourth constructor argument is omitted; it applies them during named interpolation.
 

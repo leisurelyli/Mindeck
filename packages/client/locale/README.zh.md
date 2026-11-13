@@ -39,6 +39,10 @@ kind: "package-reference"
 
 用已合并进 `LocaleNamespaceMap` 的命名空间调用 `ctx.locale.register(ns, { zh, en, ja })`；编译器会对照该命名空间的类型化键并集检查每个键，并要求两个基础 locale（`zh` 和 `en`）齐全。其他 locale id 为可选项，其字典同样按该命名空间的键检查。消费方通过 `ctx.locale.bind(ns)` 或框架注入的 `t` 席位翻译。UI 已挂载后再注册的字典无需重新挂载即可生效。重复注册已占用的命名空间与 locale 组合会抛错，即使传入同一字典也不例外。翻译必须原样保留命名占位符、斜杠命令和 API 字段名；`pnpm run check:i18n` 检查仓库内的字典，并拒绝语言资源中的零宽空格（U+200B）和字节顺序标记（U+FEFF）。
 
+### 覆盖他人拥有的文案
+
+需要为共享界面换品牌文案的产品调用 `ctx.locale.override(ns, { zh: { key: '…' }, en: { key: '…' } })`，为其他插件拥有的命名空间传入部分字典。每层覆盖只作用于它自己的 locale 在回退链中的位置，因此中文覆盖不会挡住英文读者看到的英文文案。同一 locale 的多层覆盖以最后注册者为准；覆盖未包含的键保留原文，返回的 disposer 会恢复原文。覆盖应作为所属 effect 注册。
+
 ### 解析包文本
 
 使用 `ctx.locale.resolveText(text)` 解析 [`LocalizedText`](../../util/package-manifest/README.zh.md)，例如已安装插件的标题与描述。字面字符串原样返回。翻译映射使用小写语言 id，必须提供 `en` 回退值，并沿当前语言声明的回退链查找。它们不查询或注册命名空间字典。
@@ -99,7 +103,7 @@ Host `Config.parameters` 接受字符串映射。非空映射整体替代 `DSH_L
 
 文档语言同步只在值变化时写入 `<html lang>`；仅更新字典的 revision 不改动该属性。
 
-带类型的对象形式要求两个基础 locale 都有完整字典；逐 locale 形式允许语言包独立注册每个命名空间。逐键查找会先在请求命名空间中沿生效语言声明的 fallback 链查找，再在 `common` 中重复该链，最后显示键本身。绑定的翻译函数按命名空间保持稳定身份，因此可通过 inject 机制传递，且不会破坏 memoization。
+带类型的对象形式要求两个基础 locale 都有完整字典；逐 locale 形式允许语言包独立注册每个命名空间。逐键查找会先在请求命名空间中沿生效语言声明的 fallback 链查找，每个 locale 先查该 locale 的覆盖（从最后注册的开始）再查字典，再在 `common` 中重复该链，最后显示键本身。绑定的翻译函数按命名空间保持稳定身份，因此可通过 inject 机制传递，且不会破坏 memoization。
 
 Host 通过 `webserver/index-inject` 将解析后的参数作为 `__DSH_LOCALE_PARAMETERS__` 投射到初始表。公开的 `./parameters` 入口验证该载体，并创建与输入分离的只读默认值。省略第四个构造参数时，`LocaleRuntime` 默认读取当前文档的参数，并在命名插值时使用它们。
 

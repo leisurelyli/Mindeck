@@ -124,6 +124,38 @@ describe('LocaleRuntime', () => {
     expect(t('k')).toBe('v2')
   })
 
+  it('overlays chosen texts of an owned namespace per locale, latest overlay first, and restores the owner on dispose', () => {
+    const { svc } = make()
+    svc.register('settings.locale', { zh, en })
+    const t = svc.bind('settings.locale')
+    const before = svc.getSnapshot().revision
+    const first = svc.override('settings.locale', { zh: { 'language.title': '界面语言' } })
+    expect(svc.getSnapshot().revision).toBe(before + 1)
+    expect(t('language.title')).toBe('界面语言')
+    const second = svc.override('settings.locale', { zh: { 'language.title': '显示语言' }, en: { 'language.title': 'Display language' } })
+    expect(t('language.title')).toBe('显示语言')
+    svc.setLocale('en')
+    expect(t('language.title')).toBe('Display language')
+    second()
+    expect(t('language.title')).toBe(en['language.title'])
+    svc.setLocale('zh')
+    expect(t('language.title')).toBe('界面语言')
+    first()
+    first()
+    expect(t('language.title')).toBe(zh['language.title'])
+    expect(svc.getSnapshot().revision).toBe(before + 6)
+  })
+
+  it('applies an overlay at its own locale in the fallback chain and before the owner registers', () => {
+    const { svc } = make()
+    const t = svc.bind('settings.locale')
+    svc.override('settings.locale', { en: { 'language.title': 'Display language' }, zh: undefined })
+    expect(t('language.title')).toBe('Display language')
+    svc.register('settings.locale', { zh, en })
+    expect(t('language.title')).toBe(zh['language.title'])
+    expect(() => svc.override('settings.locale', { 'not a tag': {} })).toThrow('BCP 47')
+  })
+
   it('serves the LocaleFace: snapshot revision moves on switch and registration, subscribers fire, unsubscribe stops them', () => {
     const { svc } = make()
     const seen: number[] = []
