@@ -1,5 +1,5 @@
 ---
-description: "Package map for Mindeck Enterprise: the Mindeck Cloud account, company models, company skills, and the company file library."
+description: "Package map for Mindeck Enterprise: the Mindeck Cloud account, company models, company skills, the company file library, and digital employees."
 kind: "package-group"
 ---
 
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-The `mindeck/` group connects Mindeck Desktop to a company's Mindeck Cloud. Use `mindeck-account/` for the Cloud address and device sign-in, `mindeck-models/` for the company models, `mindeck-skills/` for the company skills, and `mindeck-files/` for the company file library. The [Mindeck application bundle](../bundle/mindeck-app/README.md) composes all four; the official DeepSeek Harness profiles do not load them.
+The `mindeck/` group connects Mindeck Desktop to a company's Mindeck Cloud. Use `mindeck-account/` for the Cloud address and device sign-in, `mindeck-models/` for the company models, `mindeck-skills/` for the company skills, `mindeck-files/` for the company file library, and `mindeck-employees/` for the company's digital employees. The [Mindeck application bundle](../bundle/mindeck-app/README.md) composes all five; the official DeepSeek Harness profiles do not load them.
 
 ## Table of Contents
 
@@ -22,7 +22,7 @@ The `mindeck/` group connects Mindeck Desktop to a company's Mindeck Cloud. Use 
 <a id="packages"></a>
 ## Packages
 
-The account package owns the Cloud session; the other three read it for every Cloud request and stop serving company content after sign-out. Their READMEs cover use and configuration; the subsystem reference owns the shared contracts.
+The account package owns the Cloud session; the others read it for every Cloud request. Models, skills, and the file library stop serving company content after sign-out; digital employees stay registered so their conversations continue. Their READMEs cover use and configuration; the subsystem reference owns the shared contracts.
 
 | Package | Role | ctx key |
 |---|---|---|
@@ -30,6 +30,7 @@ The account package owns the Cloud session; the other three read it for every Cl
 | [`mindeck-models/`](mindeck-models/README.md) | Company models as model routes through the metered Cloud gateway | — |
 | [`mindeck-skills/`](mindeck-skills/README.md) | Company skills cached on the device, served by a skill provider, and listed on the skills page | `ctx.mindeckSkills` |
 | [`mindeck-files/`](mindeck-files/README.md) | File-library tools, the sidebar page, and `library:` references | `ctx.mindeckFiles` |
+| [`mindeck-employees/`](mindeck-employees/README.md) | Digital employees as agent presets, the general assistant, and the new-conversation cards | `ctx.mindeckEmployees` |
 
 -----
 

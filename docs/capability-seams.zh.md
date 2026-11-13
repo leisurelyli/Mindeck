@@ -150,7 +150,9 @@ flowchart LR
   pkg_mindeck_models["mindeck-models"]
   pkg_mindeck_skills["mindeck-skills"]
   pkg_mindeck_files["mindeck-files"]
+  pkg_mindeck_employees["mindeck-employees"]
   svc_mindeckFiles["ctx.mindeckFiles<br/>Mindeck file library"]
+  svc_mindeckEmployees["ctx.mindeckEmployees<br/>Mindeck digital employees"]
   svc_mindeckSkills["ctx.mindeckSkills<br/>Mindeck company skills"]
   pkg_authorization["authorization"]
   svc_authorization["ctx.authorization<br/>Authorization flow registry"]
@@ -415,6 +417,7 @@ flowchart LR
   pkg_mcp_resources --> svc_mcpResources
   pkg_message_feedback --> svc_messageFeedback
   pkg_mindeck_account --> svc_mindeckAccount
+  pkg_mindeck_employees --> svc_mindeckEmployees
   pkg_mindeck_files --> svc_mindeckFiles
   pkg_mindeck_skills --> svc_mindeckSkills
   pkg_office_to_pdf --> svc_officeToPdf
@@ -549,9 +552,11 @@ flowchart LR
   svc_llm --> pkg_compaction_basic
   svc_lsp --> pkg_tool_lsp
   svc_mcpResources --> pkg_mcp_resources
+  svc_mindeckAccount --> pkg_mindeck_employees
   svc_mindeckAccount --> pkg_mindeck_files
   svc_mindeckAccount --> pkg_mindeck_models
   svc_mindeckAccount --> pkg_mindeck_skills
+  svc_mindeckEmployees --> pkg_mindeck_models
   svc_officeToPdf --> pkg_client_ui_sidebar_documentpreview
   svc_otel --> pkg_host_product_telemetry_otel
   svc_otel --> pkg_session_telemetry_otel
@@ -714,8 +719,9 @@ flowchart LR
 | `ctx.subagentModelSelection` | `core` | [`tool-subagent`](../packages/subagent/tool-subagent) | - | [`tool-subagent`](../packages/subagent/tool-subagent) | - | 拥有默认关闭的设置命名空间；Agent 作用域的委派工具会在组合新顶层 Session 时读取它。 |
 | `ctx.credentials` | `seam` | [`credentials`](../packages/credentials/credentials) | [`credentials-local`](../packages/credentials/credentials-local) | [`api-settings-controller`](../packages/api/settings-controller), [`llm-deepseek`](../packages/llm/llm-deepseek), [`llm-pi-ai`](../packages/llm/llm-pi-ai) | - | 配置携带对机密信息的引用；提供方拥有实际值。消费方按操作解析，因此轮换后的凭据会在紧接着的下一次请求中生效；settings controller 提供不含实际值的视图和只写存储。 |
 | `ctx.deepseekAccount` | `seam` | [`deepseek-account`](../packages/credentials/deepseek-account) | [`deepseek-account-platform`](../packages/credentials/deepseek-account-platform) | [`api-account-controller`](../packages/api/account-controller), [`llm-deepseek`](../packages/llm/llm-deepseek) | - | Host 负责浏览器授权和本地凭证；UI 使用方只接收不含 token 的状态。 |
-| `ctx.mindeckAccount` | `service` | [`mindeck-account`](../packages/mindeck/mindeck-account) | - | [`mindeck-models`](../packages/mindeck/mindeck-models), [`mindeck-skills`](../packages/mindeck/mindeck-skills), [`mindeck-files`](../packages/mindeck/mindeck-files) | - | 负责设备登录和 Mindeck Cloud 会话；公司模型、技能和资源库读取会话 token 及其端点。 |
+| `ctx.mindeckAccount` | `service` | [`mindeck-account`](../packages/mindeck/mindeck-account) | - | [`mindeck-models`](../packages/mindeck/mindeck-models), [`mindeck-skills`](../packages/mindeck/mindeck-skills), [`mindeck-files`](../packages/mindeck/mindeck-files), [`mindeck-employees`](../packages/mindeck/mindeck-employees) | - | 负责设备登录和 Mindeck Cloud 会话；公司模型、技能、资源库和数字员工读取会话 token 及其端点。 |
 | `ctx.mindeckFiles` | `service` | [`mindeck-files`](../packages/mindeck/mindeck-files) | - | - | - | 资源库可用时注册资源库工具，并通过其 Remote 提供侧栏页面。 |
+| `ctx.mindeckEmployees` | `service` | [`mindeck-employees`](../packages/mindeck/mindeck-employees) | - | [`mindeck-models`](../packages/mindeck/mindeck-models) | - | 把通用助手和每位数字员工注册为 Agent 预设，向新对话页面推送员工卡片，并为网关请求给出进行中对话所属的员工。 |
 | `ctx.mindeckSkills` | `service` | [`mindeck-skills`](../packages/mindeck/mindeck-skills) | - | - | - | 把公司技能保存在本机缓存中并作为技能提供方提供，同时向技能侧栏页推送技能列表。 |
 | `ctx.authorization` | `seam` | [`authorization`](../packages/credentials/authorization) | - | [`llm-pi-ai`](../packages/llm/llm-pi-ai) | - | flow 由知道如何取得某份凭据的插件注册，并以其写入的记录为键；seam 拥有这段对话与"每个键同时只跑一次尝试"的生命周期，而非协议本身。 |
 | `ctx.productAnalytics` | `service` | [`client-product-analytics`](../packages/client/product-analytics) | - | - | - | 根据 Host 动态采集策略接收指定桌面事件、补充可用登录身份并监听实时压缩。 |

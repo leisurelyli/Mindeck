@@ -2578,6 +2578,33 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-mindeck-account -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-mindeck-employees -->
+<a id="deepseek-aidsh-mindeck-employees"></a>
+
+## `@deepseek-ai/dsh-mindeck-employees`
+
+- `inject`: `agentPresets` · `mindeckAccount` · `typert`
+- `source`: [`packages/mindeck/mindeck-employees/src/index.ts:39`](../packages/mindeck/mindeck-employees/src/index.ts)
+
+```ts config-catalog
+/** Deployment options. */
+export interface Config {
+  /** Agent preset whose plugin rows every Mindeck preset reuses with its own persona. */
+  basePreset: string
+  /** Persona prefix template of the general assistant; `{{model}}` names the model. */
+  generalPersona: string
+  /** Cache directory; empty means `mindeck` under the DeepSeek Harness home (`$DSH_HOME` or `~/.dsh`). */
+  cacheDir: string
+  /** Interval between listing refreshes while signed in, in milliseconds. */
+  refreshIntervalMs: number
+  /** First wait after a failed refresh, in milliseconds; it doubles after each failure up to `refreshIntervalMs`. */
+  retryIntervalMs: number
+  /** Timeout of one Mindeck Cloud request in milliseconds. */
+  requestTimeoutMs: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-mindeck-employees -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-mindeck-files -->
 <a id="deepseek-aidsh-mindeck-files"></a>
 
@@ -2611,7 +2638,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-mindeck-models`
 
 - `inject`: `llm` · `mindeckAccount`
-- `source`: [`packages/mindeck/mindeck-models/src/index.ts:36`](../packages/mindeck/mindeck-models/src/index.ts)
+- `source`: [`packages/mindeck/mindeck-models/src/index.ts:43`](../packages/mindeck/mindeck-models/src/index.ts)
 
 ```ts config-catalog
 /** Deployment options. */
@@ -2628,6 +2655,8 @@ export interface Config {
   defaultContextWindow: number
   /** Output limit assumed for a model whose catalog entry has none. */
   defaultMaxTokens: number
+  /** Results requested per web search, from 1 through 50; a smaller bound set by the caller wins. */
+  searchCount: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-mindeck-models -->

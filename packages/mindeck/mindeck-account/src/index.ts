@@ -79,13 +79,16 @@ const storedSessionSchema = zod.object({
       id: zod.string(), name: zod.string(), email: zod.string(), role: zod.enum(['admin', 'user']),
       department: zod.object({ id: zod.string(), name: zod.string() }).nullable(),
     }),
-    company: zod.object({ name: zod.string() }),
+    company: zod.object({ name: zod.string(), adminContact: zod.string().nullable().optional() }),
     device: zod.object({ id: zod.string() }),
     endpoints: zod.object({
       console: zod.string(), models: zod.string(), skills: zod.string(),
       anthropicBaseUrl: zod.string(), openaiBaseUrl: zod.string(),
       files: zod.object({ url: zod.string(), token: zod.string() }).nullable().optional(),
+      webSearch: zod.string().optional(), employees: zod.string().optional(),
     }),
+    // Fields added after version 1 are optional, so records written before them still load.
+    policies: zod.object({ personalDeepSeek: zod.boolean() }).optional(),
   }),
 })
 
@@ -188,6 +191,8 @@ export default class MindeckAccount extends TypertRemoteService {
       notice: this.notice,
       attempt: this.attempt?.view ?? null,
       quota: stored !== undefined && this.quota?.token === stored.token ? this.quota.value : null,
+      adminContact: stored?.bootstrap.company.adminContact ?? null,
+      personalDeepSeek: stored?.bootstrap.policies?.personalDeepSeek === true,
     }
   }
 

@@ -2189,6 +2189,25 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'mindeckEmployees',
+    summary: 'Registers the general assistant and the member\'s digital employees as agent presets and lists them for the new-conversation screen.',
+    description: 'Registers the general assistant and the member\'s digital employees as agent presets and lists them for the new-conversation screen.',
+    methods: [
+      {
+        signature: 'employeeForSession(sessionId: SessionId): string | undefined',
+        description: 'Read which digital employee a live conversation talks to.',
+        parameters: [{ name: 'sessionId', description: 'the conversation\'s Session.' }],
+        returns: 'the Mindeck Cloud employee id of the Session\'s preset, or undefined for the general assistant, another preset, or a Session without a live Agent.',
+      },
+      {
+        signature: '@Remote({ mode: \'stream\' }) async *watch(signal: AbortSignal): AsyncIterable<MindeckEmployeeCatalog>',
+        description: 'Stream the cards of the new-conversation screen.',
+        parameters: [{ name: 'signal', description: 'stream lifetime.' }],
+        returns: 'the current cards, then every change.',
+      },
+    ],
+  },
+  {
     key: 'mindeckFiles',
     summary: 'File-library tools and the panel\'s Remote for the signed-in member.',
     description: 'File-library tools and the panel\'s Remote for the signed-in member.',
@@ -7479,11 +7498,27 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'MindeckAccountView',
-    declaration: 'export interface MindeckAccountView {\n    readonly cloudUrl: string | null;\n    readonly status: \'signed-out\' | \'signed-in\';\n    readonly user: MindeckAccountUser | null;\n    readonly companyName: string | null;\n    readonly notice: \'session-expired\' | null;\n    readonly attempt: MindeckSignInAttempt | null;\n    readonly quota: MindeckQuota | null;\n}',
+    declaration: 'export interface MindeckAccountView {\n    readonly cloudUrl: string | null;\n    readonly status: \'signed-out\' | \'signed-in\';\n    readonly user: MindeckAccountUser | null;\n    readonly companyName: string | null;\n    readonly notice: \'session-expired\' | null;\n    readonly attempt: MindeckSignInAttempt | null;\n    readonly quota: MindeckQuota | null;\n    readonly adminContact: string | null;\n    readonly personalDeepSeek: boolean;\n}',
   },
   {
     name: 'MindeckBootstrap',
     declaration: 'export type MindeckBootstrap = z.infer<typeof bootstrapSchema>;',
+  },
+  {
+    name: 'MindeckEmployeeCard',
+    declaration: 'export type MindeckEmployeeCard = MindeckGeneralView | MindeckEmployeeView;',
+  },
+  {
+    name: 'MindeckEmployeeCatalog',
+    declaration: 'export interface MindeckEmployeeCatalog {\n    readonly cards: readonly MindeckEmployeeCard[];\n}',
+  },
+  {
+    name: 'MindeckEmployeeView',
+    declaration: 'export interface MindeckEmployeeView {\n    readonly kind: \'employee\';\n    readonly presetId: string;\n    readonly employeeId: string;\n    readonly name: string;\n    readonly avatar: string;\n    readonly tagline: string;\n    readonly starters: readonly string[];\n    readonly draft: boolean;\n}',
+  },
+  {
+    name: 'MindeckGeneralView',
+    declaration: 'export interface MindeckGeneralView {\n    readonly kind: \'general\';\n    readonly presetId: string;\n}',
   },
   {
     name: 'MindeckQuota',

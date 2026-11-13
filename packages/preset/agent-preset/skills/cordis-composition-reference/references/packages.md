@@ -343,8 +343,9 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | Package | Config | Description |
 |---|---|---|
 | `@deepseek-ai/dsh-mindeck-account` | yes | Mindeck Cloud account for Mindeck Desktop: device sign-in, the desktop session, and its settings UI |
+| `@deepseek-ai/dsh-mindeck-employees` | yes | Digital employees from Mindeck Cloud as agent presets with their own persona, with the new-conversation cards |
 | `@deepseek-ai/dsh-mindeck-files` | yes | Company file library for Mindeck Desktop: agent tools and the sidebar page over the member's OpenCloud spaces |
-| `@deepseek-ai/dsh-mindeck-models` | yes | Company models from Mindeck Cloud, called through the Cloud gateway with the desktop session |
+| `@deepseek-ai/dsh-mindeck-models` | yes | Company models and web search from Mindeck Cloud, called through the Cloud gateway with the desktop session |
 | `@deepseek-ai/dsh-mindeck-skills` | yes | Company skills from Mindeck Cloud, cached locally and served as a skill provider, with the skills page |
 
 ## plan

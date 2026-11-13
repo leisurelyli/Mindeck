@@ -60,7 +60,7 @@ Mindeck Enterprise plugins live in `packages/mindeck/`. The following shared fil
 | `packages/client/locale/src/client/index.ts` | Adds `ctx.locale.override(ns, dicts)`, per-locale overlays on a namespace another plugin owns. | Mindeck rebrands shared UI copy, such as the empty-conversation headline, from its brand plugin. |
 | `packages/core/system-prompt/src/index.ts` | Adds the `identity` config field, the text of the `harness:identity` opener; the default keeps the DeepSeek Harness sentence. | Agent presets shadow the deployment persona, so Mindeck names itself in the opener that presets do not shadow. |
 | `packages/client/ui-model-selection/src/client/provider-order.ts`, `ModelSelect.tsx`, `index.ts` | Consecutive providers with the same display name share one heading in the composer model menu and the `/model` popup. | Mindeck serves company models through one route per client API, all named after the company. |
-| `apps/desktop/src/main.ts` | Reads the product descriptor's `nativeWelcome`; when it is `false`, startup reads only the language preference, opens the workspace, and does not watch the DeepSeek account. | Mindeck disables the DeepSeek account, so the native welcome cannot read its state; members sign in through the Mindeck account in the workspace. |
+| `apps/desktop/src/main.ts` | Reads the product descriptor's `nativeWelcome`; when it is `false`, startup reads only the language preference, opens the workspace, and does not watch the DeepSeek account. | Members sign in through the Mindeck account in the workspace, not through the DeepSeek welcome. The optional personal DeepSeek sign-in in Settings opens its authorization page from the Client. |
 
 <a id="synchronization-record"></a>
 

@@ -39,7 +39,11 @@ const bootstrapSchema = z.object({
     role: z.enum(['admin', 'user']),
     department: departmentSchema,
   }),
-  company: z.object({ name: z.string() }),
+  company: z.object({
+    name: z.string(),
+    /** How members reach an administrator, such as a chat contact; null or absent when unset. */
+    adminContact: z.string().nullable().optional(),
+  }),
   device: z.object({ id: z.string().min(1) }),
   endpoints: z.object({
     console: z.url(),
@@ -48,7 +52,16 @@ const bootstrapSchema = z.object({
     anthropicBaseUrl: z.url(),
     openaiBaseUrl: z.url(),
     files: z.object({ url: z.url(), token: z.url() }).nullable().optional(),
+    /** Company web search status; absent from a Mindeck Cloud without web search. */
+    webSearch: z.url().optional(),
+    /** The member's digital employees; absent from a Mindeck Cloud without them. */
+    employees: z.url().optional(),
   }),
+  /** Company decisions the desktop applies; absent from an older Mindeck Cloud, which allows nothing extra. */
+  policies: z.object({
+    /** Whether members may sign in to a personal DeepSeek account beside the company account. */
+    personalDeepSeek: z.boolean(),
+  }).optional(),
 })
 
 /** Account, company, and service addresses returned to a signed-in desktop. */

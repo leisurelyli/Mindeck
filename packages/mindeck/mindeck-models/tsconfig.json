@@ -11,12 +11,16 @@
     { "path": "../../../vendor/cordis" },
     { "path": "../../../vendor/schemastery" },
     { "path": "../../attachment/attachment" },
+    { "path": "../../core/agent" },
     { "path": "../../core/agent-default-model" },
+    { "path": "../../core/session" },
     { "path": "../../llm/llm" },
     { "path": "../../llm/llm-pi-ai" },
-    { "path": "../mindeck-account/tsconfig.host.json" },
     { "path": "../../util/home-paths" },
     { "path": "../../util/timeout" },
-    { "path": "../../util/values" }
+    { "path": "../../util/values" },
+    { "path": "../../web/web" },
+    { "path": "../mindeck-account/tsconfig.host.json" },
+    { "path": "../mindeck-employees/tsconfig.host.json" }
   ]
 }

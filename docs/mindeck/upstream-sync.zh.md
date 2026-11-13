@@ -60,7 +60,7 @@ Mindeck 企业版插件位于 `packages/mindeck/`。下列共享文件带有 Min
 | `packages/client/locale/src/client/index.ts` | 增加 `ctx.locale.override(ns, dicts)`，按 locale 为其他插件拥有的命名空间叠加覆盖。 | Mindeck 在品牌插件中替换共享界面文案，例如空白会话的标语。 |
 | `packages/core/system-prompt/src/index.ts` | 增加 `identity` 配置字段，即 `harness:identity` 开场白的文本；默认值仍是 DeepSeek Harness 那句。 | Agent 预设会遮蔽部署人设，因此 Mindeck 在预设不遮蔽的开场白里写自己的名称。 |
 | `packages/client/ui-model-selection/src/client/provider-order.ts`、`ModelSelect.tsx`、`index.ts` | composer 模型菜单和 `/model` 弹窗中，显示名称相同且相邻的提供方共用一个分组标题。 | Mindeck 按客户端接口为公司模型分多条路由，它们都以公司名称命名。 |
-| `apps/desktop/src/main.ts` | 读取产品描述的 `nativeWelcome`；为 `false` 时，启动只读取语言偏好并打开工作区，不监听 DeepSeek 账号。 | Mindeck 禁用了 DeepSeek 账号，原生欢迎无法读取其状态；成员在工作区内通过 Mindeck 账号登录。 |
+| `apps/desktop/src/main.ts` | 读取产品描述的 `nativeWelcome`；为 `false` 时，启动只读取语言偏好并打开工作区，不监听 DeepSeek 账号。 | 成员在工作区内通过 Mindeck 账号登录，而不是经由 DeepSeek 欢迎页。设置里可选的个人 DeepSeek 登录由客户端打开授权页。 |
 
 <a id="synchronization-record"></a>
 

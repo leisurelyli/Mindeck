@@ -73,6 +73,13 @@ export interface MindeckAccountView {
   readonly attempt: MindeckSignInAttempt | null
   /** Latest quota read while signed in; null while signed out or before the first successful read. */
   readonly quota: MindeckQuota | null
+  /** How members reach an administrator, as the company wrote it; null when unset or signed out. */
+  readonly adminContact: string | null
+  /**
+   * Whether the company allows a personal DeepSeek account beside the company account; false while signed out
+   * and for a Mindeck Cloud that predates the policy.
+   */
+  readonly personalDeepSeek: boolean
 }
 
 /** One piece of feedback for the company's Mindeck Cloud. */

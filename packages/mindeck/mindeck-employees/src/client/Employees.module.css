@@ -1,0 +1,67 @@
+/* The "who can help" row above the composer: a title line, the cards, then the chosen employee's starters.
+   It spans the composer card's width so both share their edges. */
+.dock {
+  box-sizing: border-box;
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: calc(100% - 2 * var(--dsh-composer-side-clearance));
+  max-width: var(--dsh-composer-card-max-width);
+  min-width: 0;
+  margin: 0 auto;
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* The title starts where the cards' content starts; the toggle's fill ends at the cards' edge. */
+.header { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding-left: 6px; }
+.title { margin: 0; overflow: hidden; color: var(--dsw-alias-label-secondary); font-size: 13px; font-weight: 500; line-height: 20px; text-overflow: ellipsis; white-space: nowrap; }
+.toggle { box-sizing: border-box; display: inline-flex; flex: none; align-items: center; gap: 2px; height: 24px; padding: 0 6px; border: 0; border-radius: var(--dsw-radius-sm); background: transparent; color: var(--dsw-alias-label-tertiary); font: inherit; font-size: 12px; line-height: 18px; cursor: pointer; }
+.chevron { flex: none; transition: transform 120ms ease; }
+.toggle[aria-expanded='true'] .chevron { transform: rotate(180deg); }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(208px, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.cardItem { display: flex; min-width: 0; }
+.card { box-sizing: border-box; display: flex; flex: 1; align-items: center; gap: 8px; min-width: 0; padding: 6px 10px 6px 6px; border: 0; border-radius: var(--dsw-radius-lg); background: transparent; box-shadow: inset 0 0 0 0.5px var(--dsw-alias-border-l3); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.card[aria-pressed='true'] { background: var(--dsw-alias-button-ghost-active-fill); box-shadow: inset 0 0 0 1px var(--dsw-alias-button-ghost-active-border); }
+
+/* Nested inside the card's 6px inset, so its curve follows the card's. */
+.avatar { box-sizing: border-box; display: inline-flex; flex: none; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: calc(var(--dsw-radius-lg) - 6px); object-fit: cover; font-size: 14px; font-weight: 500; line-height: 1; user-select: none; }
+.avatar[data-tint='0'] { background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 14%, transparent); color: var(--dsw-alias-state-business-primary); }
+.avatar[data-tint='1'] { background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 14%, transparent); color: var(--dsw-alias-state-success-primary); }
+.avatar[data-tint='2'] { background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 16%, transparent); color: var(--dsw-alias-state-warn-primary); }
+.avatar[data-tint='3'] { background: var(--dsw-alias-bg-module-platform); color: var(--dsw-alias-label-secondary); }
+
+.cardText { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.nameLine { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.name { overflow: hidden; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.draft { flex: none; }
+.tagline { overflow: hidden; color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
+
+.starters { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; margin: 0; padding: 0; list-style: none; }
+.starterItem { display: flex; max-width: 100%; min-width: 0; }
+.starter { box-sizing: border-box; max-width: 100%; height: 24px; padding: 0 10px; overflow: hidden; border: 0; border-radius: 999px; corner-shape: round; background: var(--dsw-alias-bg-skeleton); color: var(--dsw-alias-label-secondary); font: inherit; font-size: 12px; line-height: 24px; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+
+/* A narrow window keeps two columns of shorter cards and two starters, so the row stays small above the composer. */
+@container (max-width: 439px) {
+  .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .starterItem:nth-child(n + 3) { display: none; }
+  .card { gap: 6px; padding: 4px 8px 4px 4px; }
+  .avatar { width: 28px; height: 28px; border-radius: calc(var(--dsw-radius-lg) - 4px); font-size: 13px; }
+  .tagline { display: none; }
+}
+
+@media (hover: hover) {
+  .toggle:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-secondary); }
+  .card:hover { background: var(--dsw-alias-interactive-bg-hover); }
+  .card[aria-pressed='true']:hover { background: var(--dsw-alias-button-ghost-active-fill); }
+  .starter:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
+}
+
+.toggle:focus-visible, .card:focus-visible, .starter:focus-visible { outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: -2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron { transition: none; }
+}

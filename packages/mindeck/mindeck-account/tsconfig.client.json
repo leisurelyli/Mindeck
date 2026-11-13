@@ -14,6 +14,7 @@
     { "path": "../../../vendor/cordis" },
     { "path": "../../api/remote-access/tsconfig.client.json" },
     { "path": "../../api/remotes/tsconfig.client.json" },
+    { "path": "../../credentials/deepseek-account" },
     { "path": "../../client/locale/tsconfig.client.json" },
     { "path": "../../client/store" },
     { "path": "../../client/ui-chat/tsconfig.client.json" },

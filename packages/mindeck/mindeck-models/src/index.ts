@@ -2,32 +2,39 @@
  * Company models for Mindeck Desktop. The plugin reads the signed-in member's model catalog from Mindeck
  * Cloud and serves it through pi-ai routes that call the Cloud gateway with the desktop session token:
  * `mindeck-anthropic`, `mindeck-openai`, and `mindeck-openai-responses`, each registered while it has
- * models.
+ * models. While the web service is present it also registers the `mindeck-search` provider, which searches
+ * through the gateway with the company's DeepSeek key and is ready only while the company offers search.
  * @module @deepseek-ai/dsh-mindeck-models
  */
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
+import type {} from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import { LlmError } from '@deepseek-ai/dsh-llm'
 import type { AdapterRegistrationHandle } from '@deepseek-ai/dsh-llm'
 import { createPiAiAdapter, piAiAuthFrom } from '@deepseek-ai/dsh-llm-pi-ai'
 import type { PiAiProviderProfile } from '@deepseek-ai/dsh-llm-pi-ai'
 import type {} from '@deepseek-ai/dsh-mindeck-account'
+import type {} from '@deepseek-ai/dsh-mindeck-employees'
 import { deadline } from '@deepseek-ai/dsh-timeout'
 import { deepEqualJson } from '@deepseek-ai/dsh-util-values'
 import { join, resolve } from 'node:path'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
+import type { Session } from '@deepseek-ai/dsh-session'
 import { type CatalogModel, fetchCatalog, routeProfiles } from './catalog.ts'
 import { readCachedCatalog, writeCachedCatalog } from './catalog-cache.ts'
-import { GatewayAdapter, type ModelNotes, SIGN_IN_REQUIRED_CODE } from './gateway-adapter.ts'
+import { EMPLOYEE_HEADER, GatewayAdapter, type ModelNotes, SIGN_IN_REQUIRED_CODE } from './gateway-adapter.ts'
+import { fetchSearchStatus, MindeckSearchProvider, type SearchStatus } from './search.ts'
 
 export { parseCatalog, routeProfiles, ROUTES } from './catalog.ts'
 export type { CatalogModel, ModelApi, ParsedCatalog } from './catalog.ts'
 export {
-  ACCOUNT_UNAVAILABLE_CODE, GatewayAdapter, mapGatewayFailure, readGatewayFailure, RECOMMENDED_BADGE, SESSION_ENDED_CODE,
-  SIGN_IN_REQUIRED_CODE,
+  ACCOUNT_UNAVAILABLE_CODE, EMPLOYEE_HEADER, GatewayAdapter, mapGatewayFailure, readGatewayFailure, RECOMMENDED_BADGE,
+  SESSION_ENDED_CODE, SIGN_IN_REQUIRED_CODE,
 } from './gateway-adapter.ts'
 export type { GatewayHooks, ModelNotes } from './gateway-adapter.ts'
+export { fetchSearchStatus, mapSearchResults, MINDECK_SEARCH_PROVIDER_ID, MindeckSearchProvider } from './search.ts'
+export type { MindeckSearchHooks, SearchStatus } from './search.ts'
 
 export const name = 'mindeck-models'
 export const inject = ['llm', 'mindeckAccount']
@@ -46,6 +53,8 @@ export interface Config {
   defaultContextWindow: number
   /** Output limit assumed for a model whose catalog entry has none. */
   defaultMaxTokens: number
+  /** Results requested per web search, from 1 through 50; a smaller bound set by the caller wins. */
+  searchCount: number
 }
 
 export const Config: z<Config> = z.object({
@@ -61,6 +70,8 @@ export const Config: z<Config> = z.object({
     .description('Context window assumed for a model whose catalog entry has none.'),
   defaultMaxTokens: z.natural().min(256).default(8192)
     .description('Output limit assumed for a model whose catalog entry has none.'),
+  searchCount: z.natural().min(1).max(50).default(10)
+    .description('Results requested per web search, from 1 through 50; a smaller bound set by the caller wins.'),
 })
 
 /** Register the member's company models while a Mindeck session exists. */
@@ -94,6 +105,34 @@ export function apply(ctx: Context, config: Config): void {
     modelMissing: () => { refresh() },
     notes: model => notes.get(model),
   })
+
+  // Gateway requests of a digital employee's conversation name the employee, so Mindeck Cloud can attribute them.
+  ctx.on('llm-pi-ai/request-headers', (request, _headers, next) => {
+    const prepared = next()
+    const employee = request.sessionId === undefined || !Object.hasOwn(catalog, request.provider)
+      ? undefined
+      : ctx.get('mindeckEmployees')?.employeeForSession(request.sessionId)
+    if (employee !== undefined) prepared.set(EMPLOYEE_HEADER, employee)
+    return prepared
+  })
+
+  let searchStatus: SearchStatus | undefined
+  const search = new MindeckSearchProvider({
+    status: () => searchStatus,
+    token,
+    count: () => config.searchCount,
+    originalQuestion: () => latestUserQuestion(ctx.get('agents')?.currentInitiator()?.session),
+    employee: () => {
+      const initiator = ctx.get('agents')?.currentInitiator()
+      return initiator === undefined ? undefined : ctx.get('mindeckEmployees')?.employeeForSession(initiator.id)
+    },
+    sessionEnded: (rejected) => {
+      void ctx.mindeckAccount.rejectToken(rejected).catch((error: unknown) => {
+        ctx.logger.warn('mindeck-models: could not end the rejected session', error)
+      })
+    },
+  })
+  ctx.inject(['web'], (child) => { child.web.registerSearchProvider(search) })
 
   /** Publish one catalog; registrations and listings change only when it differs. */
   const publish = (next: Record<string, PiAiProviderProfile>): void => {
@@ -187,7 +226,7 @@ export function apply(ctx: Context, config: Config): void {
   const load = async (): Promise<void> => {
     const session = await ctx.mindeckAccount.session()
     if (stopped()) return
-    if (session === undefined) { notes = new Map(); publish({}); return }
+    if (session === undefined) { notes = new Map(); searchStatus = undefined; publish({}); return }
     const owner = { cloudUrl: session.cloudUrl, userId: session.bootstrap.user.id }
     // Until Mindeck Cloud answers, the models of this member's last catalog stay selectable.
     if (Object.keys(catalog).length === 0) {
@@ -205,6 +244,7 @@ export function apply(ctx: Context, config: Config): void {
     if (listing === 'sign-in-required') {
       await ctx.mindeckAccount.rejectToken(session.token)
       notes = new Map()
+      searchStatus = undefined
       publish({})
       return
     }
@@ -212,9 +252,23 @@ export function apply(ctx: Context, config: Config): void {
       ctx.logger.warn(`mindeck-models: skipped ${listing.skipped.length} catalog entries in an unknown format`)
     }
     publishModels(listing.models, session.bootstrap.company.name)
+    await loadSearchStatus(session.bootstrap.endpoints.webSearch, session.token)
     await writeCachedCatalog(cacheFile, owner, listing.models).catch((error: unknown) => {
       ctx.logger.warn('mindeck-models: could not save the model catalog for the next start', error)
     })
+  }
+
+  /** Read whether the company offers web search; a failed read keeps the last answer for this session. */
+  const loadSearchStatus = async (url: string | undefined, sessionToken: string): Promise<void> => {
+    if (url === undefined) { searchStatus = undefined; return }
+    using limit = deadline(lifetime.signal, config.requestTimeoutMs, 'MINDECK_MODELS_TIMEOUT')
+    const status = await fetchSearchStatus(url, sessionToken, limit.signal).catch((error: unknown) => {
+      ctx.logger.warn('mindeck-models: keeping the current web search status; refresh failed', error)
+      return undefined
+    })
+    if (stopped() || status === undefined) return
+    if (status === 'sign-in-required') { await ctx.mindeckAccount.rejectToken(sessionToken); return }
+    searchStatus = status
   }
 
   ctx.on('mindeck-account/changed', () => { refresh() })
@@ -223,4 +277,14 @@ export function apply(ctx: Context, config: Config): void {
     return () => { clearInterval(timer) }
   }, 'mindeck-models: catalog refresh timer')
   refresh()
+}
+
+/**
+ * Read the text of the latest prompt the member typed, the question behind the current search.
+ * @param session - the initiating Session, when the search runs inside one.
+ * @returns the prompt's joined text blocks, or undefined without a prompt.
+ */
+function latestUserQuestion(session: Session | undefined): string | undefined {
+  const prompt = session?.deriveMessages().findLast(message => message.role === 'user' && message.source.kind === 'user')
+  return prompt?.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('\n')
 }

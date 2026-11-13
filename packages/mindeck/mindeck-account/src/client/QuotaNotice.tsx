@@ -39,6 +39,7 @@ export function QuotaNotice({ matched, useAccount, refreshQuota, t }: QuotaNotic
       </button>
     </div>
     <p className={css.dialogText}>{text}</p>
+    {view.adminContact !== null && <p className={css.dialogText}>{t('adminContact', { contact: view.adminContact })}</p>}
     <div className={css.dialogActions}>
       <Button variant="outline" onClick={dismiss}>{t('quotaDismiss')}</Button>
       <a className={css.primaryLink} href={usageUrl} target="_blank" rel="noreferrer" onClick={dismiss}>{t('quotaUsage')}</a>

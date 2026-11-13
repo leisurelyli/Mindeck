@@ -2,6 +2,7 @@
 import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
 import type { MindeckAccountErrorCode, MindeckAccountView, MindeckSignInAttemptId } from '../types.ts'
 import type { MindeckAccountKey } from './locales.ts'
+import type { PersonalDeepSeekSnapshot } from './personal-deepseek.ts'
 
 /** Latest Host account state as the Client observes it. */
 export interface MindeckAccountSnapshot {
@@ -22,7 +23,12 @@ export type OperationOutcome = { readonly ok: true } | { readonly ok: false; rea
 /** Operations and hooks shared by the sign-in gate, the settings section, and the launcher. */
 export interface MindeckAccountInjected {
   /** Account state owned by the Host, observed through framework hooks. */
-  hooks: { account: HostObservable<MindeckAccountSnapshot>; reminders: HostObservable<MindeckReminderSnapshot> }
+  hooks: {
+    account: HostObservable<MindeckAccountSnapshot>
+    reminders: HostObservable<MindeckReminderSnapshot>
+    /** The personal DeepSeek account, shown while the company allows one. */
+    personal: HostObservable<PersonalDeepSeekSnapshot>
+  }
   /**
    * Set the Cloud address, then start signing in.
    * @param input - address typed by the member.
@@ -43,6 +49,12 @@ export interface MindeckAccountInjected {
   refreshQuota: () => void
   /** @param key - reminder to hide until its level or month changes. */
   dismissReminder: (key: string) => void
+  /** @returns whether a personal DeepSeek sign-in started in the browser. */
+  startPersonalSignIn: () => Promise<OperationOutcome>
+  /** Cancel the running personal DeepSeek sign-in. */
+  cancelPersonalSignIn: () => Promise<void>
+  /** @returns whether the personal DeepSeek credential was removed. */
+  signOutPersonal: () => Promise<OperationOutcome>
 }
 
 const ATTEMPT_ERROR_KEYS: Record<MindeckAccountErrorCode, MindeckAccountKey> = {

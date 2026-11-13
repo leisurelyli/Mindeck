@@ -19,6 +19,7 @@ import { SignInGate } from './SignInGate.tsx'
 import { en, NS, zh, type MindeckAccountKey } from './locales.ts'
 import type { MindeckAccountInjected, MindeckAccountSnapshot, MindeckReminderSnapshot, OperationOutcome } from './operations.ts'
 import { QuotaDock } from './QuotaDock.tsx'
+import { followPersonalDeepSeek } from './personal-deepseek.ts'
 
 /** Services required by the account UI. */
 export const inject = ['remote', 'slots', 'locale', 'remoteAccess']
@@ -48,10 +49,11 @@ function registerUi(ctx: Context): void {
   const state = createSnapshotStore<MindeckAccountSnapshot>({ view: undefined, failed: false })
   const reminders = createSnapshotStore<MindeckReminderSnapshot>({ dismissed: [] })
   const appVersion = process.env.DSH_CLIENT_VERSION ?? ''
+  const personal = followPersonalDeepSeek(ctx, state)
   const outcome = (result: { ok: true } | { ok: false; error: RemoteFailure }): OperationOutcome =>
     result.ok ? { ok: true } : { ok: false, reason: failureReason(result.error) }
   const operations: MindeckAccountInjected = {
-    hooks: { account: state, reminders },
+    hooks: { account: state, reminders, personal: personal.store },
     async connect(input) {
       const set = await ctx.remote.mindeckAccount.setCloudUrl(input)
       if (!set.ok) return outcome(set)
@@ -73,6 +75,9 @@ function registerUi(ctx: Context): void {
       const { dismissed } = reminders.getSnapshot()
       if (!dismissed.includes(key)) reminders.set({ dismissed: [...dismissed, key] })
     },
+    startPersonalSignIn: personal.start,
+    cancelPersonalSignIn: personal.cancel,
+    signOutPersonal: personal.signOut,
   }
   ctx.remoteAccess.whenAccess('mindeckAccount/watch', function* () {
     const stream = ctx.remote.$stream<MindeckAccountView>({
@@ -97,14 +102,16 @@ function registerUi(ctx: Context): void {
   ctx.remoteAccess.whenAccess('mindeckAccount/watch', () => ctx.slots.inject('shell.overlay', () => ctx.slots.register({
     name: 'shell.overlay', id: 'mindeck-account.sign-in', locale: NS, inject: () => operations,
   }, SignInGate)))
+  // The company account owns the sidebar launcher; a lower priority shadows the DeepSeek account launcher, whose
+  // sign-in stays in its Settings section.
   ctx.remoteAccess.whenAccess('mindeckAccount/watch', () => ctx.slots.inject('settings.launcher', () => ctx.slots.register({
-    name: 'settings.launcher', locale: NS, inject: () => operations,
+    name: 'settings.launcher', priority: -1, locale: NS, inject: () => operations,
   }, AccountMenu)))
   const t = ctx.locale.bind(NS)
   ctx.remoteAccess.whenAccess('mindeckAccount/watch', () => ctx.slots.inject('settings.section', () => ctx.slots.register({
     name: 'settings.section', id: 'mindeck-account', order: -10, label: () => t('nav'), locale: NS, inject: () => operations,
   }, AccountSection)))
-  // Every model request goes through the Mindeck Cloud gateway, so a quota failure is the company quota.
+  // A company quota failure from the Mindeck Cloud gateway; the DeepSeek account reports its own code.
   ctx.remoteAccess.whenAccess('mindeckAccount/watch', () => ctx.slots.inject('shell.quota-notice', () => ctx.slots.register({
     name: 'shell.quota-notice', locale: NS, select: owner => owner.code === 'QUOTA' ? owner : null, inject: () => operations,
   }, QuotaNotice)))

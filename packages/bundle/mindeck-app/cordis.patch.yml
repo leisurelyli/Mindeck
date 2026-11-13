@@ -6,32 +6,27 @@
     - id: ui-brand-mindeck
       name: '@deepseek-ai/dsh-client-ui-brand-mindeck'
 
-# Mindeck Enterprise: the Mindeck Cloud account, company models, company skills,
-# and the company file library replace the DeepSeek account, its model
-# providers, its sign-in UI, and the DeepSeek web search that requires a
-# DeepSeek credential. Members sign in
-# through the Mindeck account dialog and use the models the company configures
-# in Mindeck Cloud, so personal pi-ai routes and the Models page with personal
-# API keys, its first-run dialogs, and its preview notice are left out; every
-# model request goes through the metered Mindeck Cloud gateway.
-- id: deepseek-account
-  disabled: true
+# Mindeck Enterprise: the Mindeck Cloud account, company models, company web
+# search, company skills, the company file library, and the company's digital
+# employees come from Mindeck Cloud.
+# Members sign in through the Mindeck account dialog and use the models and
+# search the company configures, metered by the Mindeck Cloud gateway. The
+# DeepSeek account stays available as a second sign-in under Settings, with its
+# own models and DeepSeek web search. Personal API-key routes (the official
+# DeepSeek key route and pi-ai) and the Models page that edits their keys are
+# left out, so a member's requests use either the company gateway or a DeepSeek
+# account, never a key that bypasses both. A patch replaces a row's whole
+# config, so the web row restates the local fetch provider.
 - id: llm-deepseek
-  disabled: true
-- id: llm-deepseek-account
   disabled: true
 - id: llm-pi-ai
   disabled: true
-- id: web-search-deepseek
-  disabled: true
-- id: web-deepseek-api
-  disabled: true
-- id: ui-settings-account
-  disabled: true
-- id: account-controller
-  disabled: true
 - id: ui-settings-models
   disabled: true
+- id: web
+  config:
+    searchProvider: mindeck-search
+    fetchProvider: http
 - insert:
     - id: mindeck-account
       name: '@deepseek-ai/dsh-mindeck-account'
@@ -41,6 +36,23 @@
       name: '@deepseek-ai/dsh-mindeck-skills'
     - id: mindeck-files
       name: '@deepseek-ai/dsh-mindeck-files'
+    - id: mindeck-employees
+      name: '@deepseek-ai/dsh-mindeck-employees'
+
+# A member who also signs in to a personal DeepSeek account skips DeepSeek's
+# first-run introduction: its full-screen welcome, recharge, and purpose pages
+# would cover Mindeck and rewrite the Developer tools preference.
+- id: ui-settings-account
+  config:
+    step: done
+    completion: skipped
+
+# New conversations start with Mindeck's general assistant; mindeck-employees
+# registers it, beside one preset per digital employee. The base sets only
+# `default`, which this patch replaces.
+- id: agent-preset-registry
+  config:
+    default: mindeck-general
 
 # A first-use default Workspace goes to <Documents>/Mindeck, apart from the
 # DeepSeek Harness folder of an official installation on the same account.
@@ -58,7 +70,9 @@
     identity: >-
       You are Mindeck, the AI work assistant that the user's company provides.
       You help with the user's work, such as writing, analysis, research,
-      documents, data, and code.
+      documents, data, and code. When no web search tool is available, say
+      that the company has not turned on web search instead of guessing
+      current facts.
     personaPrefix: >-
       You are a coding agent powered by the {{model}} model.
 - id: harness-dev-context

@@ -88,6 +88,7 @@ export function AccountMenu({
     {dialog === 'signout' && <SignOutDialog signOut={signOut} close={() => { setDialog(null) }} t={t} />}
     {dialog === 'feedback' && <FeedbackDialog sendFeedback={sendFeedback} close={() => { setDialog(null) }} t={t} />}
     {dialog === 'about' && <AboutDialog appVersion={appVersion} companyName={view?.companyName ?? null} cloudUrl={cloudUrl}
+      adminContact={view?.adminContact ?? null}
       close={() => { setDialog(null) }} t={t} />}
   </div>
 }

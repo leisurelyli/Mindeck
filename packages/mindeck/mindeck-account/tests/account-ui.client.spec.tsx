@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /** The sign-in gate and the settings page follow Host state and report outcomes in the member's words. */
 import { afterEach, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { brandString } from '@deepseek-ai/dsh-brand'
@@ -15,21 +15,29 @@ import { cloudUrlInText } from '../src/client/address.ts'
 import { QuotaDock, type QuotaDockProps } from '../src/client/QuotaDock.tsx'
 import { AccountMenu, type AccountMenuProps } from '../src/client/AccountMenu.tsx'
 import type { MindeckQuota } from '../src/types.ts'
+import type { PersonalDeepSeekSnapshot } from '../src/client/personal-deepseek.ts'
+import type { AccountView, SignInAttemptId } from '@deepseek-ai/dsh-deepseek-account/types'
 
 afterEach(cleanup)
 
 const attemptId = brandString<MindeckSignInAttemptId>('attempt-1')
 const signedOut: MindeckAccountView = {
-  cloudUrl: null, status: 'signed-out', user: null, companyName: null, notice: null, attempt: null, quota: null,
+  cloudUrl: null, status: 'signed-out', user: null, companyName: null, notice: null, attempt: null, quota: null, adminContact: null, personalDeepSeek: false,
 }
 const signedIn: MindeckAccountView = {
-  cloudUrl: 'https://cloud.example.com', status: 'signed-in', companyName: '星河科技', notice: null, attempt: null, quota: null,
+  cloudUrl: 'https://cloud.example.com', status: 'signed-in', companyName: '星河科技', notice: null, attempt: null, quota: null, adminContact: null, personalDeepSeek: false,
   user: { id: 'user-1', name: '林晓', email: 'lin@example.com', role: 'admin', department: null },
+}
+
+const deepseekSignedOut: AccountView = {
+  status: 'signed-out', attempt: null,
+  links: { usageUrl: 'https://platform.deepseek.com/usage', topUpUrl: 'https://platform.deepseek.com/top_up' },
 }
 
 function fixture(view: MindeckAccountView | undefined, failed = false) {
   const account = createSnapshotStore<MindeckAccountSnapshot>({ view, failed })
   const reminders = createSnapshotStore<MindeckReminderSnapshot>({ dismissed: [] })
+  const personal = createSnapshotStore<PersonalDeepSeekSnapshot>({ available: true, view: deepseekSignedOut, failed: false })
   const ok: OperationOutcome = { ok: true }
   const operations = {
     connect: vi.fn(async (_input: string): Promise<OperationOutcome> => ok),
@@ -39,14 +47,19 @@ function fixture(view: MindeckAccountView | undefined, failed = false) {
     refreshQuota: vi.fn(() => {}),
     sendFeedback: vi.fn(async (_text: string): Promise<OperationOutcome> => ok),
     dismissReminder: vi.fn((key: string) => { reminders.set({ dismissed: [...reminders.getSnapshot().dismissed, key] }) }),
+    startPersonalSignIn: vi.fn(async (): Promise<OperationOutcome> => ok),
+    cancelPersonalSignIn: vi.fn(async () => {}),
+    signOutPersonal: vi.fn(async (): Promise<OperationOutcome> => ok),
   }
   // Global standard hooks are unused by these components; the renderer supplies them in production.
   const props = {
     t: makeTranslate(en), useAccount: bindSnapshotSelector(account), useReminders: bindSnapshotSelector(reminders),
+    usePersonal: bindSnapshotSelector(personal),
     close: () => {}, wide: true, openSettings: () => {}, appVersion: '0.3.0', ...operations,
   } as SignInGateProps & AccountSectionProps & Omit<QuotaNoticeProps, 'matched'> & QuotaDockProps & AccountMenuProps
   const set = (next: MindeckAccountView) => { act(() => { account.set({ view: next, failed: false }) }) }
-  return { props, operations, set }
+  const setPersonal = (next: AccountView) => { act(() => { personal.set({ available: true, view: next, failed: false }) }) }
+  return { props, operations, set, setPersonal }
 }
 
 it('stays hidden until the state arrives and while signed in', () => {
@@ -186,6 +199,35 @@ it('shows the member and company in Settings and keeps the dialog open when sign
   expect(f.operations.signOut).toHaveBeenCalledTimes(2)
   f.set(signedOut)
   expect(view.getByLabelText(en.cloudUrlLabel)).toBeTruthy()
+})
+
+it('offers a personal DeepSeek account in Settings only while the company allows one', async () => {
+  const f = fixture(signedIn)
+  const view = render(<AccountSection {...f.props} />)
+  expect(view.queryByRole('region', { name: en.personalTitle })).toBeNull()
+  f.set({ ...signedIn, personalDeepSeek: true })
+  const block = view.getByRole('region', { name: en.personalTitle })
+  expect(block.textContent).toContain(en.personalDescription)
+  fireEvent.click(view.getByRole('button', { name: en.personalSignIn }))
+  await waitFor(() => { expect(f.operations.startPersonalSignIn).toHaveBeenCalledOnce() })
+
+  const open = vi.spyOn(window, 'open').mockReturnValue(null)
+  f.setPersonal({
+    ...deepseekSignedOut,
+    attempt: { id: brandString<SignInAttemptId>('ds-1'), phase: 'waiting-browser', authorizeUrl: 'https://platform.deepseek.com/authorize?x=1' },
+  })
+  expect(view.getByRole('status').textContent).toBe(en.personalWaiting)
+  // The window that asked opens the authorization page once and keeps a link to it.
+  expect(open).toHaveBeenCalledOnce()
+  expect(view.getByRole('link', { name: en.openBrowser }).getAttribute('href')).toBe('https://platform.deepseek.com/authorize?x=1')
+  open.mockRestore()
+  fireEvent.click(view.getByRole('button', { name: en.cancel }))
+  expect(f.operations.cancelPersonalSignIn).toHaveBeenCalledOnce()
+
+  f.setPersonal({ ...deepseekSignedOut, status: 'credential-stored' })
+  expect(view.getByRole('status').textContent).toBe(en.personalSignedIn)
+  fireEvent.click(view.getByRole('button', { name: en.personalSignOut }))
+  await waitFor(() => { expect(f.operations.signOutPersonal).toHaveBeenCalledOnce() })
 })
 
 it('names the used-up limit and its reset date with a link to the member usage page, and keeps the generic warning while signed out', () => {

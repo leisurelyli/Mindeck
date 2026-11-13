@@ -38,12 +38,14 @@ export interface FakeCloud {
 
 const bootstrap = (url: string, name: string) => ({
   user: { id: 'user-1', name, email: 'lin@example.com', role: 'user', department: { id: 'dep-1', name: '研发部' } },
-  company: { name: '星河科技' },
+  company: { name: '星河科技', adminContact: '企业微信找周敏' },
   device: { id: 'session-1', expiresAt: '2027-01-01T00:00:00.000Z' },
   endpoints: {
     console: url, models: `${url}/api/desktop/models`, skills: `${url}/api/desktop/skills`,
     anthropicBaseUrl: `${url}/api/gateway/anthropic`, openaiBaseUrl: `${url}/api/gateway/openai/v1`, files: null,
+    webSearch: `${url}/api/desktop/web-search`, employees: `${url}/api/desktop/employees`,
   },
+  policies: { personalDeepSeek: true },
 })
 
 async function body(request: IncomingMessage): Promise<unknown> {

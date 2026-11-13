@@ -18,6 +18,9 @@ export const ACCOUNT_UNAVAILABLE_CODE = 'ACCOUNT_UNAVAILABLE'
 /** Failure code of a model request made while no Mindeck account is signed in. */
 export const SIGN_IN_REQUIRED_CODE = 'MINDECK_SIGN_IN_REQUIRED'
 
+/** Gateway request header naming the Mindeck Cloud id of the digital employee a conversation talks to. */
+export const EMPLOYEE_HEADER = 'x-mindeck-employee'
+
 /** What the company says about one catalog model. */
 export interface ModelNotes {
   readonly description: string | null

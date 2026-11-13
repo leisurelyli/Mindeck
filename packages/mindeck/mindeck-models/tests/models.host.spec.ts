@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import LlmRuntime, { QUOTA_EXCEEDED_CODE } from '@deepseek-ai/dsh-llm'
 import type { MindeckSession } from '@deepseek-ai/dsh-mindeck-account'
+import { SessionId } from '@deepseek-ai/dsh-session'
 import { afterEach, expect, it, vi } from 'vitest'
 import { assemble } from '../../../llm/llm-pi-ai/tests/assemble.ts'
 import { anthropicTextEvents, closeMockServers, mockServer } from '../../../llm/llm-pi-ai/tests/mock-server.ts'
@@ -19,7 +20,7 @@ function options(overrides: Partial<MindeckModels.Config> = {}): MindeckModels.C
   cleanups.push(async () => { rmSync(cacheDir, { recursive: true, force: true }) })
   return {
     refreshIntervalMs: 600_000, retryIntervalMs: 15_000, cacheDir, requestTimeoutMs: 15_000,
-    defaultContextWindow: 128_000, defaultMaxTokens: 8192, ...overrides,
+    defaultContextWindow: 128_000, defaultMaxTokens: 8192, searchCount: 10, ...overrides,
   }
 }
 afterEach(async () => {
@@ -197,4 +198,21 @@ it('sends the session token to the gateway and reports quota, sign-out, and sess
   expect(ended.finish).toMatchObject({ kind: 'error', failure: { code: MindeckModels.SESSION_ENDED_CODE, message: '登录已失效，请重新登录。' } })
   expect(f.account.rejectToken).toHaveBeenCalledWith('desktop-token-1')
   await vi.waitFor(() => { expect(f.providers()).toEqual([]) })
+})
+
+it('names the digital employee of a conversation in its gateway requests', async () => {
+  const gateway = await mockServer([{ events: anthropicTextEvents }, { events: anthropicTextEvents }, { events: anthropicTextEvents }])
+  const f = await fixture(`${gateway.url}/gateway/anthropic`)
+  f.ctx.provide('mindeckEmployees', {
+    employeeForSession: (sessionId: string) => sessionId === 'session-legal' ? 'e1' : undefined,
+  } as never)
+  f.catalog.state.models = [f.model('deepseek-chat')]
+  await f.ctx.plugin(MindeckModels, options())
+  await vi.waitFor(() => { expect(f.providers()).toEqual(['mindeck-anthropic']) })
+  const request = { provider: 'mindeck-anthropic', model: 'deepseek-chat', messages: [{ role: 'user' as const, content: [{ type: 'text' as const, text: 'hi' }] }] }
+
+  expect((await assemble(f.ctx, { ...request, sessionId: SessionId('session-legal') })).finish).toEqual({ kind: 'stop' })
+  await assemble(f.ctx, { ...request, sessionId: SessionId('session-general') })
+  await assemble(f.ctx, request)
+  expect(gateway.headers.map(headers => headers[MindeckModels.EMPLOYEE_HEADER])).toEqual(['e1', undefined, undefined])
 })

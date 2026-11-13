@@ -1,0 +1,61 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/mindeck/mindeck-employees/README.md
+/:
+  en: 5151b56f0b9e018f
+  zh: 41ff9ee4e8ac54e8
+/deepseek-ai-dsh-mindeck-employees:
+  en: 2fdb2c3e2aecf1b6
+  zh: b87e42def79e0608
+/deepseek-ai-dsh-mindeck-employees/summary:
+  en: 3772922db40e8823
+  zh: 12acdf428be2bca2
+/deepseek-ai-dsh-mindeck-employees/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: ce40cab8e7534137
+/deepseek-ai-dsh-mindeck-employees/use-this-package:
+  en: 7bb26fea997710a4
+  zh: bbcb23fa294ea703
+/deepseek-ai-dsh-mindeck-employees/understand-the-implementation:
+  en: d3b4426b7dfab06e
+  zh: e877665c4d393afa
+/deepseek-ai-dsh-mindeck-employees/further-exploration:
+  en: 28c8bd97df597dae
+  zh: ec561edac7896ccb
+/deepseek-ai-dsh-mindeck-employees/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-mindeck-employees/model-experience/digital-employee-persona:
+  en: fdce3557350dd8a9
+  zh: ff4bc519d767207c
+/deepseek-ai-dsh-mindeck-employees/model-experience/digital-employee-persona/what-the-model-sees:
+  en: 3d393d4ef434c07d
+  zh: 61a0cc69081f53d9
+/deepseek-ai-dsh-mindeck-employees/model-experience/digital-employee-persona/what-the-model-sees/employee-persona:
+  en: 6efe01a8c0df2123
+  zh: 1d7198dca98ff48b
+/deepseek-ai-dsh-mindeck-employees/model-experience/digital-employee-persona/token-effect:
+  en: 671d70a15fdce10d
+  zh: 980de3acc1a3ea61
+/deepseek-ai-dsh-mindeck-employees/model-experience/digital-employee-persona/kv-cache-effect:
+  en: afddcea5d80a6141
+  zh: e8db71d24573ef88
+/deepseek-ai-dsh-mindeck-employees/model-experience/general-assistant-persona:
+  en: a15e7d5cbf010fc1
+  zh: 61b5f00378146630
+/deepseek-ai-dsh-mindeck-employees/model-experience/general-assistant-persona/what-the-model-sees:
+  en: 64162a8a5e0f58f6
+  zh: cad81d2c340d77f7
+/deepseek-ai-dsh-mindeck-employees/model-experience/general-assistant-persona/token-effect:
+  en: 6ab476cd59cb1103
+  zh: a28d4e89fa8f761f
+/deepseek-ai-dsh-mindeck-employees/model-experience/general-assistant-persona/kv-cache-effect:
+  en: 8935fa9dd1c83789
+  zh: 60bc0f4d9d349c62
+/deepseek-ai-dsh-mindeck-employees/known-limitations-and-deferred-work:
+  en: ebdccd6c56132e19
+  zh: 7fbffb7189362249
+/deepseek-ai-dsh-mindeck-employees/known-limitations-and-deferred-work/dev-note:
+  en: 0225ba087c5266f3
+  zh: 53f5adbcc7db8671

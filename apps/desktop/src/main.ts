@@ -551,7 +551,7 @@ async function main(): Promise<void> {
         analyticsEnabled = await welcomeBackend.analyticsEnabled().catch(() => false)
         if (!reportedLaunch) { reportedLaunch = true; void track('desktop_app_launch', {}) }
         stopAccount?.()
-        // Without the native welcome, members sign in inside the workspace and the DeepSeek account is not mounted.
+        // Without the native welcome, members sign in inside the workspace; a DeepSeek sign-in started there opens its own page.
         if (!mindeckProduct.nativeWelcome) return
         const accountBackend = welcomeBackend.account
         stopAccount = accountBackend.watch((state) => {

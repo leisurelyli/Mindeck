@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Button, IconRightUpOutlineRegular, IconUserOutlineMedium } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { initial, type MindeckAccountInjected } from './operations.ts'
+import { PersonalDeepSeekCard } from './PersonalDeepSeekCard.tsx'
 import { SignInPanel } from './SignInPanel.tsx'
 import { SignOutDialog } from './SignOutDialog.tsx'
 import css from './Account.module.css'
@@ -17,7 +18,10 @@ export function AccountSectionIcon({ size }: PropsRuntime<'settings.section.icon
 }
 
 /** @param props - localized copy, account state, and operations. @returns the account settings page. */
-export function AccountSection({ t, useAccount, connect, startSignIn, cancelSignIn, signOut }: AccountSectionProps) {
+export function AccountSection({
+  t, useAccount, usePersonal, connect, startSignIn, cancelSignIn, signOut, startPersonalSignIn, cancelPersonalSignIn,
+  signOutPersonal,
+}: AccountSectionProps) {
   const { view, failed } = useAccount(snapshot => snapshot)
   const [confirming, setConfirming] = useState(false)
   if (view === undefined) return <section className={css.section} aria-label={t('nav')}>
@@ -58,6 +62,8 @@ export function AccountSection({ t, useAccount, connect, startSignIn, cancelSign
         </a>}
         <Button variant="outline" onClick={() => { setConfirming(true) }}>{t('signOut')}</Button>
       </div>
+      {view.personalDeepSeek && <PersonalDeepSeekCard t={t} usePersonal={usePersonal}
+        startPersonalSignIn={startPersonalSignIn} cancelPersonalSignIn={cancelPersonalSignIn} signOutPersonal={signOutPersonal} />}
       {confirming && <SignOutDialog signOut={signOut} close={() => { setConfirming(false) }} t={t} />}
     </section>
   )

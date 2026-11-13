@@ -185,6 +185,18 @@ it('ends the session only for the token Mindeck Cloud rejected', async () => {
   expect((await f.account().startSignIn('1.2.3')).notice).toBeNull()
 })
 
+it('keeps the company policy, contact, and endpoints of a stored session across a restart', async () => {
+  const f = await fixture()
+  await signIn(f)
+  await f.cloud.close()
+  await f.live.replace({ cloudUrl: f.cloud.url, requestTimeoutMs: 5001 })
+  expect(await f.state()).toMatchObject({ status: 'signed-in', adminContact: '企业微信找周敏', personalDeepSeek: true })
+  const session = await f.account().session()
+  expect(session?.bootstrap.endpoints).toMatchObject({
+    webSearch: `${f.cloud.url}/api/desktop/web-search`, employees: `${f.cloud.url}/api/desktop/employees`,
+  })
+})
+
 it('revalidates the stored session when the plugin starts', async () => {
   const f = await fixture()
   const token = await signIn(f)

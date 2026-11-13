@@ -6,7 +6,7 @@ export const NS = 'mindeckAccount'
 
 /** English account dictionary. */
 export const en = {
-  nav: 'Account',
+  nav: 'Company account',
   menu: 'Account menu',
   settings: 'Settings',
   gateTitle: 'Sign in to Mindeck',
@@ -91,6 +91,17 @@ export const en = {
   aboutPrivacy: 'Data and privacy',
   aboutDownloads: 'Get the latest version',
   aboutPrivacyNote: 'Conversations stay on this computer. Model requests pass through your company\'s Mindeck Cloud, which records usage but not content.',
+  adminContact: 'Contact your administrator: {contact}',
+  aboutContact: 'Administrator',
+  personalTitle: 'Personal DeepSeek account (optional)',
+  personalDescription: 'Your company lets you sign in to your own DeepSeek account and use its models. Its usage is paid by your DeepSeek account and is not counted in the company quota; conversations go directly to DeepSeek.',
+  personalSignIn: 'Sign in to DeepSeek',
+  personalWaiting: 'Finish signing in to DeepSeek in your browser…',
+  personalFailed: 'DeepSeek sign-in did not finish. Try again.',
+  personalSignedIn: 'Signed in to DeepSeek. Its models appear in the model list; see balance and usage under Account and balance.',
+  personalSignOut: 'Sign out of DeepSeek',
+  personalUnavailable: 'The DeepSeek account cannot be read right now.',
+  personalDesktopOnly: 'Sign in to a DeepSeek account from the Mindeck desktop app.',
 } as const
 
 /** Account locale keys. */
@@ -102,7 +113,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 
 /** Chinese account dictionary. */
 export const zh: Record<MindeckAccountKey, string> = {
-  nav: '账号',
+  nav: '公司账号',
   menu: '账号菜单',
   settings: '设置',
   gateTitle: '登录 Mindeck',
@@ -157,13 +168,13 @@ export const zh: Record<MindeckAccountKey, string> = {
   quotaUsage: '查看我的用量',
   quotaDismiss: '知道了',
   quotaReset: '{month} 月 {day} 日',
-  quotaMenuUser: '本月已用 {used} / {limit}',
+  quotaMenuUser: '本月已用 {used}/{limit}',
   quotaMenuUnlimited: '本月已用 {used}，不限额度',
-  quotaMenuDepartment: '部门本月已用 {used} / {limit}',
-  quotaDockUser: '本月个人模型额度已用 {percent}%（{used} / {limit}），{reset}起恢复。',
-  quotaDockDepartment: '本月部门模型额度已用 {percent}%（{used} / {limit}），{reset}起恢复。',
-  quotaDockUserOut: '本月个人模型额度已用完（{used} / {limit}），{reset}起恢复；如需更多额度，请联系管理员。',
-  quotaDockDepartmentOut: '本月部门模型额度已用完（{used} / {limit}），{reset}起恢复；如需更多额度，请联系管理员。',
+  quotaMenuDepartment: '部门本月已用 {used}/{limit}',
+  quotaDockUser: '本月个人模型额度已用 {percent}%（{used}/{limit}），{reset}起恢复。',
+  quotaDockDepartment: '本月部门模型额度已用 {percent}%（{used}/{limit}），{reset}起恢复。',
+  quotaDockUserOut: '本月个人模型额度已用完（{used}/{limit}），{reset}起恢复；如需更多额度，请联系管理员。',
+  quotaDockDepartmentOut: '本月部门模型额度已用完（{used}/{limit}），{reset}起恢复；如需更多额度，请联系管理员。',
   quotaDockCompany: '公司本月模型预算已用 {percent}%，用完后全公司暂停使用模型，{reset}起恢复。',
   quotaDockCompanyOut: '公司本月模型预算已用完，全公司暂停使用模型，{reset}起恢复；如需继续使用，请联系管理员调高预算。',
   quotaDockDismiss: '关闭提醒',
@@ -187,4 +198,15 @@ export const zh: Record<MindeckAccountKey, string> = {
   aboutPrivacy: '数据与隐私',
   aboutDownloads: '获取最新版本',
   aboutPrivacyNote: '对话记录保存在这台电脑上。模型请求经公司的 Mindeck Cloud 转发，Cloud 只记录用量，不保存内容。',
+  adminContact: '管理员联系方式：{contact}',
+  aboutContact: '联系管理员',
+  personalTitle: '个人 DeepSeek 账号（可选）',
+  personalDescription: '公司允许你登录自己的 DeepSeek 账号，使用其中的模型。这部分费用由你的 DeepSeek 账号承担，不计入公司额度；对话内容会直接发给 DeepSeek。',
+  personalSignIn: '登录 DeepSeek 账号',
+  personalWaiting: '请在浏览器中完成 DeepSeek 登录…',
+  personalFailed: 'DeepSeek 登录没有完成，请重试。',
+  personalSignedIn: '已登录 DeepSeek 账号。模型列表里会出现它的模型，余额和用量在“账号与余额”里查看。',
+  personalSignOut: '退出 DeepSeek 账号',
+  personalUnavailable: '暂时无法读取 DeepSeek 账号状态。',
+  personalDesktopOnly: '请在 Mindeck 桌面端登录 DeepSeek 账号。',
 }

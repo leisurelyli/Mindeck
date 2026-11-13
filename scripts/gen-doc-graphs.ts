@@ -503,8 +503,8 @@ const SERVICE_ROLES: ServiceRole[] = [
     pkg: 'mindeck-account',
     title: 'Mindeck Cloud account',
     mode: 'service',
-    consumers: ['mindeck-models', 'mindeck-skills', 'mindeck-files'],
-    note: 'Owns the device sign-in and the Mindeck Cloud session; company models, skills, and the file library read the session token and its endpoints.',
+    consumers: ['mindeck-models', 'mindeck-skills', 'mindeck-files', 'mindeck-employees'],
+    note: 'Owns the device sign-in and the Mindeck Cloud session; company models, skills, the file library, and digital employees read the session token and its endpoints.',
   },
   {
     key: 'mindeckFiles',
@@ -512,6 +512,14 @@ const SERVICE_ROLES: ServiceRole[] = [
     title: 'Mindeck file library',
     mode: 'service',
     note: 'Registers the file-library tools while the library is available and serves the sidebar page over its Remote.',
+  },
+  {
+    key: 'mindeckEmployees',
+    pkg: 'mindeck-employees',
+    title: 'Mindeck digital employees',
+    mode: 'service',
+    consumers: ['mindeck-models'],
+    note: 'Registers the general assistant and each digital employee as an agent preset, streams the employee cards to the new-conversation screen, and names the employee of a live conversation for gateway requests.',
   },
   {
     key: 'mindeckSkills',

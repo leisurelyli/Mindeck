@@ -89,6 +89,7 @@ export const SERVICE_PAGE: Record<string, string> = {
   authorization: 'credentials.md',
   deepseekAccount: 'credentials.md',
   mindeckAccount: 'mindeck.md',
+  mindeckEmployees: 'mindeck.md',
   mindeckFiles: 'mindeck.md',
   mindeckSkills: 'mindeck.md',
   credentials: 'credentials.md',
@@ -1121,6 +1122,7 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   LibraryAvailability: 'Mindeck file-library availability is owned by packages/mindeck/mindeck-files/README.md',
   LibraryEntryView: 'Mindeck file-library entries are owned by packages/mindeck/mindeck-files/README.md',
   LibrarySpaceView: 'Mindeck file-library spaces are owned by packages/mindeck/mindeck-files/README.md',
+  MindeckEmployeeCatalog: 'Mindeck digital-employee cards are owned by packages/mindeck/mindeck-employees/README.md',
   MindeckSkillCatalog: 'Mindeck company-skill listings are owned by packages/mindeck/mindeck-skills/README.md',
 }
 

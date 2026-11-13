@@ -3,11 +3,17 @@ import { Button, IconCloseOutlineRegular, Modal } from '@deepseek-ai/dsh-client-
 import type { MindeckAccountKey } from './locales.ts'
 import css from './Account.module.css'
 
-/** @param props - build version, the account's company and Cloud address, dialog close, and localized copy. @returns the about dialog. */
-export function AboutDialog({ appVersion, companyName, cloudUrl, close, t }: {
+/**
+ * @param props - build version, the account's company, Cloud address, and administrator contact, dialog close, and
+ *   localized copy.
+ * @returns the about dialog.
+ */
+export function AboutDialog({ appVersion, companyName, cloudUrl, adminContact, close, t }: {
   appVersion: string
   companyName: string | null
   cloudUrl: string | null
+  /** How members reach an administrator; null when the company set none. */
+  adminContact: string | null
   close: () => void
   t: (key: MindeckAccountKey) => string
 }) {
@@ -24,6 +30,7 @@ export function AboutDialog({ appVersion, companyName, cloudUrl, close, t }: {
       <dd>{appVersion === '' ? '—' : `${t('aboutVersion')} ${appVersion}`}</dd>
       {companyName !== null && <><dt>{t('company')}</dt><dd>{companyName}</dd></>}
       {cloudUrl !== null && <><dt>{t('cloudAddress')}</dt><dd className={css.mono}>{cloudUrl}</dd></>}
+      {adminContact !== null && <><dt>{t('aboutContact')}</dt><dd>{adminContact}</dd></>}
     </dl>
     <p className={`${css.dialogText} ${css.dialogNote}`}>{t('aboutPrivacyNote')}</p>
     <div className={css.dialogActions}>

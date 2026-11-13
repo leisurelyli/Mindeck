@@ -6,12 +6,13 @@ import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { StaticRemoteAccess } from '@deepseek-ai/dsh-client-test-runtime'
 import { RemoteError, type RemoteResult, type TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
 import type { MindeckAccountView } from '../src/types.ts'
+import type { AccountView } from '@deepseek-ai/dsh-deepseek-account/types'
 import type { MindeckAccountInjected } from '../src/client/operations.ts'
 import { mountAccount } from '../src/client/mount.ts'
 
 const contribution: TypertRemoteContribution = { package: '@deepseek-ai/dsh-mindeck-account', descriptors: [] }
 const signedOut: MindeckAccountView = {
-  cloudUrl: 'https://cloud.example.com', status: 'signed-out', user: null, companyName: null, notice: null, attempt: null, quota: null,
+  cloudUrl: 'https://cloud.example.com', status: 'signed-out', user: null, companyName: null, notice: null, attempt: null, quota: null, adminContact: null, personalDeepSeek: false,
 }
 
 /** Host state frames the fake `watch` stream delivers in order. */
@@ -83,6 +84,10 @@ it('registers the gate, launcher, section, its icon, the quota notice and remind
     const dispose = await mountAccount(f.ctx, contribution)
     expect(f.ctx.slots.entries('shell.overlay')).toHaveLength(1)
     expect(f.ctx.slots.entries('settings.launcher')).toHaveLength(1)
+    // The DeepSeek account launcher registers at the default priority beside it; the lower priority renders.
+    const deepseekLauncher = f.ctx.slots.register({ name: 'settings.launcher' } as never, () => null)
+    expect(f.ctx.slots.entries('settings.launcher').map(entry => entry.options.priority ?? 0).sort()).toEqual([-1, 0])
+    deepseekLauncher()
     expect(f.ctx.slots.entries('settings.section')).toHaveLength(1)
     expect(f.ctx.slots.entries('settings.section.icon').map(entry => entry.options.id)).toEqual(['mindeck-account'])
     expect(f.ctx.slots.entries('conversation.input.dock').map(entry => entry.options.id)).toEqual(['mindeck-quota'])
@@ -136,5 +141,44 @@ it('starts sign-in only after the address is accepted and names each refusal', a
     f.remote.signOut.mockResolvedValueOnce({ ok: false, error: new RemoteError('mindeck-account/storage', 'store failed', {}) })
     expect(await face.signOut()).toEqual({ ok: false, reason: 'storage' })
     expect(await face.signOut()).toEqual({ ok: true })
+  } finally { await f.ctx.fiber.dispose() }
+})
+
+it('signs out a personal DeepSeek account the company does not allow, and leaves an allowed one', async () => {
+  const f = await fixture()
+  const deepseek: Array<AccountView> = []
+  let wake: (() => void) | undefined
+  const account = {
+    async *watch(signal: AbortSignal): AsyncIterable<AccountView> {
+      while (!signal.aborted) {
+        const next = deepseek.shift()
+        if (next !== undefined) { yield next; continue }
+        await new Promise<void>((resolve) => { wake = resolve; signal.addEventListener('abort', () => { resolve() }, { once: true }) })
+      }
+    },
+    signOut: vi.fn(async (): Promise<RemoteResult<AccountView>> => ({ ok: true, value: stored })),
+    startSignIn: vi.fn(),
+    cancelSignIn: vi.fn(),
+  }
+  const stored: AccountView = {
+    status: 'credential-stored', attempt: null,
+    links: { usageUrl: 'https://platform.deepseek.com/usage', topUpUrl: 'https://platform.deepseek.com/top_up' },
+  }
+  const member: MindeckAccountView = {
+    ...signedOut, status: 'signed-in', companyName: '星河科技',
+    user: { id: 'u1', name: '林晓', email: 'lin@example.com', role: 'user', department: null },
+  }
+  try {
+    f.ctx.provide('remote.account', account as never)
+    await mountAccount(f.ctx, contribution)
+    const face = operations(f.ctx.slots.entries('settings.section')[0])
+    f.frames.push({ ...member, personalDeepSeek: true })
+    deepseek.push(stored); wake?.()
+    await vi.waitFor(() => { expect(face.hooks.personal.getSnapshot().view).toEqual(stored) })
+    await vi.waitFor(() => { expect(face.hooks.account.getSnapshot().view?.personalDeepSeek).toBe(true) })
+    expect(account.signOut).not.toHaveBeenCalled()
+
+    f.frames.push({ ...member, personalDeepSeek: false })
+    await vi.waitFor(() => { expect(account.signOut).toHaveBeenCalledOnce() })
   } finally { await f.ctx.fiber.dispose() }
 })
