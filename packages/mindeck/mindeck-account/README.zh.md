@@ -27,7 +27,7 @@ kind: "package-reference"
 
 在 Host 上与凭据、设置和 Typert 服务一起挂载默认导出，并在 Web 客户端挂载 `./client` 入口。Mindeck 应用组合包已完成这两项。
 
-登录对话框先请成员输入管理员提供的云端地址，例如 `cloud.example.com`；不带协议的地址按 HTTPS 处理。只有当该地址的桌面 API 以 Mindeck Cloud 的方式应答时，Host 才接受它，并将其保存到插件的 `cloudUrl` 配置字段。部署可以预设该字段，成员只能在未登录时修改。随后对话框显示一个代码和指向云端确认页面的**打开浏览器**链接。成员在该页面确认代码后，桌面端上报设备名称、平台和应用版本，读取成员信息并保存会话。设置 → 账号显示成员、公司、部门和角色，提供 Mindeck Cloud 链接和退出登录。侧栏菜单可打开设置和 Mindeck Cloud，也可退出登录。
+登录对话框先请成员输入管理员提供的云端地址，例如 `cloud.example.com`；不带协议的地址按 HTTPS 处理。在输入框中粘贴整段开通消息时，只保留其中第一个网址。只有当该地址的桌面 API 以 Mindeck Cloud 的方式应答时，Host 才接受它，并将其保存到插件的 `cloudUrl` 配置字段。部署可以用 profile 补丁中 `- id: mindeck-account` 行的 `config` 预设 `cloudUrl`，成员即可跳过填写地址；成员只能在未登录时修改。随后对话框显示一个代码、代码过期前的剩余时间和指向云端确认页面的**打开浏览器**链接；成员点击**登录**的那个窗口还会自动在浏览器中打开该页面。成员在该页面确认代码后，桌面端上报设备名称、平台和应用版本，读取成员信息并保存会话。设置 → 账号显示成员、公司、部门和角色，提供 Mindeck Cloud 链接和退出登录。侧栏菜单可打开设置和 Mindeck Cloud，也可退出登录。
 
 退出登录会立即删除本机会话，并在后台结束其在 Mindeck Cloud 上的会话。当 Mindeck Cloud 拒绝该会话时，例如管理员停用成员或让设备退出登录后，会话结束，对话框请成员重新登录。
 
@@ -43,7 +43,7 @@ kind: "package-reference"
 <details>
 <summary>维护者细节 — 点击展开</summary>
 
-Host 服务继承 `TypertRemoteService`，Remote 命名空间为 `mindeckAccount`。它同一时间最多持有一个登录尝试；`startSignIn` 会加入正在进行的尝试，`cancelSignIn` 中止尝试并等待其结束。一次尝试会请求设备码，按 Mindeck Cloud 返回的间隔轮询令牌端点（每收到一次 `slow_down` 延长五秒），上报设备，读取 `/api/desktop/bootstrap`，再把 `{ version: 1, cloudUrl, token, bootstrap }` 保存为 `mindeck-account/default` 授权记录。若令牌签发后尝试失败，Host 会在 Mindeck Cloud 上结束该令牌，不留下孤立会话。未通过校验的已存记录视为未登录。
+Host 服务继承 `TypertRemoteService`，Remote 命名空间为 `mindeckAccount`。它同一时间最多持有一个登录尝试；`startSignIn` 会加入正在进行的尝试，`cancelSignIn` 中止尝试并等待其结束。一次尝试会请求设备码，按 Mindeck Cloud 返回的间隔轮询令牌端点（每收到一次 `slow_down` 延长五秒；某次轮询没有收到响应时，尝试的 `retrying` 标记置为真，并继续轮询到代码过期），上报设备，读取 `/api/desktop/bootstrap`，再把 `{ version: 1, cloudUrl, token, bootstrap }` 保存为 `mindeck-account/default` 授权记录。若令牌签发后尝试失败，Host 会在 Mindeck Cloud 上结束该令牌，不留下孤立会话。未通过校验的已存记录视为未登录。
 
 启动时 Host 会重新读取 bootstrap：401 结束会话，变化的信息替换缓存，云端不可达时保留会话以便离线使用。`rejectToken` 只在会话仍持有被拒绝的令牌时才删除会话，因此迟到的拒绝不会结束较新的登录。
 

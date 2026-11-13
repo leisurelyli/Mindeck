@@ -14,6 +14,8 @@ export interface FakeCloud {
   readonly devices: unknown[]
   /** Tokens that still authenticate. */
   readonly tokens: Set<string>
+  /** Polls whose connection is closed without an answer, before any other outcome. */
+  droppedPolls: number
   /** Polls that answer `authorization_pending` before {@link outcome} applies. */
   pendingPolls: number
   outcome: TokenOutcome
@@ -73,6 +75,7 @@ export async function startFakeCloud(): Promise<FakeCloud> {
           if (polls >= waiter.count) waiter.resolve()
           else waiters.push(waiter)
         }
+        if (cloud.droppedPolls > 0) { cloud.droppedPolls--; request.socket.destroy(); return }
         if (cloud.pendingPolls > 0) { cloud.pendingPolls--; reply(response, 400, { error: 'authorization_pending' }); return }
         if (cloud.outcome === 'deny') { reply(response, 400, { error: 'access_denied' }); return }
         if (cloud.outcome === 'expire') { reply(response, 400, { error: 'expired_token' }); return }
@@ -101,7 +104,7 @@ export async function startFakeCloud(): Promise<FakeCloud> {
   if (address === null || typeof address === 'string') throw new Error('Expected a loopback listener')
   const cloud: FakeCloud = {
     url: `http://127.0.0.1:${address.port}`,
-    requests: [], devices: [], tokens: new Set(), pendingPolls: 0, outcome: 'issue', userName: '林晓',
+    requests: [], devices: [], tokens: new Set(), droppedPolls: 0, pendingPolls: 0, outcome: 'issue', userName: '林晓',
     polled: count => polls >= count ? Promise.resolve() : new Promise((resolve) => { waiters.push({ count, resolve }) }),
     close: async () => {
       if (!server.listening) return

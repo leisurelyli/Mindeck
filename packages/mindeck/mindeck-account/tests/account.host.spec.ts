@@ -109,6 +109,19 @@ it('signs in with a device code, reports the device, and stores the session with
   await vi.waitFor(() => { expect(f.cloud.tokens.has(token)).toBe(false) })
 })
 
+it('keeps waiting through a lost connection while polling and reports that it is reconnecting', async () => {
+  const f = await fixture()
+  f.cloud.droppedPolls = Number.POSITIVE_INFINITY
+  f.cloud.pendingPolls = Number.POSITIVE_INFINITY
+  await f.account().startSignIn('1.2.3')
+  await vi.waitFor(async () => { expect((await f.state()).attempt).toMatchObject({ phase: 'waiting', retrying: true }) })
+  f.cloud.droppedPolls = 0
+  await vi.waitFor(async () => { expect((await f.state()).attempt).toMatchObject({ phase: 'waiting', retrying: false }) })
+  f.cloud.pendingPolls = 0
+  await signIn(f)
+  expect((await f.state()).attempt).not.toHaveProperty('retrying')
+})
+
 it('reports declined and expired codes and cancels a waiting attempt', async () => {
   const f = await fixture()
   f.cloud.outcome = 'deny'

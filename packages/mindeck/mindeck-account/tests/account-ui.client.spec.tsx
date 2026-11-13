@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /** The sign-in gate and the settings page follow Host state and report outcomes in the member's words. */
 import { afterEach, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { brandString } from '@deepseek-ai/dsh-brand'
@@ -11,6 +11,7 @@ import type { MindeckAccountSnapshot, OperationOutcome } from '../src/client/ope
 import { SignInGate, type SignInGateProps } from '../src/client/SignInGate.tsx'
 import { AccountSection, type AccountSectionProps } from '../src/client/AccountSection.tsx'
 import { QuotaNotice, type QuotaNoticeProps } from '../src/client/QuotaNotice.tsx'
+import { cloudUrlInText } from '../src/client/address.ts'
 
 afterEach(cleanup)
 
@@ -89,6 +90,46 @@ it('shows the code to confirm in the browser and cancels the attempt', async () 
   f.set({ ...signedOut, cloudUrl: 'https://cloud.example.com', attempt: { id: attemptId, phase: 'cancelled' } })
   expect(view.getByRole('button', { name: en.signIn })).toBeTruthy()
   expect(view.queryByRole('alert')).toBeNull()
+})
+
+it('counts the code down, says when it reconnects, and opens the browser once in the window that chose Sign in', async () => {
+  const open = vi.spyOn(window, 'open').mockReturnValue(null)
+  try {
+    const ready: MindeckAccountView = { ...signedOut, cloudUrl: 'https://cloud.example.com' }
+    const url = 'https://cloud.example.com/device?user_code=ABCDEFGH'
+    const attempt = { id: attemptId, phase: 'waiting', userCode: 'ABCDEFGH', verificationUrl: url, expiresAt: Date.now() + 125_000 } as const
+    const waiting: MindeckAccountView = { ...ready, attempt }
+    // Two windows show the same attempt; only the second one chose Sign in.
+    const watcher = fixture(ready)
+    render(<SignInGate {...watcher.props} />)
+    const f = fixture(ready)
+    render(<SignInGate {...f.props} />)
+    fireEvent.click(screen.getAllByRole('button', { name: en.signIn })[1] as HTMLElement)
+    await vi.waitFor(() => { expect(f.operations.startSignIn).toHaveBeenCalledOnce() })
+    watcher.set(waiting)
+    f.set(waiting)
+    expect(open).toHaveBeenCalledOnce()
+    expect(open).toHaveBeenCalledWith(url, '_blank', 'noopener,noreferrer')
+    expect(screen.getAllByText('The code expires in 2:05.')).toHaveLength(2)
+
+    f.set({ ...ready, attempt: { ...attempt, retrying: true } })
+    expect(screen.getByText(en.reconnecting).getAttribute('role')).toBe('status')
+    expect(open).toHaveBeenCalledOnce()
+    expect(watcher.operations.startSignIn).not.toHaveBeenCalled()
+  } finally {
+    open.mockRestore()
+  }
+})
+
+it('takes the Cloud address out of a pasted account message', () => {
+  expect(cloudUrlInText('Mindeck Cloud 地址：https://cloud.example.com/mindeck。账号：lin@example.com')).toBe('https://cloud.example.com/mindeck')
+  expect(cloudUrlInText('Open https://cloud.example.com. Then sign in')).toBe('https://cloud.example.com')
+  expect(cloudUrlInText('cloud.example.com')).toBeUndefined()
+  const f = fixture(signedOut)
+  const view = render(<SignInGate {...f.props} />)
+  const input = view.getByLabelText(en.cloudUrlLabel) as HTMLInputElement
+  fireEvent.paste(input, { clipboardData: { getData: () => '你的 Mindeck 账号已开通。\nMindeck Cloud 地址：https://cloud.example.com\n账号：lin@example.com' } })
+  expect(input.value).toBe('https://cloud.example.com')
 })
 
 it('explains a failed attempt or an ended session and lets the member retry or change the address', async () => {

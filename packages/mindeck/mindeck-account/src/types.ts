@@ -25,6 +25,8 @@ export interface MindeckSignInAttempt {
   readonly verificationUrl?: string
   /** Epoch milliseconds after which the code is no longer accepted. */
   readonly expiresAt?: number
+  /** True while waiting when the last poll did not reach Mindeck Cloud; polling continues until the code expires. */
+  readonly retrying?: boolean
   readonly errorCode?: MindeckAccountErrorCode
 }
 

@@ -1,9 +1,10 @@
 /** Cloud address and device sign-in steps shared by the sign-in gate and the settings section. */
-import { useEffect, useId, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type ClipboardEvent, type FormEvent } from 'react'
 import { Button, IconLoadingOutlineRegular, Input } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { MindeckAccountView } from '../types.ts'
 import type { MindeckAccountKey } from './locales.ts'
 import { attemptErrorKey, type MindeckAccountInjected } from './operations.ts'
+import { cloudUrlInText } from './address.ts'
 import css from './Account.module.css'
 
 /** Groups an eight-character code as `XXXX-XXXX`, the way the Mindeck Cloud confirmation page shows it. */
@@ -11,16 +12,39 @@ function displayUserCode(code: string): string {
   return /^[A-Z0-9]{8}$/i.test(code) ? `${code.slice(0, 4)}-${code.slice(4)}`.toUpperCase() : code
 }
 
+/** Remaining time as `m:ss`. */
+function formatRemaining(ms: number): string {
+  const seconds = Math.max(0, Math.ceil(ms / 1000))
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
+}
+
+/**
+ * Current time, refreshed every second while `active`.
+ * @param active - whether a countdown is visible.
+ * @returns epoch milliseconds.
+ */
+function useNow(active: boolean): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!active) return
+    setNow(Date.now())
+    const timer = setInterval(() => { setNow(Date.now()) }, 1000)
+    return () => { clearInterval(timer) }
+  }, [active])
+  return now
+}
+
 /** Props of {@link SignInPanel}. */
 export interface SignInPanelProps extends Pick<MindeckAccountInjected, 'connect' | 'startSignIn' | 'cancelSignIn'> {
   /** Signed-out account state. */
   view: MindeckAccountView
-  t: (key: MindeckAccountKey) => string
+  t: (key: MindeckAccountKey, params?: Record<string, string>) => string
 }
 
 /**
  * The address form appears until an address is set and again on "Change address"; the sign-in steps follow the
- * Host attempt, so every window shows the same code.
+ * Host attempt, so every window shows the same code. The window where the member chose Sign in opens the approval
+ * page in the browser once the code arrives.
  * @param props - signed-out state, localized copy, and account operations.
  * @returns the current sign-in step.
  */
@@ -34,7 +58,17 @@ export function SignInPanel({ view, t, connect, startSignIn, cancelSignIn }: Sig
   const hintId = useId()
   const attempt = view.attempt
   const phase = attempt?.phase
+  const now = useNow(phase === 'waiting' && attempt?.expiresAt !== undefined)
+  const requestedHere = useRef(false)
+  const openedFor = useRef<string | null>(null)
   useEffect(() => { setCopied(null) }, [attempt?.id])
+  useEffect(() => {
+    const url = attempt?.verificationUrl
+    if (phase !== 'waiting' || url === undefined || !requestedHere.current || openedFor.current === attempt?.id) return
+    requestedHere.current = false
+    openedFor.current = attempt?.id ?? null
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }, [phase, attempt?.id, attempt?.verificationUrl])
   useEffect(() => {
     if (copied === null) return
     const timer = setTimeout(() => { setCopied(null) }, 2000)
@@ -57,6 +91,18 @@ export function SignInPanel({ view, t, connect, startSignIn, cancelSignIn }: Sig
     if (attempt === null) return
     setBusy(true)
     void cancelSignIn(attempt.id).catch(() => { setError('failed') }).finally(() => { setBusy(false) })
+  }
+  const signIn = (): void => {
+    requestedHere.current = true
+    void run(startSignIn).then((ok) => { if (!ok) requestedHere.current = false })
+  }
+  const paste = (event: ClipboardEvent<HTMLInputElement>): void => {
+    const text = event.clipboardData.getData('text')
+    const found = cloudUrlInText(text)
+    if (found === undefined || found === text.trim()) return
+    event.preventDefault()
+    setAddress(found)
+    setError(null)
   }
   const copyLink = async (url: string): Promise<void> => {
     try { await navigator.clipboard.writeText(url); setCopied('copiedLink') } catch { setCopied('copyFailed') }
@@ -81,6 +127,9 @@ export function SignInPanel({ view, t, connect, startSignIn, cancelSignIn }: Sig
           <span className={css.secondary}>{t('waitingDescription')}</span>
         </div>
         <output className={css.code} aria-label={t('waitingTitle')}>{displayUserCode(attempt.userCode)}</output>
+        {attempt.retrying === true
+          ? <p className={css.progress} role="status"><IconLoadingOutlineRegular className={css.spinner} />{t('reconnecting')}</p>
+          : attempt.expiresAt !== undefined && <p className={css.secondary}>{t('expiresIn', { time: formatRemaining(attempt.expiresAt - now) })}</p>}
         <div className={css.actions}>
           <Button variant="outline" disabled={busy} onClick={cancel}>{t('cancel')}</Button>
           <Button variant="outline" onClick={() => { void copyLink(url) }}>{t(copied ?? 'copyLink')}</Button>
@@ -95,7 +144,7 @@ export function SignInPanel({ view, t, connect, startSignIn, cancelSignIn }: Sig
         <label htmlFor={inputId} className={css.label}>{t('cloudUrlLabel')}</label>
         <Input id={inputId} value={address} autoFocus spellCheck={false} autoCapitalize="off" autoComplete="url" inputMode="url"
           placeholder={t('cloudUrlPlaceholder')} disabled={busy} aria-invalid={error !== null} aria-describedby={hintId}
-          onChange={(event) => { setAddress(event.target.value); setError(null) }} />
+          onChange={(event) => { setAddress(event.target.value); setError(null) }} onPaste={paste} />
         <span id={hintId} className={error === null ? css.secondary : css.error} role={error === null ? undefined : 'alert'}>
           {t(error ?? 'cloudUrlHint')}
         </span>
@@ -123,7 +172,7 @@ export function SignInPanel({ view, t, connect, startSignIn, cancelSignIn }: Sig
       </div>
       {noticeKey !== null && <p className={css.error} role="alert">{t(noticeKey)}</p>}
       <div className={css.actions}>
-        <Button variant="primary" disabled={busy} onClick={() => { void run(startSignIn) }}>
+        <Button variant="primary" disabled={busy} onClick={signIn}>
           {t(phase === 'failed' ? 'retry' : 'signIn')}
         </Button>
       </div>

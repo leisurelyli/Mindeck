@@ -348,7 +348,15 @@ export default class MindeckAccount extends TypertRemoteService {
       while (issued === undefined) {
         await sleep(interval, undefined, { signal })
         if (Date.now() >= expiresAt) throw new MindeckCloudError('expired', 'the sign-in code expired')
-        const poll = await this.request(signal, request => pollDeviceToken(cloudUrl, code.deviceCode, request))
+        let poll: Awaited<ReturnType<typeof pollDeviceToken>>
+        try { poll = await this.request(signal, request => pollDeviceToken(cloudUrl, code.deviceCode, request)) }
+        catch (error) {
+          // A lost connection while waiting is retried until the code expires; the panel says it is reconnecting.
+          if (!(error instanceof MindeckCloudError && error.code === 'unreachable')) throw error
+          if (attempt.view.retrying !== true) this.update(attempt, { phase: 'waiting', retrying: true })
+          continue
+        }
+        if (attempt.view.retrying === true) this.update(attempt, { phase: 'waiting', retrying: false })
         switch (poll.status) {
           case 'pending': break
           case 'slow-down': interval += 5000; break
@@ -394,7 +402,7 @@ export default class MindeckAccount extends TypertRemoteService {
   }
 
   private update(attempt: Attempt, view: Partial<MindeckSignInAttempt>, accountChanged = false): void {
-    const { userCode: _code, verificationUrl: _url, expiresAt: _expires, ...kept } = attempt.view
+    const { userCode: _code, verificationUrl: _url, expiresAt: _expires, retrying: _retrying, ...kept } = attempt.view
     attempt.view = view.phase === 'waiting' ? { ...attempt.view, ...view } : { ...kept, ...view }
     this.changed(accountChanged)
   }
