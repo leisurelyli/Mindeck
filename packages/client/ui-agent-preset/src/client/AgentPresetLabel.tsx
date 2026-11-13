@@ -16,7 +16,7 @@ import { IconAgentPresetOutlineRegular } from '@deepseek-ai/dsh-client-ui-primit
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-agent-preset-registry/types'
 import type { AgentPresetSettingsState } from './settings-store.ts'
-import { presetDisplayText } from './locales.ts'
+import { presetDisplayText, type PresetTextResolver } from './locales.ts'
 import css from './AgentPresetLabel.module.css'
 
 /** Registration-side business face for the header label. */
@@ -27,6 +27,8 @@ export interface AgentPresetLabelInjected {
   }
   /** Read the roster, so the label can show a name rather than an id. */
   load: () => Promise<void>
+  /** Pick the active locale's entry of a preset's published name or description. */
+  resolveText: PresetTextResolver
 }
 
 /** Full component props. */
@@ -41,7 +43,7 @@ export type AgentPresetLabelProps =
  * @returns the label, or null when the session records no preset.
  */
 export function AgentPresetLabel({
-  sessionId, useSessions, useAgentPresets, load, t,
+  sessionId, useSessions, useAgentPresets, load, resolveText, t,
 }: AgentPresetLabelProps) {
   const preset = useSessions((state) => {
     const value = state.byId[sessionId]?.projectionValues?.agentPreset
@@ -58,7 +60,7 @@ export function AgentPresetLabel({
   if (preset === undefined) return null
 
   const option = options.find(entry => entry.id === preset)
-  const text = option === undefined ? undefined : presetDisplayText(option, t)
+  const text = option === undefined ? undefined : presetDisplayText(option, t, resolveText)
   return (
     <span className={css.label} title={text?.description ?? t('headerHint')}>
       <IconAgentPresetOutlineRegular size={14} className={css.icon} />

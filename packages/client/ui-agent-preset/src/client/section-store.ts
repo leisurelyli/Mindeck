@@ -2,15 +2,15 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
-import type { AgentPresetRow } from '@deepseek-ai/dsh-agent-preset-registry/types'
+import type { AgentPresetDocument, AgentPresetRow } from '@deepseek-ai/dsh-agent-preset-registry/types'
 import { AGENT_PRESET_SETTINGS_NS, requiresCodingTools, writeDefaultPreset } from './settings-store.ts'
 
 /** The read-only composition viewer over one preset. */
 export interface PresetView {
   /** The preset being read. */
   id: string
-  /** Display name the preset published, or its id. */
-  title: string
+  /** Display name the preset published; absent when it published none. */
+  name?: NonNullable<AgentPresetDocument['name']>
   /** The declared child plugin list as YAML. */
   content: string
 }
@@ -63,7 +63,7 @@ export class AgentPresetSectionController {
       if (request !== this.viewRequest) return
       if (!result.ok) throw new Error(result.error.message)
       const { name, content } = result.value
-      this.set({ view: { id, title: name ?? id, content } })
+      this.set({ view: { id, ...name === undefined ? {} : { name }, content } })
     } catch (error) { if (request === this.viewRequest) this.set({ error: message(error) }) }
   }
   /** Close the viewer. */

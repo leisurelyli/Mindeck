@@ -1,6 +1,7 @@
 /** Plugin inventory from declared configuration or an activated revision. */
 import { FiberState } from '@deepseek-ai/cordis'
 import { isJsExpr, type EntryTree } from '@deepseek-ai/cordis-plugin-loader'
+import type { LocalizedText } from '@deepseek-ai/dsh-package-manifest'
 import { entryListProblem } from './definition.ts'
 
 /**
@@ -38,8 +39,8 @@ export interface AgentPresetCompositionRow {
 export interface AgentPresetComposition {
   /** Stable preset id. */
   readonly id: string
-  /** Display name the preset published. */
-  readonly name?: string
+  /** Display name the preset published; clients resolve translations in the active locale. */
+  readonly name?: LocalizedText
   /** Whether a session naming no preset composes this one. */
   readonly isDefault: boolean
   /** Why this preset's rows cannot be read; absent when {@link rows} answers. */

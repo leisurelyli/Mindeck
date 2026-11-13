@@ -79,17 +79,20 @@ export function withPersona(rows: PresetRows, prefix: string): PresetRows {
  * Define the general assistant's preset.
  * @param rows - the base preset's rows.
  * @param persona - the deployment's general persona prefix.
- * @returns the general assistant's preset.
+ * @returns the general assistant's preset, named and described in English and Chinese.
  */
 export function generalDefinition(rows: PresetRows, persona: string): PresetDefinition {
   return {
-    id: GENERAL_PRESET_ID, name: '通用助手', description: '写作、分析、整理资料、处理文件，什么都可以问。',
+    id: GENERAL_PRESET_ID,
+    name: { en: 'General assistant', zh: '通用助手' },
+    description: { en: 'Writing, analysis, research, files: ask anything.', zh: '写作、分析、整理资料、处理文件，什么都可以问。' },
     order: GENERAL_ORDER, plugins: withPersona(rows, persona),
   }
 }
 
 /**
- * Define one digital employee's preset, named and ordered by whether it is a draft or retired.
+ * Define one digital employee's preset, named and ordered by whether it is a draft or retired. The Cloud name and
+ * tagline stay as written; the draft and retired suffixes and the retired description come in English and Chinese.
  * @param rows - the base preset's rows.
  * @param employee - the cached employee.
  * @param index - its position among the member's employees, current ones first.
@@ -101,12 +104,17 @@ export function employeeDefinition(rows: PresetRows, employee: CachedEmployee, i
   const id = employeePresetId(employee.id)
   if (employee.retired) {
     return {
-      id, name: `${employee.name}（已停用）`, description: '管理员已停用这位数字员工，可以继续之前的对话。',
+      id,
+      name: { en: `${employee.name} (deactivated)`, zh: `${employee.name}（已停用）` },
+      description: {
+        en: 'An administrator deactivated this digital employee. Earlier conversations can continue.',
+        zh: '管理员已停用这位数字员工，可以继续之前的对话。',
+      },
       order: RETIRED_ORDER + index, listed: false, plugins,
     }
   }
   return {
-    id, name: employee.draft ? `${employee.name}（草稿）` : employee.name,
+    id, name: employee.draft ? { en: `${employee.name} (draft)`, zh: `${employee.name}（草稿）` } : employee.name,
     ...employee.tagline === '' ? {} : { description: employee.tagline },
     order: EMPLOYEE_ORDER + index, plugins,
   }

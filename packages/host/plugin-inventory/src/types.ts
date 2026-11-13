@@ -1,5 +1,5 @@
 import type { Branded } from '@deepseek-ai/dsh-brand'
-import type { PluginLocalizedMeta } from '@deepseek-ai/dsh-package-manifest'
+import type { LocalizedText, PluginLocalizedMeta } from '@deepseek-ai/dsh-package-manifest'
 
 /** Stable Loader-tree identity of one configured plugin entry. */
 export type PluginEntryId = Branded<'PluginEntryId'>
@@ -54,8 +54,8 @@ export interface AgentPresetPluginRow {
 export interface AgentPresetPluginGroup {
   /** Stable preset id. */
   readonly id: string
-  /** Display name the preset published; a reader falls back to the id. */
-  readonly name?: string
+  /** Display name the preset published, possibly as translations; a reader falls back to the id. */
+  readonly name?: LocalizedText
   /** Whether a session naming no preset composes this one. */
   readonly isDefault: boolean
   /** Why this preset's composition cannot be read; absent when rows answer. */

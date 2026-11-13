@@ -435,9 +435,11 @@ describe('ui-agent-preset apply', () => {
       .toEqual([{ id: 'standard', isDefault: true }])
     await section.view('standard')
     expect(section.hooks.agentPresetSection.getSnapshot().view)
-      .toEqual({ id: 'standard', title: 'standard', content: '# standard\n[]\n' })
+      .toEqual({ id: 'standard', content: '# standard\n[]\n' })
     section.closeView()
     expect(section.hooks.agentPresetSection.getSnapshot().view).toBeNull()
+    // The bench stages zh, so published translations resolve to their Chinese entry.
+    expect(section.resolveText({ en: 'General assistant', zh: '通用助手' })).toBe('通用助手')
   })
 
   it('refreshes a showing surface when its namespace changes, and ignores others', async () => {

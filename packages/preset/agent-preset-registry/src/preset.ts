@@ -1,10 +1,13 @@
 import type { Volatile } from '@deepseek-ai/cordis'
+import type { LocalizedText } from '@deepseek-ai/dsh-package-manifest'
 /** Public preset roster and selection configuration. */
 /** One declared preset and its current activation failure, if any. */
 export interface AgentPreset {
   readonly id: string
-  readonly name?: string
-  readonly description?: string
+  /** Display name as the definition published it. */
+  readonly name?: LocalizedText
+  /** Description as the definition published it. */
+  readonly description?: LocalizedText
   readonly order?: number
   /** `false` when the preset is not offered for new conversations; see `PresetDefinition.listed`. */
   readonly listed?: false

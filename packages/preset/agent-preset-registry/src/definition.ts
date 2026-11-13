@@ -1,11 +1,14 @@
 /** Declarative preset configuration and YAML validation. */
 import type { EntryOptions, JsExpr } from '@deepseek-ai/cordis-plugin-loader'
+import type { LocalizedText } from '@deepseek-ai/dsh-package-manifest'
 
 /** Identity, display fields and child Cordis plugins of one preset. */
 export interface PresetDefinition {
   readonly id: string
-  readonly name?: string
-  readonly description?: string
+  /** Display name: one literal, or translations keyed by lowercase language id with a required English entry. */
+  readonly name?: LocalizedText
+  /** One sentence on what this preset is for, as a literal or translations like {@link name}. */
+  readonly description?: LocalizedText
   readonly order?: number
   /**
    * `false` keeps the preset out of selection for new conversations: pickers omit it and `select` refuses it for a

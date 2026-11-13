@@ -23,10 +23,12 @@ const t = ((key: PluginInventoryLocaleKey, params?: Record<string, string>): str
     en[key],
   )) as PluginInventorySettingsTabProps['t']
 
+const englishText: PluginInventorySettingsTabInjected['resolveText'] = text => typeof text === 'string' ? text : text.en
+
 function props(
   list: PluginInventorySettingsTabInjected['list'],
-  presetName: PluginInventorySettingsTabInjected['presetName'] = preset => preset.name ?? preset.id,
-  resolveText: PluginInventorySettingsTabInjected['resolveText'] = text => typeof text === 'string' ? text : text.en,
+  presetName: PluginInventorySettingsTabInjected['presetName'] = preset => preset.name === undefined ? preset.id : englishText(preset.name),
+  resolveText: PluginInventorySettingsTabInjected['resolveText'] = englishText,
 ): PluginInventorySettingsTabProps {
   return {
     t,
@@ -46,7 +48,7 @@ function localizedProps(list: PluginInventorySettingsTabInjected['list']) {
   ctx.effect(() => locale.register('settings.pluginInventory', 'zh', zh), 'test: Chinese inventory dictionary')
   locale.setLocale('en')
   const pageProps: PluginInventorySettingsTabProps = {
-    ...props(list, preset => preset.name ?? preset.id, text => locale.resolveText(text)),
+    ...props(list, preset => preset.name === undefined ? preset.id : locale.resolveText(preset.name), text => locale.resolveText(text)),
     t: locale.bind('settings.pluginInventory'),
   }
   return { locale, pageProps }
@@ -522,7 +524,7 @@ describe('PluginInventorySettingsTab', () => {
     // The resolver stands in for presetDisplayText: shipped presets localize,
     // user-authored ones keep their own metadata.
     const localized: PluginInventorySettingsTabInjected['presetName'] = preset =>
-      ['standard', 'ptc'].includes(preset.id) ? `Localized ${preset.id}` : preset.name ?? preset.id
+      ['standard', 'ptc'].includes(preset.id) ? `Localized ${preset.id}` : preset.name === undefined ? preset.id : englishText(preset.name)
     render(<PluginInventorySettingsTab {...props(async () => SNAPSHOT, localized)} />)
     await screen.findByRole('searchbox', { name: en.search })
 

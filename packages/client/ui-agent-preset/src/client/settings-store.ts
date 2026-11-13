@@ -41,9 +41,9 @@ export interface AgentPresetOption {
   /** Preset id, written to Settings and the label's fallback. */
   id: string
   /** Display name the preset published, absent when it published none. */
-  name?: string
+  name?: NonNullable<RosterPreset['name']>
   /** One sentence on what the preset is for. */
-  description?: string
+  description?: NonNullable<RosterPreset['description']>
   /** `false` when pickers offer the preset only to a Session already on it. */
   listed?: false
 }
@@ -121,7 +121,7 @@ export async function beginRosterRead<S extends { status: string; error: string 
  * @returns one option per selectable preset, in roster order.
  */
 export function presetOptions(
-  presets: readonly { id: string; name?: string; description?: string; listed?: false; broken?: string }[],
+  presets: readonly Pick<RosterPreset, 'id' | 'name' | 'description' | 'listed' | 'broken'>[],
 ): AgentPresetOption[] {
   return presets.filter(preset => preset.broken === undefined).map(preset => ({
     id: preset.id,

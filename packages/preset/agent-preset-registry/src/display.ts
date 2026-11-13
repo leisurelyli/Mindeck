@@ -1,11 +1,13 @@
 /**
  * Display resolution for roster presets, shared by every surface that renders
- * preset names: shipped presets resolve through locale dictionary keys, and
- * user-authored metadata is never translated. A pure fold with no imports, so
+ * preset names: shipped presets resolve through locale dictionary keys, a
+ * declaration's localized metadata resolves through the client locale, and
+ * literal metadata is never translated. A pure fold with no runtime imports, so
  * browser bundles inline it and the Host uses the same single home for which
  * shipped id carries which copy key.
  * @module @deepseek-ai/dsh-agent-preset-registry/display
  */
+import type { LocalizedText } from '@deepseek-ai/dsh-package-manifest'
 
 /** Dictionary keys carrying one shipped preset's display copy. */
 export type BuiltInPresetCopyKey =
@@ -18,11 +20,17 @@ export type BuiltInPresetCopyKey =
 export interface PresetDisplaySource {
   /** Stable preset id. */
   readonly id: string
-  /** Unlocalized name published by the preset. */
-  readonly name?: string
-  /** Unlocalized description published by the preset. */
-  readonly description?: string
+  /** Name published by the preset. */
+  readonly name?: LocalizedText
+  /** Description published by the preset. */
+  readonly description?: LocalizedText
 }
+
+/**
+ * Pick the active locale's entry of published preset text; a literal stays verbatim.
+ * Clients pass `ctx.locale.resolveText`.
+ */
+export type PresetTextResolver = (text: LocalizedText) => string
 
 /** Display copy resolved for the active locale. */
 export interface PresetDisplayText {
@@ -58,16 +66,18 @@ export function isBuiltInPreset(preset: PresetDisplaySource): boolean {
  * Resolve preset display copy without making user-authored metadata translatable.
  * @param preset - roster row whose copy is being rendered.
  * @param t - active locale lookup covering {@link BuiltInPresetCopyKey}.
- * @returns localized copy for a known shipped preset, otherwise declaration metadata.
+ * @param resolveText - active locale pick for the declaration's own metadata.
+ * @returns localized copy for a known shipped preset, otherwise the declaration's metadata in the active locale.
  */
 export function presetDisplayText(
   preset: PresetDisplaySource,
   t: (key: BuiltInPresetCopyKey) => string,
+  resolveText: PresetTextResolver,
 ): PresetDisplayText {
   const keys = isBuiltInPreset(preset) ? BUILT_IN_PRESET_KEYS[preset.id] : undefined
   if (keys !== undefined) return { name: t(keys.name), description: t(keys.description) }
   return {
-    name: preset.name ?? preset.id,
-    ...preset.description === undefined ? {} : { description: preset.description },
+    name: preset.name === undefined ? preset.id : resolveText(preset.name),
+    ...preset.description === undefined ? {} : { description: resolveText(preset.description) },
   }
 }

@@ -175,9 +175,9 @@ it('registers the general assistant and each employee on the base preset\'s rows
   await f.ctx.plugin(MindeckEmployees, f.config)
   await vi.waitFor(async () => {
     expect(await f.roster()).toEqual([
-      { id: 'mindeck-general', name: '通用助手', description: '写作、分析、整理资料、处理文件，什么都可以问。' },
+      { id: 'mindeck-general', name: { en: 'General assistant', zh: '通用助手' }, description: { en: 'Writing, analysis, research, files: ask anything.', zh: '写作、分析、整理资料、处理文件，什么都可以问。' } },
       { id: 'mindeck-employee-e1', name: '法务专员', description: '审合同，答劳动用工问题' },
-      { id: 'mindeck-employee-e2', name: '销售助理（草稿）', description: '写方案和报价' },
+      { id: 'mindeck-employee-e2', name: { en: '销售助理 (draft)', zh: '销售助理（草稿）' }, description: '写方案和报价' },
     ])
   })
   expect(f.cloud.state.tokens).toContain('token-u1')
@@ -236,9 +236,12 @@ it('registers cached employees before Mindeck Cloud answers, keeps retired ones,
   release()
   await vi.waitFor(async () => {
     expect(await f.roster()).toEqual([
-      { id: 'mindeck-general', name: '通用助手', description: '写作、分析、整理资料、处理文件，什么都可以问。' },
-      { id: 'mindeck-employee-e2', name: '销售助理（草稿）', description: '写方案和报价' },
-      { id: 'mindeck-employee-e1', name: '法务专员（已停用）', description: '管理员已停用这位数字员工，可以继续之前的对话。' },
+      { id: 'mindeck-general', name: { en: 'General assistant', zh: '通用助手' }, description: { en: 'Writing, analysis, research, files: ask anything.', zh: '写作、分析、整理资料、处理文件，什么都可以问。' } },
+      { id: 'mindeck-employee-e2', name: { en: '销售助理 (draft)', zh: '销售助理（草稿）' }, description: '写方案和报价' },
+      {
+        id: 'mindeck-employee-e1', name: { en: '法务专员 (deactivated)', zh: '法务专员（已停用）' },
+        description: { en: 'An administrator deactivated this digital employee. Earlier conversations can continue.', zh: '管理员已停用这位数字员工，可以继续之前的对话。' },
+      },
     ])
   })
   const catalog = await cardsMatching(f.ctx, frame => frame.cards.length === 2)

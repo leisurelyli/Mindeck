@@ -41,14 +41,15 @@ export function apply(ctx: ClientContext): void {
     }
     return result.value
   }
-  // Resolved per call over ui-agent-preset's dictionaries, so a language
-  // switch re-resolves shipped names; user-authored metadata passes through.
+  // Resolved per call over ui-agent-preset's dictionaries and the active
+  // locale, so a language switch re-resolves shipped and translated names;
+  // literal metadata passes through.
   const agentPresetCopy = ctx.locale.bind('settings.agentPreset')
+  const resolveText: PluginInventorySettingsTabInjected['resolveText'] = text => ctx.locale.resolveText(text)
   const presetName: PluginInventorySettingsTabInjected['presetName'] = preset =>
-    presetDisplayText(preset, agentPresetCopy).name
+    presetDisplayText(preset, agentPresetCopy, resolveText).name
   const injected = (): PluginInventorySettingsTabInjected => ({
-    list, presetName,
-    resolveText: text => ctx.locale.resolveText(text),
+    list, presetName, resolveText,
     hooks: { clientSync: ctx.modules.entries.state },
     retryClient: () => { void ctx.modules.entries.retry().catch((error: unknown) => { ctx.logger.error(error) }) },
   })

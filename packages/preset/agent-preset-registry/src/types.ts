@@ -1,5 +1,6 @@
 /** Client-safe payloads and event declarations owned by the agent-preset domain. */
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { LocalizedText } from '@deepseek-ai/dsh-package-manifest'
 
 
 /**
@@ -10,10 +11,10 @@ export interface AgentPresetRow {
   readonly id: string
   /** Whether a session naming no preset composes this one. */
   readonly isDefault: boolean
-  /** Display name the preset published. */
-  readonly name?: string
-  /** One sentence on what this preset is for. */
-  readonly description?: string
+  /** Display name the preset published; clients resolve translations in the active locale. */
+  readonly name?: LocalizedText
+  /** One sentence on what this preset is for, resolved like {@link name}. */
+  readonly description?: LocalizedText
   /** `false` when pickers omit the preset for new conversations; a Session already on it keeps it. */
   readonly listed?: false
   /** Why this preset cannot compose a session; absent when it can. */
@@ -32,10 +33,10 @@ export interface AgentPresetDocument {
   readonly agentPreset: string
   /** The declared child plugin list as entry-list YAML, `!!js` expressions included. */
   readonly content: string
-  /** Display name the preset published. */
-  readonly name?: string
-  /** One sentence on what this preset is for. */
-  readonly description?: string
+  /** Display name the preset published; clients resolve translations in the active locale. */
+  readonly name?: LocalizedText
+  /** One sentence on what this preset is for, resolved like {@link name}. */
+  readonly description?: LocalizedText
 }
 
 declare module '@deepseek-ai/dsh-typert-protocol' {

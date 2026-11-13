@@ -5,8 +5,16 @@ import z from '@deepseek-ai/schemastery'
 import type { PresetDefinition } from '@deepseek-ai/dsh-agent-preset-registry'
 import type {} from '@deepseek-ai/dsh-agent-preset-registry'
 
-/** Definition submitted to the preset registry. */
-export type Config = PresetDefinition
+/**
+ * Definition submitted to the preset registry. YAML publishes `name` and `description` as literals, which every
+ * language shows as written.
+ */
+export type Config = Omit<PresetDefinition, 'name' | 'description'> & {
+  /** Display name, shown as written in every language. */
+  readonly name?: string
+  /** Display description, shown as written in every language. */
+  readonly description?: string
+}
 
 /** Registers child plugin configuration without owning Agents using older revisions. */
 export default class AgentPreset {

@@ -47,16 +47,18 @@ it('replaces only the top-level persona row, or puts one first', () => {
 it('names the general assistant, drafts, and retired employees in the roster, in that order', () => {
   const rows: PresetRows = [{ id: 'persona', name: PERSONA_PLUGIN, config: { prefix: 'x' } }]
   expect(generalDefinition(rows, 'You are a work assistant powered by the {{model}} model.')).toEqual({
-    id: 'mindeck-general', name: '通用助手', description: '写作、分析、整理资料、处理文件，什么都可以问。', order: 0,
+    id: 'mindeck-general', name: { en: 'General assistant', zh: '通用助手' }, description: { en: 'Writing, analysis, research, files: ask anything.', zh: '写作、分析、整理资料、处理文件，什么都可以问。' },
+    order: 0,
     plugins: [{ id: 'persona', name: PERSONA_PLUGIN, config: { prefix: 'You are a work assistant powered by the {{model}} model.' } }],
   })
   expect(employeeDefinition(rows, legal, 0)).toMatchObject({ id: 'mindeck-employee-e1', name: '法务专员', description: legal.tagline, order: 10 })
   expect(employeeDefinition(rows, { ...legal, draft: true, tagline: '' }, 1)).toEqual({
-    id: 'mindeck-employee-e1', name: '法务专员（草稿）', order: 11, plugins: withPersona(rows, employeePersona({ ...legal, tagline: '' })),
+    id: 'mindeck-employee-e1', name: { en: '法务专员 (draft)', zh: '法务专员（草稿）' }, order: 11, plugins: withPersona(rows, employeePersona({ ...legal, tagline: '' })),
   })
   const retired = employeeDefinition(rows, { ...legal, retired: true }, 2)
   expect(retired).toMatchObject({
-    id: 'mindeck-employee-e1', name: '法务专员（已停用）', description: '管理员已停用这位数字员工，可以继续之前的对话。', listed: false,
+    id: 'mindeck-employee-e1', name: { en: '法务专员 (deactivated)', zh: '法务专员（已停用）' }, listed: false,
+    description: { en: 'An administrator deactivated this digital employee. Earlier conversations can continue.', zh: '管理员已停用这位数字员工，可以继续之前的对话。' },
   })
   expect(employeeDefinition(rows, legal, 0)).not.toHaveProperty('listed')
   expect(retired.order).toBeGreaterThan(employeeDefinition(rows, legal, 500).order ?? 0)

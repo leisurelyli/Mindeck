@@ -143,11 +143,19 @@ export interface Config {
 
 - `inject`: `agentPresets`
 - `refs`: [`PresetDefinition`](../packages/preset/agent-preset-registry/src/index.ts)
-- `source`: [`packages/preset/agent-preset/src/index.ts:9`](../packages/preset/agent-preset/src/index.ts)
+- `source`: [`packages/preset/agent-preset/src/index.ts:12`](../packages/preset/agent-preset/src/index.ts)
 
 ```ts config-catalog
-/** Definition submitted to the preset registry. */
-export type Config = PresetDefinition
+/**
+ * Definition submitted to the preset registry. YAML publishes `name` and `description` as literals, which every
+ * language shows as written.
+ */
+export type Config = Omit<PresetDefinition, 'name' | 'description'> & {
+  /** Display name, shown as written in every language. */
+  readonly name?: string
+  /** Display description, shown as written in every language. */
+  readonly description?: string
+}
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-agent-preset -->
 
@@ -158,7 +166,7 @@ export type Config = PresetDefinition
 
 - `inject`: `loader` · `sessionProjections` · `agents`
 - `refs`: `Volatile` (`@deepseek-ai/cordis`)
-- `source`: [`packages/preset/agent-preset-registry/src/preset.ts:15`](../packages/preset/agent-preset-registry/src/preset.ts)
+- `source`: [`packages/preset/agent-preset-registry/src/preset.ts:18`](../packages/preset/agent-preset-registry/src/preset.ts)
 
 ```ts config-catalog
 /** Registry selection policy. */

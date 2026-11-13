@@ -28,6 +28,7 @@ function view(partial: Partial<AgentPresetSectionState> = {}, startCreatorDraft?
     useContextMenu: contextMenuHook(),
     useAgentPresetSection: bindSnapshotSelector(store),
     useDeveloperTools: bindSnapshotSelector(developerTools),
+    resolveText: text => typeof text === 'string' ? text : text.en,
     t: key => translations.get(key) ?? key }
   render(outerClose === undefined ? <AgentPresetSection {...props} />
     : <Modal open onClose={outerClose} title="Settings" closeLabel="Close"><AgentPresetSection {...props} /></Modal>)
@@ -143,7 +144,7 @@ it('reads a declared composition read-only from every card, broken ones included
   expect(actions.makeDefault).not.toHaveBeenCalled()
 })
 it('shows the open composition under the preset display name, without copy, and closes it from the footer', () => {
-  const actions = view({ view: { id: 'standard', title: 'standard', content: '- id: tool-fs\n  name: fs\n' } })
+  const actions = view({ view: { id: 'standard', content: '- id: tool-fs\n  name: fs\n' } })
   const dialog = screen.getByRole('dialog', { name: `${en.view} · ${en.presetStandardName}` })
   expect(dialog.querySelector('pre')?.textContent).toBe('- id: tool-fs\n  name: fs\n')
   expect(within(dialog).queryByRole('textbox')).toBeNull()
@@ -151,7 +152,8 @@ it('shows the open composition under the preset display name, without copy, and 
   fireEvent.click(within(dialog).getAllByRole('button', { name: en.close }).at(-1)!)
   expect(actions.closeView).toHaveBeenCalledOnce()
   cleanup()
-  view({ view: { id: 'gone', title: 'Gone', content: '[]\n' } })
+  // A preset that left the roster keeps the name its document published, resolved in the active locale.
+  view({ view: { id: 'gone', name: { en: 'Gone', zh: '已移除' }, content: '[]\n' } })
   expect(screen.getByRole('dialog', { name: `${en.view} · Gone` })).toBeTruthy()
 })
 it('keeps Escape inside the composition viewer when Settings is also open', () => {
@@ -160,7 +162,7 @@ it('keeps Escape inside the composition viewer when Settings is also open', () =
   const trigger = within(rowFor('standard')).getByRole('button', { name: `${en.view}: ${en.presetStandardName}` })
   trigger.focus()
   fireEvent.click(trigger)
-  act(() => { actions.store.set({ ...actions.store.getSnapshot(), view: { id: 'standard', title: 'standard', content: '[]\n' } }) })
+  act(() => { actions.store.set({ ...actions.store.getSnapshot(), view: { id: 'standard', content: '[]\n' } }) })
   const dialog = screen.getByRole('dialog', { name: `${en.view} · ${en.presetStandardName}` })
   const [header, footer] = within(dialog).getAllByRole('button', { name: en.close })
   expect(document.activeElement).toBe(footer)
@@ -175,7 +177,7 @@ it('keeps Escape inside the composition viewer when Settings is also open', () =
   expect(document.activeElement).toBe(trigger)
 })
 it('clears an open viewer when the settings section unmounts', () => {
-  const actions = view({ view: { id: 'standard', title: 'standard', content: '[]\n' } })
+  const actions = view({ view: { id: 'standard', content: '[]\n' } })
   cleanup()
   expect(actions.closeView).toHaveBeenCalledOnce()
 })

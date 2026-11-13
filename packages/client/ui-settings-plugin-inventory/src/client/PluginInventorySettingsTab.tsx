@@ -31,7 +31,7 @@ export interface PluginInventorySettingsTabInjected {
   list: () => Promise<PluginInventorySnapshot>
   /**
    * Display name for one preset: shipped presets resolve through the
-   * agent-preset dictionaries, user-authored ones keep their own metadata.
+   * agent-preset dictionaries, declared ones show their own name in the active locale.
    */
   presetName: (preset: AgentPresetGroup) => string
 }

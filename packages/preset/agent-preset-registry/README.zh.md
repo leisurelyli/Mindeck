@@ -47,6 +47,8 @@ Web 内置定义来自 `dsh-web-app` bundle。定义使用普通插件行；注�
 
 注册表不写入任何声明。`read` Remote 把一条声明的子插件列表按 entry-list YAML 方言（含 `!!js` 条件）渲染回来，供客户端展示 preset 的组成；没有任何接口接受 YAML 写回。新建 preset 或覆盖内置 preset 都是 bundle 补丁：插入一行 `@deepseek-ai/dsh-agent-preset`，或按该行 id 写覆盖补丁，再用 `plugin_manager` 安装到 profile；创造模式在对话中编写这类 bundle。
 
+调用 `agentPresets.register()` 的插件可以把 `name` 和 `description` 发布为一段原文，或按小写语言 id 列出的译文（必须包含英文）；`@deepseek-ai/dsh-agent-preset` 行只发布原文。预设列表和 `read` 按发布时的原样返回。客户端用 `@deepseek-ai/dsh-agent-preset-registry/display` 的 `presetDisplayText` 和当前语言的 `resolveText` 解析它们；内置的 `standard`、`ptc`、`minimal` 和 `cordis` 不发布名称，文案来自 `settings.agentPreset` 词典。
+
 <a id="understand-the-implementation"></a>
 ## 理解实现
 

@@ -41,8 +41,8 @@ Define an Agent’s child plugins in ordinary Cordis YAML. Declare several prese
 |---|---|---|
 | `id` | required | Stable preset identifier |
 | `plugins` | required | Child plugin entry list |
-| `name` | unset | Display name |
-| `description` | unset | Display description |
+| `name` | unset | Display name, shown as written in every language |
+| `description` | unset | Display description, shown as written in every language |
 | `order` | unset | Roster order |
 | `listed` | unset | `false` keeps the preset out of pickers for new conversations; Sessions already on it keep it |
 

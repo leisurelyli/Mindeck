@@ -42,7 +42,7 @@ import { AgentPresetSection } from './AgentPresetSection.tsx'
 import type { AgentPresetSectionInjected } from './AgentPresetSection.tsx'
 import { AgentPresetSeatController, type AgentPresetStage } from './seat-store.ts'
 import { AgentPresetSectionController } from './section-store.ts'
-import { en, ja, es, fr, de, ru, pt, zh, type AgentPresetSettingsKey } from './locales.ts'
+import { en, ja, es, fr, de, ru, pt, zh, type AgentPresetSettingsKey, type PresetTextResolver } from './locales.ts'
 import { AGENT_PRESET_SETTINGS_NS, AgentPresetSettingsController } from './settings-store.ts'
 import { analyticsMode } from './analytics.ts'
 
@@ -108,6 +108,7 @@ export function apply(ctx: ClientContext): void {
     return seat
   }
   const section = new AgentPresetSectionController(ctx)
+  const resolveText: PresetTextResolver = text => ctx.locale.resolveText(text)
   // Turning Developer tools off clears the shared stage before any apply can compose it.
   const developerTools = ctx.configForms.developerTools.enabled
   ctx.effect(() => developerTools.subscribe(() => {
@@ -205,12 +206,14 @@ export function apply(ctx: ClientContext): void {
         },
         dismissRefusal: (error) => { seat.dismissRefusal(error) },
         introduced: () => { seat.introduced() },
+        resolveText,
       }
     }
 
     const labelInjected = (): AgentPresetLabelInjected => ({
       hooks: { agentPresets: controller.store },
       load: () => controller.load(),
+      resolveText,
     })
 
     const startCreatorDraft = () => {
@@ -276,6 +279,7 @@ export function apply(ctx: ClientContext): void {
     closeView: () => { section.closeView() },
     ...creatorDraft === undefined ? {} : { startCreatorDraft: creatorDraft },
     makeDefault: (id: string) => section.makeDefault(id, captureBlankSessionSync()),
+    resolveText,
   })
 
   // Ordered after Models: choosing a model is routine, and composing an

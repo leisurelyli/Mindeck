@@ -18,7 +18,7 @@ import { AgentPresetSeat } from '../src/client/AgentPresetSeat.tsx'
 import type { AgentPresetSeatProps } from '../src/client/AgentPresetSeat.tsx'
 import type { AgentPresetSettingsState } from '../src/client/settings-store.ts'
 import type { AgentPresetSeatState } from '../src/client/seat-store.ts'
-import { en } from '../src/client/locales.ts'
+import { en, type PresetTextResolver } from '../src/client/locales.ts'
 
 afterEach(cleanup)
 
@@ -38,6 +38,9 @@ const SEAT_READY: AgentPresetSeatState = {
   error: null,
   introduce: false,
 }
+
+/** The English entry of published preset text, matching {@link translate}. */
+const resolveText: PresetTextResolver = text => typeof text === 'string' ? text : text.en
 
 const useSessionRetainInfo = <Selected,>(selector: (value: undefined) => Selected): Selected => selector(undefined)
 
@@ -73,6 +76,7 @@ function renderSeat(
     useSessionRetainInfo: session === undefined
       ? useSessionRetainInfo
       : <Selected,>(selector: (value: SessionRetainInfo | undefined) => Selected) => selector(session.retainInfo),
+    resolveText,
     t: translate,
   } as AgentPresetSeatProps
   render(<AgentPresetSeat {...props} />)
@@ -95,7 +99,7 @@ function renderLabel(
     useSessions: bindSnapshotSelector(sessions),
     useAgentPresets: bindSnapshotSelector(store),
     t: (key: keyof typeof en) => en[key],
-  } as unknown as AgentPresetLabelProps)} />)
+  } as unknown as AgentPresetLabelProps)} resolveText={resolveText} />)
   return { load, view }
 }
 
@@ -126,6 +130,16 @@ describe('the new-session chip', () => {
     expect(screen.getByRole('button').textContent).toContain('Retired helper')
     fireEvent.click(screen.getByRole('button'))
     expect(screen.getAllByRole('menuitem')).toHaveLength(2)
+  })
+
+  it('names a preset that publishes translations in the active locale', () => {
+    const general = {
+      id: 'helper', name: { en: 'General assistant', zh: '通用助手' }, description: { en: 'Ask anything.', zh: '什么都可以问。' },
+    }
+    renderSeat({ options: [{ id: 'standard' }, general], current: 'helper' })
+    expect(screen.getByRole('button').textContent).toContain('General assistant')
+    fireEvent.click(screen.getByRole('button'))
+    expect(screen.getByRole('menuitem', { name: /^General assistant/ }).textContent).toContain('Ask anything.')
   })
 
   it('keeps a named custom preset that overrides a development preset id', () => {
