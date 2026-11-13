@@ -80,9 +80,21 @@ export class LibraryService {
    */
   async stat(path: string, signal: AbortSignal): Promise<LibraryEntry | undefined> {
     const { space, inner } = locate(path, await this.spaces(signal))
+    const self = await this.item(space, inner, signal)
+    return self === undefined ? undefined : entry(space, self)
+  }
+
+  /**
+   * The item at one path inside a space.
+   * @param space - space.
+   * @param inner - path inside the space.
+   * @param signal - cancellation.
+   * @returns the item, or undefined when nothing exists at the path.
+   */
+  private async item(space: LibrarySpace, inner: string, signal: AbortSignal): Promise<OpenCloudItem | undefined> {
     try {
       const [self] = await this.client.propfind(space.driveId, inner, 0, signal)
-      return self === undefined ? undefined : entry(space, self)
+      return self
     } catch (error) {
       if (error instanceof LibraryError && error.code === 'not-found') return undefined
       throw error
@@ -138,9 +150,12 @@ export class LibraryService {
     }
     const { space, inner } = locate(path, await this.spaces(signal))
     if (inner === '') throw new LibraryError('not-found', `${path} names a space; add a file name such as ${libraryPath(space.name, 'report.md')}`)
+    if (!overwrite && await this.item(space, inner, signal) !== undefined) {
+      throw new LibraryError('exists', `${libraryPath(space.name, inner)} already exists`)
+    }
     const folder = inner.includes('/') ? inner.slice(0, inner.lastIndexOf('/')) : ''
     if (folder !== '') await this.client.createFolders(space.driveId, folder, signal)
-    await this.client.upload(space.driveId, inner, bytes, overwrite, signal)
+    await this.client.upload(space.driveId, inner, bytes, signal)
     const [self] = await this.client.propfind(space.driveId, inner, 0, signal)
     if (self === undefined) throw new LibraryError('protocol', `${libraryPath(space.name, inner)} was saved but cannot be read back`)
     return entry(space, self)

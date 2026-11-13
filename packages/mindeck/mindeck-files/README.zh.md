@@ -43,7 +43,7 @@ kind: "package-reference"
 
 Mindeck Cloud 在 `POST {endpoints.files.token}` 为桌面会话签发 15 分钟有效的 OpenCloud 令牌。Host 按会话令牌缓存它，在到期前一分钟申请新令牌，并发调用共用同一次申请。OpenCloud 返回 401 时，请求换新令牌重试一次；Mindeck Cloud 返回 401 时，由账号的 `rejectToken` 结束会话。
 
-空间来自 `GET /graph/v1.0/me/drives`（个人空间、项目空间和虚拟的共享空间）。文件通过 `/dav/spaces/{driveId}/` 下的 WebDAV 访问：深度为 0 或 1 的 `PROPFIND`、`GET`、不覆盖时带 `If-None-Match: *` 的 `PUT`，以及为每个缺少的文件夹发送的 `MKCOL`。名称搜索向 `/dav/spaces/` 发送带 `oc:search-files` 的 `REPORT`，模式为 `name:"*文本*"`；OpenCloud 异步建立索引，刚保存的文件可能暂时搜不到。不在成员已列出空间中的结果没有资源库路径，会被略过。条目的网页地址是 `{opencloud}/f/{fileid}`。
+空间来自 `GET /graph/v1.0/me/drives`（个人空间、项目空间和虚拟的共享空间）。文件通过 `/dav/spaces/{driveId}/` 下的 WebDAV 访问：深度为 0 或 1 的 `PROPFIND`、`GET`、`PUT`（即使带 `If-None-Match: *` 也会替换已有文件，因此不允许替换时先用 `PROPFIND` 检查路径），以及为每个缺少的文件夹发送的 `MKCOL`。名称搜索向 `/dav/spaces/` 发送带 `oc:search-files` 的 `REPORT`，模式为 `name:"*文本*"`；OpenCloud 异步建立索引，刚保存的文件可能暂时搜不到。不在成员已列出空间中的结果没有资源库路径，会被略过。条目的网页地址是 `{opencloud}/f/{fileid}`。
 
 本地下载路径会替换 Windows 不接受的字符、末尾的点和空格以及保留设备名。Remote 命名空间 `mindeckFiles` 以 `watch` 流式提供可用状态，并为页面提供 `spaces`、`list`、`search` 和 `upload`；`upload` 以 base64 接收内容，超过 `maxUploadBytes` 时在解码前拒绝。失败带有 `mindeck-files/*` 错误码，上传另有 `exists`、`quota` 和 `too-large`。
 

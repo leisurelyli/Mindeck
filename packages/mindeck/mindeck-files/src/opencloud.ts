@@ -268,18 +268,17 @@ export class OpenCloudClient {
   }
 
   /**
-   * Create a file, or replace it when `overwrite` is set; OpenCloud keeps the replaced content as a version.
+   * Create or replace a file; OpenCloud keeps the replaced content as a version. OpenCloud replaces an existing file even
+   * when the request carries `If-None-Match: *`, so a caller that must not replace one checks for it first.
    * @param driveId - drive.
    * @param path - file inside the drive; its folder must exist.
    * @param bytes - content.
-   * @param overwrite - replace an existing file.
    * @param signal - cancellation.
-   * @throws LibraryError `exists` when the file exists and `overwrite` is false.
    */
-  async upload(driveId: string, path: string, bytes: Uint8Array, overwrite: boolean, signal: AbortSignal): Promise<void> {
+  async upload(driveId: string, path: string, bytes: Uint8Array, signal: AbortSignal): Promise<void> {
     const response = await this.send(`/dav/spaces/${encodeURIComponent(driveId)}/${davPath(path)}`, {
       // Library bytes come from ordinary (not shared) array buffers.
-      method: 'PUT', body: bytes as Uint8Array<ArrayBuffer>, headers: overwrite ? {} : { 'if-none-match': '*' },
+      method: 'PUT', body: bytes as Uint8Array<ArrayBuffer>,
     }, signal)
     if (!response.ok) throw OpenCloudClient.failure(response, `save ${path}`)
     await response.body?.cancel()

@@ -105,7 +105,7 @@ export async function fakeOpenCloud(drives: readonly FakeDrive[]) {
         const content = await body(request)
         if (!drive.writable) { reply.writeHead(403).end(); return }
         if (nodes.get(parent)?.kind !== 'folder') { reply.writeHead(409).end(); return }
-        if (node !== undefined && request.headers['if-none-match'] === '*') { reply.writeHead(412).end(); return }
+        // Like OpenCloud, PUT replaces an existing file even when the request carries `If-None-Match: *`.
         const used = [...nodes.values()].reduce((sum, item) => sum + (item.content?.byteLength ?? 0), 0) - (node?.content?.byteLength ?? 0)
         if (drive.total !== undefined && used + content.byteLength > drive.total) { reply.writeHead(507).end(); return }
         nodes.set(path, { kind: 'file', content, modified: new Date() })
