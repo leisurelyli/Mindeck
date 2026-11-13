@@ -157,7 +157,7 @@ describe('ModelSelect label slot', () => {
 
 describe('ModelSelect provider headings', () => {
   it('puts consecutive providers with the same name under one heading and selects each model on its own provider', () => {
-    const select = vi.fn()
+    const select = vi.fn().mockResolvedValue({ ok: true, value: undefined })
     const directory = createSnapshotStore(state({
       current: { provider: 'company-anthropic', model: 'claude' },
       groups: [
