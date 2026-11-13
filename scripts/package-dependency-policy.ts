@@ -96,6 +96,9 @@ const PEER_REQUIRED_HOST_EXPORTS = {
   // The Mindeck file library registers tools with the Host's tool runtime and stores downloads under the Host's home.
   '@deepseek-ai/dsh-tools': ['defineTool'],
   '@deepseek-ai/dsh-home-paths': ['resolveDshHome'],
+  // Mindeck company skills serve their cache through the Host's skill registry and check names by its rules.
+  '@deepseek-ai/dsh-skill': ['isSkillName'],
+  '@deepseek-ai/dsh-skill-filesystem': ['FileSystemSkillProvider'],
 } as const satisfies HostDependencyExports
 
 /** Exact import specifier to reviewed runtime exports. */

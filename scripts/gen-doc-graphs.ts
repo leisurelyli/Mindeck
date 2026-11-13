@@ -514,6 +514,13 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Registers the file-library tools while the library is available and serves the sidebar page over its Remote.',
   },
   {
+    key: 'mindeckSkills',
+    pkg: 'mindeck-skills',
+    title: 'Mindeck company skills',
+    mode: 'service',
+    note: 'Keeps the company skills in a local cache served as a skill provider and streams their listing to the skills sidebar page.',
+  },
+  {
     key: 'authorization',
     pkg: 'authorization',
     title: 'Authorization flow registry',

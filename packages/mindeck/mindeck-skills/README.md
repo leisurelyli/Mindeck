@@ -1,5 +1,5 @@
 ---
-description: "Keep a local copy of the skills a company provides in Mindeck Cloud and serve it as a skill provider."
+description: "Keep a local copy of the skills a company provides in Mindeck Cloud, serve it as a skill provider, and list it on a skills page."
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Use the skills a company publishes in Mindeck Cloud. While Mindeck Desktop is signed in, this plugin keeps a local copy of the skills the member receives and serves them like skills in a custom skill directory. Signing out removes the copy.
+Use the skills a company publishes in Mindeck Cloud. While Mindeck Desktop is signed in, this plugin keeps a local copy of the skills the member receives and serves them like skills in a custom skill directory. Signing out removes the copy. A **Skills** page in the right sidebar lists them by the company's names and categories, recommended skills first, and puts one in the message box with a click.
 
 ## Table of Contents
 
@@ -29,6 +29,8 @@ Mount the plugin on the Host after the [Mindeck account](../mindeck-account/READ
 
 The plugin refreshes after each sign-in or sign-out and every `refreshIntervalMs` (ten minutes by default). It downloads only skills whose content changed and removes skills the member no longer receives. A skill that fails to download keeps its previous copy until the next refresh. `maxSkillBytes` and `maxSkillFiles` bound one skill, `requestTimeoutMs` bounds each request, and `cacheDir` moves the cache from its default, `mindeck` under the DeepSeek Harness home.
 
+The Client entry `@deepseek-ai/dsh-mindeck-skills/client` adds the **Skills** page to the right sidebar and its guide. The page names the company, lists the recommended skills, then each category in Chinese reading order, then ungrouped skills, then the other skills of the conversation under **Built into Mindeck**. Search matches names, categories, descriptions, and the pinyin Mindeck Cloud sends, so `zb` finds 周报助手. Clicking a skill puts `/name ` at the start of the message draft, replacing a skill already there; the information button opens the skill's `SKILL.md` in the side panel. Until Mindeck Cloud answers, the page lists the skills saved with the cache.
+
 -----
 
 <a id="understand-the-implementation"></a>
@@ -37,7 +39,9 @@ The plugin refreshes after each sign-in or sign-out and every `refreshIntervalMs
 <details>
 <summary>Maintainer details — click to expand</summary>
 
-The cache directory holds `skills/` (one directory per skill), `staging/`, and `skills.json`, which records the Cloud address, the member, and each skill's content hash. A sync lists `GET {endpoints.skills}`, downloads `GET {endpoints.skills}/{name}` for each skill whose hash or `SKILL.md` is missing, checks every path and the size limits, writes the files into `staging/`, and renames the result over the cached directory. A manifest for another member or Cloud address clears the cache before syncing; sign-out clears it entirely. A 401 reports the token to `mindeckAccount.rejectToken`.
+The cache directory holds `skills/` (one directory per skill), `staging/`, and `skills.json`, which records the Cloud address, the member, each skill's content hash, and the listing of the installed skills (display name, category, description, recommendation, and pinyin keys). A sync lists `GET {endpoints.skills}`, downloads `GET {endpoints.skills}/{name}` for each skill whose hash or `SKILL.md` is missing, checks every path and the size limits, writes the files into `staging/`, and renames the result over the cached directory. A manifest for another member or Cloud address clears the cache before syncing; sign-out clears it entirely. A 401 reports the token to `mindeckAccount.rejectToken`.
+
+`ctx.mindeckSkills.watch()` streams `MindeckSkillCatalog`, the company name and the installed skills in Cloud order, over the `mindeckSkills` Remote; a skill that has no installed copy is not listed. The page reads the conversation's own catalog through `skills/list` for the built-in skills and the `SKILL.md` paths.
 
 A `FileSystemSkillProvider` from [skill-filesystem](../../skill/skill-filesystem/README.md) serves `skills/` as its only root, without watching it; the plugin invalidates the catalog after each sync that changed the cache. Paths must be relative, use `/`, avoid `.` and `..` segments, and avoid names Windows cannot store; file names that differ only in case are refused.
 

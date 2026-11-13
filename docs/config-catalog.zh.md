@@ -2637,8 +2637,8 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-mindeck-skills`
 
-- `inject`: `skills` · `mindeckAccount`
-- `source`: [`packages/mindeck/mindeck-skills/src/index.ts:29`](../packages/mindeck/mindeck-skills/src/index.ts)
+- `inject`: `skills` · `mindeckAccount` · `typert`
+- `source`: [`packages/mindeck/mindeck-skills/src/index.ts:37`](../packages/mindeck/mindeck-skills/src/index.ts)
 
 ```ts config-catalog
 /** Deployment options. */

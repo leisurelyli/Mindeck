@@ -144,6 +144,23 @@ File-library tools and the panel's Remote for the signed-in member.
 
 Source: [`packages/mindeck/mindeck-files/src/index.ts`](../../packages/mindeck/mindeck-files/src/index.ts)
 
+<a id="ctxmindeckskills--mindeckskills"></a>
+
+### `ctx.mindeckSkills` — `MindeckSkills`
+
+Keeps the member's company skills in the local cache, serves them while signed in, and lists them for the skills page.
+
+```ts cordis-catalog
+/**
+ * Stream the company skills the signed-in member has on this computer.
+ * @param signal - stream lifetime.
+ * @returns the current listing, then every change.
+ */
+@Remote({ mode: 'stream' }) async *watch(signal: AbortSignal): AsyncIterable<MindeckSkillCatalog>
+```
+
+Source: [`packages/mindeck/mindeck-skills/src/index.ts`](../../packages/mindeck/mindeck-skills/src/index.ts)
+
 <a id="mindeck-account-events"></a>
 
 ### `mindeck-account/*` events

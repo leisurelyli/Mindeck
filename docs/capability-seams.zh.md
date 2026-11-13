@@ -151,6 +151,7 @@ flowchart LR
   pkg_mindeck_skills["mindeck-skills"]
   pkg_mindeck_files["mindeck-files"]
   svc_mindeckFiles["ctx.mindeckFiles<br/>Mindeck file library"]
+  svc_mindeckSkills["ctx.mindeckSkills<br/>Mindeck company skills"]
   pkg_authorization["authorization"]
   svc_authorization["ctx.authorization<br/>Authorization flow registry"]
   pkg_client_product_analytics["client-product-analytics"]
@@ -415,6 +416,7 @@ flowchart LR
   pkg_message_feedback --> svc_messageFeedback
   pkg_mindeck_account --> svc_mindeckAccount
   pkg_mindeck_files --> svc_mindeckFiles
+  pkg_mindeck_skills --> svc_mindeckSkills
   pkg_office_to_pdf --> svc_officeToPdf
   pkg_otel --> svc_otel
   pkg_permission_presets --> svc_permissionPresets
@@ -714,6 +716,7 @@ flowchart LR
 | `ctx.deepseekAccount` | `seam` | [`deepseek-account`](../packages/credentials/deepseek-account) | [`deepseek-account-platform`](../packages/credentials/deepseek-account-platform) | [`api-account-controller`](../packages/api/account-controller), [`llm-deepseek`](../packages/llm/llm-deepseek) | - | Host 负责浏览器授权和本地凭证；UI 使用方只接收不含 token 的状态。 |
 | `ctx.mindeckAccount` | `service` | [`mindeck-account`](../packages/mindeck/mindeck-account) | - | [`mindeck-models`](../packages/mindeck/mindeck-models), [`mindeck-skills`](../packages/mindeck/mindeck-skills), [`mindeck-files`](../packages/mindeck/mindeck-files) | - | 负责设备登录和 Mindeck Cloud 会话；公司模型、技能和资源库读取会话 token 及其端点。 |
 | `ctx.mindeckFiles` | `service` | [`mindeck-files`](../packages/mindeck/mindeck-files) | - | - | - | 资源库可用时注册资源库工具，并通过其 Remote 提供侧栏页面。 |
+| `ctx.mindeckSkills` | `service` | [`mindeck-skills`](../packages/mindeck/mindeck-skills) | - | - | - | 把公司技能保存在本机缓存中并作为技能提供方提供，同时向技能侧栏页推送技能列表。 |
 | `ctx.authorization` | `seam` | [`authorization`](../packages/credentials/authorization) | - | [`llm-pi-ai`](../packages/llm/llm-pi-ai) | - | flow 由知道如何取得某份凭据的插件注册，并以其写入的记录为键；seam 拥有这段对话与"每个键同时只跑一次尝试"的生命周期，而非协议本身。 |
 | `ctx.productAnalytics` | `service` | [`client-product-analytics`](../packages/client/product-analytics) | - | - | - | 根据 Host 动态采集策略接收指定桌面事件、补充可用登录身份并监听实时压缩。 |
 | `ctx.otel` | `service` | [`otel`](../packages/telemetry/otel) | - | [`host-product-telemetry-otel`](../packages/host/product-telemetry-otel), [`session-telemetry-otel`](../packages/session/session-telemetry-otel) | - | 产品埋点和 Session 反馈适配器通过同一个注入服务创建独立上报通道。 |

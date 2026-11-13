@@ -1,19 +1,11 @@
 {
-  "extends": "../../../tsconfig.base.json",
-  "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "lib/types"
-  },
-  "include": [
-    "src"
-  ],
+  "files": [],
   "references": [
-    { "path": "../../../vendor/cordis" },
-    { "path": "../../../vendor/schemastery" },
-    { "path": "../../skill/skill" },
-    { "path": "../../skill/skill-filesystem" },
-    { "path": "../mindeck-account/tsconfig.host.json" },
-    { "path": "../../util/home-paths" },
-    { "path": "../../util/timeout" }
+    {
+      "path": "./tsconfig.host.json"
+    },
+    {
+      "path": "./tsconfig.client.json"
+    }
   ]
 }

@@ -28,7 +28,7 @@ kind: "package-group"
 |---|---|---|
 | [`mindeck-account/`](mindeck-account/README.zh.md) | Cloud 地址、设备登录、保存的会话和登录遮罩 | `ctx.mindeckAccount` |
 | [`mindeck-models/`](mindeck-models/README.zh.md) | 把公司模型作为经计量 Cloud 网关的模型路由提供 | — |
-| [`mindeck-skills/`](mindeck-skills/README.zh.md) | 缓存在本机并由技能提供方提供的公司技能 | — |
+| [`mindeck-skills/`](mindeck-skills/README.zh.md) | 缓存在本机、由技能提供方提供并在技能页列出的公司技能 | `ctx.mindeckSkills` |
 | [`mindeck-files/`](mindeck-files/README.zh.md) | 资源库工具、侧栏页面和 `library:` 引用 | `ctx.mindeckFiles` |
 
 -----

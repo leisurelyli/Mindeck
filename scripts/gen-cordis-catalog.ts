@@ -90,6 +90,7 @@ export const SERVICE_PAGE: Record<string, string> = {
   deepseekAccount: 'credentials.md',
   mindeckAccount: 'mindeck.md',
   mindeckFiles: 'mindeck.md',
+  mindeckSkills: 'mindeck.md',
   credentials: 'credentials.md',
   credentialsController: 'credentials.md',
   settingsController: 'settings.md',
@@ -1120,6 +1121,7 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   LibraryAvailability: 'Mindeck file-library availability is owned by packages/mindeck/mindeck-files/README.md',
   LibraryEntryView: 'Mindeck file-library entries are owned by packages/mindeck/mindeck-files/README.md',
   LibrarySpaceView: 'Mindeck file-library spaces are owned by packages/mindeck/mindeck-files/README.md',
+  MindeckSkillCatalog: 'Mindeck company-skill listings are owned by packages/mindeck/mindeck-skills/README.md',
 }
 
 /** Repository data policy consumed by the Cordis catalog projector. */

@@ -149,6 +149,7 @@ flowchart LR
   pkg_mindeck_skills["mindeck-skills"]
   pkg_mindeck_files["mindeck-files"]
   svc_mindeckFiles["ctx.mindeckFiles<br/>Mindeck file library"]
+  svc_mindeckSkills["ctx.mindeckSkills<br/>Mindeck company skills"]
   pkg_authorization["authorization"]
   svc_authorization["ctx.authorization<br/>Authorization flow registry"]
   pkg_client_product_analytics["client-product-analytics"]
@@ -413,6 +414,7 @@ flowchart LR
   pkg_message_feedback --> svc_messageFeedback
   pkg_mindeck_account --> svc_mindeckAccount
   pkg_mindeck_files --> svc_mindeckFiles
+  pkg_mindeck_skills --> svc_mindeckSkills
   pkg_office_to_pdf --> svc_officeToPdf
   pkg_otel --> svc_otel
   pkg_permission_presets --> svc_permissionPresets
@@ -712,6 +714,7 @@ flowchart LR
 | `ctx.deepseekAccount` | `seam` | [`deepseek-account`](../packages/credentials/deepseek-account) | [`deepseek-account-platform`](../packages/credentials/deepseek-account-platform) | [`api-account-controller`](../packages/api/account-controller), [`llm-deepseek`](../packages/llm/llm-deepseek) | - | The Host owns browser authorization and local credentials; UI consumers receive state without tokens. |
 | `ctx.mindeckAccount` | `service` | [`mindeck-account`](../packages/mindeck/mindeck-account) | - | [`mindeck-models`](../packages/mindeck/mindeck-models), [`mindeck-skills`](../packages/mindeck/mindeck-skills), [`mindeck-files`](../packages/mindeck/mindeck-files) | - | Owns the device sign-in and the Mindeck Cloud session; company models, skills, and the file library read the session token and its endpoints. |
 | `ctx.mindeckFiles` | `service` | [`mindeck-files`](../packages/mindeck/mindeck-files) | - | - | - | Registers the file-library tools while the library is available and serves the sidebar page over its Remote. |
+| `ctx.mindeckSkills` | `service` | [`mindeck-skills`](../packages/mindeck/mindeck-skills) | - | - | - | Keeps the company skills in a local cache served as a skill provider and streams their listing to the skills sidebar page. |
 | `ctx.authorization` | `seam` | [`authorization`](../packages/credentials/authorization) | - | [`llm-pi-ai`](../packages/llm/llm-pi-ai) | - | Flows are registered by the plugin that knows how to obtain one credential and keyed by the record they write; the seam owns the conversation and the one-attempt-per-key lifecycle, never the protocol. |
 | `ctx.productAnalytics` | `service` | [`client-product-analytics`](../packages/client/product-analytics) | - | - | - | Accepts selected Desktop events, enriches available login identity, and observes live compaction under the live Host collection policy. |
 | `ctx.otel` | `service` | [`otel`](../packages/telemetry/otel) | - | [`host-product-telemetry-otel`](../packages/host/product-telemetry-otel), [`session-telemetry-otel`](../packages/session/session-telemetry-otel) | - | Product analytics and Session feedback adapters create independent reporting channels through one injected service. |

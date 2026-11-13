@@ -28,7 +28,7 @@ The account package owns the Cloud session; the other three read it for every Cl
 |---|---|---|
 | [`mindeck-account/`](mindeck-account/README.md) | Cloud address, device sign-in, the stored session, and the sign-in gate | `ctx.mindeckAccount` |
 | [`mindeck-models/`](mindeck-models/README.md) | Company models as model routes through the metered Cloud gateway | — |
-| [`mindeck-skills/`](mindeck-skills/README.md) | Company skills cached on the device and served by a skill provider | — |
+| [`mindeck-skills/`](mindeck-skills/README.md) | Company skills cached on the device, served by a skill provider, and listed on the skills page | `ctx.mindeckSkills` |
 | [`mindeck-files/`](mindeck-files/README.md) | File-library tools, the sidebar page, and `library:` references | `ctx.mindeckFiles` |
 
 -----

@@ -2220,6 +2220,19 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'mindeckSkills',
+    summary: 'Keeps the member\'s company skills in the local cache, serves them while signed in, and lists them for the skills page.',
+    description: 'Keeps the member\'s company skills in the local cache, serves them while signed in, and lists them for the skills page.',
+    methods: [
+      {
+        signature: '@Remote({ mode: \'stream\' }) async *watch(signal: AbortSignal): AsyncIterable<MindeckSkillCatalog>',
+        description: 'Stream the company skills the signed-in member has on this computer.',
+        parameters: [{ name: 'signal', description: 'stream lifetime.' }],
+        returns: 'the current listing, then every change.',
+      },
+    ],
+  },
+  {
     key: 'officeToPdf',
     summary: 'A provider lifetime owns all converters, queued calls, and temporary files.',
     description: 'A provider lifetime owns all converters, queued calls, and temporary files.',
@@ -7479,6 +7492,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'MindeckSignInAttemptId',
     declaration: 'export type MindeckSignInAttemptId = Branded<\'MindeckSignInAttemptId\'>;',
+  },
+  {
+    name: 'MindeckSkillCatalog',
+    declaration: 'export interface MindeckSkillCatalog {\n    readonly company: string | null;\n    readonly skills: readonly MindeckSkillView[];\n}',
+  },
+  {
+    name: 'MindeckSkillView',
+    declaration: 'export interface MindeckSkillView {\n    readonly name: string;\n    readonly displayName: string | null;\n    readonly category: string | null;\n    readonly description: string;\n    readonly recommended: boolean;\n    readonly searchKeys: readonly string[];\n}',
   },
   {
     name: 'ModDefinition',

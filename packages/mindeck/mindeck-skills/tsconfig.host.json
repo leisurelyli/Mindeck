@@ -1,0 +1,25 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types",
+    "tsBuildInfoFile": "lib/tsconfig.host.tsbuildinfo"
+  },
+  "files": [
+    "src/index.ts",
+    "src/cache.ts",
+    "src/cloud.ts",
+    "src/types.ts"
+  ],
+  "references": [
+    { "path": "../../../vendor/cordis" },
+    { "path": "../../../vendor/schemastery" },
+    { "path": "../../skill/skill" },
+    { "path": "../../skill/skill-filesystem" },
+    { "path": "../../typert/protocol" },
+    { "path": "../mindeck-account/tsconfig.host.json" },
+    { "path": "../../util/home-paths" },
+    { "path": "../../util/timeout" },
+    { "path": "../../util/values" }
+  ]
+}

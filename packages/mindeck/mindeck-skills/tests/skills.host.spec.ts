@@ -1,4 +1,4 @@
-/** Company skills follow the Mindeck session, download only changed skills, and leave with sign-out. */
+/** Company skills follow the Mindeck session, download only changed skills, leave with sign-out, and are listed for the skills page. */
 import { once } from 'node:events'
 import { mkdtemp, readdir, rm } from 'node:fs/promises'
 import { createServer } from 'node:http'
@@ -7,19 +7,28 @@ import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
 import type { MindeckSession } from '@deepseek-ai/dsh-mindeck-account'
+import TypertRegistry from '@deepseek-ai/dsh-typert-registry'
 import { afterEach, expect, it, vi } from 'vitest'
-import * as MindeckSkills from '../src/index.ts'
+import MindeckSkills, { type Config, type MindeckSkillCatalog } from '../src/index.ts'
 
 const cleanups: Array<() => Promise<void>> = []
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup()
 })
 
-interface CloudSkill { name: string; hash: string; description: string }
+interface CloudSkill {
+  name: string
+  hash: string
+  description: string
+  displayName?: string | null
+  category?: string | null
+  recommended?: boolean
+  searchKeys?: string[]
+}
 
 /** Loopback `/api/desktop/skills` with a mutable skill list. */
 async function skillServer() {
-  const state = { status: 200, skills: [] as CloudSkill[], requests: [] as string[] }
+  const state = { status: 200, skills: [] as CloudSkill[], requests: [] as string[], missing: [] as string[] }
   const server = createServer((request, response) => {
     const path = new URL(request.url ?? '/', 'http://localhost').pathname
     state.requests.push(path)
@@ -28,8 +37,8 @@ async function skillServer() {
       response.end(JSON.stringify(body))
     }
     if (state.status !== 200) { reply(state.status, { error: { code: 'SIGN_IN_REQUIRED', message: '请先登录。' } }); return }
-    if (path === '/api/desktop/skills') { reply(200, { skills: state.skills.map(({ name, hash }) => ({ name, hash, description: '', version: 1 })) }); return }
-    const skill = state.skills.find(entry => path === `/api/desktop/skills/${entry.name}`)
+    if (path === '/api/desktop/skills') { reply(200, { skills: state.skills.map(skill => ({ ...skill, version: 1 })) }); return }
+    const skill = state.skills.find(entry => path === `/api/desktop/skills/${entry.name}` && !state.missing.includes(entry.name))
     if (skill === undefined) { reply(404, { error: { code: 'SKILL_NOT_FOUND', message: '不存在' } }); return }
     reply(200, {
       name: skill.name, hash: skill.hash, version: 1, description: skill.description,
@@ -78,10 +87,11 @@ async function fixture() {
     }),
   }
   ctx.provide('mindeckAccount', account as never)
+  await ctx.plugin(TypertRegistry)
   await ctx.plugin(SkillRegistry)
   const change = (next: MindeckSession | undefined) => { current = next; ctx.emit('mindeck-account/changed') }
   const names = async () => (await ctx.skills.list()).filter(skill => skill.source === 'custom').map(skill => skill.name).sort()
-  const config: MindeckSkills.Config = {
+  const config: Config = {
     cacheDir: base, refreshIntervalMs: 600_000, requestTimeoutMs: 10_000, maxSkillBytes: 1024 * 1024, maxSkillFiles: 50,
   }
   return { ctx, cloud, base, account, session, change, names, config }
@@ -132,4 +142,50 @@ it('clears the cache on sign-out and for another member, and ends a refused sess
   f.change(f.session('u2', 'desktop-token-2'))
   await vi.waitFor(() => { expect(f.account.rejectToken).toHaveBeenCalledWith('desktop-token-2') })
   await vi.waitFor(async () => { expect(await f.names()).toEqual([]) })
+})
+
+it('lists installed skills for the skills page, from the saved listing until Mindeck Cloud answers', async () => {
+  const f = await fixture()
+  f.cloud.state.skills = [
+    { name: 'weekly-report', hash: 'h1', description: '写周报。', displayName: '周报助手', category: '写作', recommended: true, searchKeys: ['ZhouBao', 'zb'] },
+    { name: 'contract-review', hash: 'c1', description: 'Review a contract.' },
+  ]
+  const first = await f.ctx.plugin(MindeckSkills, f.config)
+  const frames: MindeckSkillCatalog[] = []
+  const stop = new AbortController()
+  const reading = (async () => { for await (const frame of f.ctx.mindeckSkills.watch(stop.signal)) frames.push(frame) })()
+  const listed: MindeckSkillCatalog = {
+    company: '星河科技',
+    skills: [
+      { name: 'weekly-report', displayName: '周报助手', category: '写作', description: '写周报。', recommended: true, searchKeys: ['zhoubao', 'zb'] },
+      { name: 'contract-review', displayName: null, category: null, description: 'Review a contract.', recommended: false, searchKeys: [] },
+    ],
+  }
+  await vi.waitFor(() => { expect(frames.at(-1)).toEqual(listed) })
+
+  // A skill whose download fails is not listed: it cannot be used.
+  f.cloud.state.skills = [...f.cloud.state.skills, { name: 'broken', hash: 'b1', description: 'No files.' }]
+  f.cloud.state.missing = ['broken']
+  f.change(f.session('u1', 'desktop-token-1'))
+  await vi.waitFor(() => { expect(f.cloud.state.requests).toContain('/api/desktop/skills/broken') })
+  await vi.waitFor(() => { expect(frames.at(-1)).toEqual(listed) })
+
+  f.change(undefined)
+  await vi.waitFor(() => { expect(frames.at(-1)).toEqual({ company: null, skills: [] }) })
+  stop.abort()
+  await reading
+
+  // The next start lists the saved skills while Mindeck Cloud cannot be reached.
+  f.cloud.state.skills = f.cloud.state.skills.filter(skill => skill.name !== 'broken')
+  f.change(f.session('u1', 'desktop-token-1'))
+  await vi.waitFor(async () => { expect(await f.names()).toEqual(['contract-review', 'weekly-report']) })
+  await first.dispose()
+  f.cloud.state.status = 503
+  await f.ctx.plugin(MindeckSkills, f.config)
+  const again: MindeckSkillCatalog[] = []
+  const stopAgain = new AbortController()
+  const readingAgain = (async () => { for await (const frame of f.ctx.mindeckSkills.watch(stopAgain.signal)) again.push(frame) })()
+  await vi.waitFor(() => { expect(again.at(-1)).toEqual(listed) })
+  stopAgain.abort()
+  await readingAgain
 })

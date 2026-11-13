@@ -1,6 +1,7 @@
 /**
  * Company skills for Mindeck Desktop. The plugin keeps a local copy of the skills Mindeck Cloud offers
- * the signed-in member and serves it through a filesystem skill provider named `mindeck`.
+ * the signed-in member, serves it through a filesystem skill provider named `mindeck`, and streams how
+ * the skills are listed to the skills page.
  * @module @deepseek-ai/dsh-mindeck-skills
  */
 import { access } from 'node:fs/promises'
@@ -12,15 +13,22 @@ import type {} from '@deepseek-ai/dsh-mindeck-account'
 import type { SkillProviderControl } from '@deepseek-ai/dsh-skill'
 import { FileSystemSkillProvider } from '@deepseek-ai/dsh-skill-filesystem'
 import { deadline } from '@deepseek-ai/dsh-timeout'
+import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
+import { deepEqualJson } from '@deepseek-ai/dsh-util-values'
 import { cacheLayout, clearCache, installSkill, pruneSkills, readManifest, skillFiles, writeManifest } from './cache.ts'
 import type { CacheLayout } from './cache.ts'
 import { listSkills, readSkill, SkillSignInRequired } from './cloud.ts'
+import type { MindeckSkillCatalog, MindeckSkillView } from './types.ts'
 
 export { cacheLayout, isSafeSkillPath, skillFiles } from './cache.ts'
 export type { CacheLayout, CacheManifest, SkillLimits } from './cache.ts'
+export type { MindeckSkillCatalog, MindeckSkillView } from './types.ts'
 
-export const name = 'mindeck-skills'
-export const inject = ['skills', 'mindeckAccount']
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    mindeckSkills: MindeckSkills
+  }
+}
 
 /** Name of the skill provider that serves the cached skills. */
 export const PROVIDER_NAME = 'mindeck'
@@ -39,19 +47,6 @@ export interface Config {
   maxSkillFiles: number
 }
 
-export const Config: z<Config> = z.object({
-  cacheDir: z.string().default('')
-    .description('Cache directory; empty means `mindeck` under the DeepSeek Harness home.'),
-  refreshIntervalMs: z.natural().min(60_000).default(600_000)
-    .description('Interval between skill refreshes while signed in, in milliseconds.'),
-  requestTimeoutMs: z.natural().min(1000).default(30_000)
-    .description('Timeout of one Mindeck Cloud request in milliseconds.'),
-  maxSkillBytes: z.natural().min(1024).default(5 * 1024 * 1024)
-    .description('Largest accepted skill, in bytes of decoded file content.'),
-  maxSkillFiles: z.natural().min(1).default(300)
-    .description('Most files accepted in one skill.'),
-})
-
 /**
  * Resolve the skill cache directory; an empty setting selects `mindeck` under the DSH home.
  * @param config - deployment options.
@@ -67,71 +62,116 @@ async function isInstalled(layout: CacheLayout, skill: string): Promise<boolean>
   catch (_error) { return false } // Removed outside Mindeck: download it again.
 }
 
-/** Keep the member's company skills in the local cache and serve them while signed in. */
-export function apply(ctx: Context, config: Config): void {
-  const layout = cacheLayout(resolveCacheDir(config))
-  const lifetime = new AbortController()
-  ctx.effect(() => () => { lifetime.abort() }, 'mindeck-skills: Cloud requests')
-  const stopped = (): boolean => lifetime.signal.aborted
+const SIGNED_OUT: MindeckSkillCatalog = { company: null, skills: [] }
 
-  let control: SkillProviderControl | undefined
-  let provider: FileSystemSkillProvider | undefined
-  ctx.skills.registerProvider((registration) => {
-    control = registration
-    provider = new FileSystemSkillProvider(ctx, registration, {
-      providerName: PROVIDER_NAME, includeDefaultRoots: false, customSkillDirs: [layout.skills], watch: false,
-    })
-    return provider
+/** Keeps the member's company skills in the local cache, serves them while signed in, and lists them for the skills page. */
+export default class MindeckSkills extends TypertRemoteService {
+  static inject = ['skills', 'mindeckAccount', 'typert']
+  static Config: z<Config> = z.object({
+    cacheDir: z.string().default('')
+      .description('Cache directory; empty means `mindeck` under the DeepSeek Harness home.'),
+    refreshIntervalMs: z.natural().min(60_000).default(600_000)
+      .description('Interval between skill refreshes while signed in, in milliseconds.'),
+    requestTimeoutMs: z.natural().min(1000).default(30_000)
+      .description('Timeout of one Mindeck Cloud request in milliseconds.'),
+    maxSkillBytes: z.natural().min(1024).default(5 * 1024 * 1024)
+      .description('Largest accepted skill, in bytes of decoded file content.'),
+    maxSkillFiles: z.natural().min(1).default(300)
+      .description('Most files accepted in one skill.'),
   })
-  ctx.effect(function* () {
-    yield async () => { await provider?.dispose() }
-  }, 'mindeck-skills: provider')
 
-  let running: Promise<void> | undefined
-  let again = false
-  // Read through a function: `sync` may request a rerun while this loop awaits it.
-  const rerunRequested = (): boolean => again
-  /** Synchronize once; a request made while one runs reruns it afterwards. */
-  function refresh(): void {
-    if (stopped()) return
-    if (running !== undefined) { again = true; return }
-    running = (async () => {
-      do {
-        again = false
-        await sync(layout).catch((error: unknown) => {
-          if (!stopped()) ctx.logger.warn('mindeck-skills: keeping the cached skills; refresh failed', error)
-        })
-      } while (rerunRequested() && !stopped())
-    })().finally(() => { running = undefined })
+  private readonly layout: CacheLayout
+  private readonly lifetime = new AbortController()
+  private control: SkillProviderControl | undefined
+  private catalog: MindeckSkillCatalog = SIGNED_OUT
+  private readonly listeners = new Set<() => void>()
+  private running: Promise<void> | undefined
+  private again = false
+
+  /** @param ctx - Host with the skill registry and the Mindeck account. @param config - deployment options. */
+  constructor(ctx: Context, private readonly config: Config) {
+    super(ctx, 'mindeckSkills', { namespace: 'mindeckSkills' })
+    this.layout = cacheLayout(resolveCacheDir(config))
+    ctx.effect(() => () => { this.lifetime.abort() }, 'mindeck-skills: Cloud requests')
+    let provider: FileSystemSkillProvider | undefined
+    ctx.skills.registerProvider((registration) => {
+      this.control = registration
+      provider = new FileSystemSkillProvider(ctx, registration, {
+        providerName: PROVIDER_NAME, includeDefaultRoots: false, customSkillDirs: [this.layout.skills], watch: false,
+      })
+      return provider
+    })
+    ctx.effect(function* () {
+      yield async () => { await provider?.dispose() }
+    }, 'mindeck-skills: provider')
+    ctx.on('mindeck-account/changed', () => { this.refresh() })
+    ctx.effect(() => {
+      const timer = setInterval(() => { this.refresh() }, config.refreshIntervalMs)
+      return () => { clearInterval(timer) }
+    }, 'mindeck-skills: refresh timer')
+    this.refresh()
   }
 
-  const sync = async (layout: CacheLayout): Promise<void> => {
-    const session = await ctx.mindeckAccount.session()
-    if (stopped()) return
+  // Read through a method: a check after `await` must not reuse an earlier narrowing.
+  private stopped(): boolean { return this.lifetime.signal.aborted }
+  // Read through a method: `sync` may request a rerun while the refresh loop awaits it.
+  private rerunRequested(): boolean { return this.again }
+
+  /** Synchronize once; a request made while one runs reruns it afterwards. */
+  private refresh(): void {
+    if (this.stopped()) return
+    if (this.running !== undefined) { this.again = true; return }
+    this.running = (async () => {
+      do {
+        this.again = false
+        await this.sync().catch((error: unknown) => {
+          if (!this.stopped()) this.ctx.logger.warn('mindeck-skills: keeping the cached skills; refresh failed', error)
+        })
+      } while (this.rerunRequested() && !this.stopped())
+    })().finally(() => { this.running = undefined })
+  }
+
+  /** Publish how the skills are listed; the skills page receives only changes. */
+  private publish(next: MindeckSkillCatalog): void {
+    if (deepEqualJson(next, this.catalog)) return
+    this.catalog = next
+    for (const listener of this.listeners) listener()
+  }
+
+  private async sync(): Promise<void> {
+    const layout = this.layout
+    const session = await this.ctx.mindeckAccount.session()
+    if (this.stopped()) return
     const manifest = await readManifest(layout)
     if (session === undefined) {
-      if (manifest !== undefined) { await clearCache(layout); control?.invalidate() }
+      this.publish(SIGNED_OUT)
+      if (manifest !== undefined) { await clearCache(layout); this.control?.invalidate() }
       return
     }
     const owner = { cloudUrl: session.cloudUrl, userId: session.bootstrap.user.id }
+    const company = session.bootstrap.company.name
     let cached = manifest?.skills ?? {}
     if (manifest !== undefined && (manifest.cloudUrl !== owner.cloudUrl || manifest.userId !== owner.userId)) {
       await clearCache(layout)
-      control?.invalidate()
+      this.control?.invalidate()
       cached = {}
+      this.publish({ company, skills: [] })
+    } else {
+      // Until Mindeck Cloud answers, the page lists the skills this member already has.
+      this.publish({ company, skills: (manifest?.listing ?? []).filter(skill => cached[skill.name] !== undefined) })
     }
     const request = async <T>(run: (signal: AbortSignal) => Promise<T>): Promise<T> => {
-      using limit = deadline(lifetime.signal, config.requestTimeoutMs, 'MINDECK_SKILLS_TIMEOUT')
+      using limit = deadline(this.lifetime.signal, this.config.requestTimeoutMs, 'MINDECK_SKILLS_TIMEOUT')
       return await run(limit.signal)
     }
     const url = session.bootstrap.endpoints.skills
     let listed
     try { listed = await request(signal => listSkills(url, session.token, signal)) }
     catch (error) {
-      if (error instanceof SkillSignInRequired) { await ctx.mindeckAccount.rejectToken(session.token); return }
+      if (error instanceof SkillSignInRequired) { await this.ctx.mindeckAccount.rejectToken(session.token); return }
       throw error
     }
-    if (stopped()) return
+    if (this.stopped()) return
     const next: Record<string, string> = {}
     let changed = false
     for (const summary of listed) {
@@ -141,28 +181,48 @@ export function apply(ctx: Context, config: Config): void {
       }
       try {
         const detail = await request(signal => readSkill(url, summary.name, session.token, signal))
-        if (stopped()) return
-        await installSkill(layout, detail.name, skillFiles(detail, { maxBytes: config.maxSkillBytes, maxFiles: config.maxSkillFiles }))
+        if (this.stopped()) return
+        const limits = { maxBytes: this.config.maxSkillBytes, maxFiles: this.config.maxSkillFiles }
+        await installSkill(layout, detail.name, skillFiles(detail, limits))
         next[summary.name] = detail.hash
         changed = true
       } catch (error) {
-        if (error instanceof SkillSignInRequired) { await ctx.mindeckAccount.rejectToken(session.token); return }
-        if (stopped()) return
+        if (error instanceof SkillSignInRequired) { await this.ctx.mindeckAccount.rejectToken(session.token); return }
+        if (this.stopped()) return
         // Keep the previous copy of this skill, if any, and retry it on the next refresh.
-        ctx.logger.warn(`mindeck-skills: could not update skill "${summary.name}"`, error)
+        this.ctx.logger.warn(`mindeck-skills: could not update skill "${summary.name}"`, error)
         const previous = cached[summary.name]
         if (previous !== undefined) next[summary.name] = previous
       }
     }
     const removed = await pruneSkills(layout, new Set(Object.keys(next)))
-    await writeManifest(layout, { ...owner, skills: next })
-    if (changed || removed.length > 0) control?.invalidate()
+    const listing: MindeckSkillView[] = listed.filter(skill => next[skill.name] !== undefined)
+      .map(({ hash: _hash, ...view }) => view)
+    await writeManifest(layout, { ...owner, skills: next, listing })
+    if (changed || removed.length > 0) this.control?.invalidate()
+    this.publish({ company, skills: listing })
   }
 
-  ctx.on('mindeck-account/changed', () => { refresh() })
-  ctx.effect(() => {
-    const timer = setInterval(() => { refresh() }, config.refreshIntervalMs)
-    return () => { clearInterval(timer) }
-  }, 'mindeck-skills: refresh timer')
-  refresh()
+  /**
+   * Stream the company skills the signed-in member has on this computer.
+   * @param signal - stream lifetime.
+   * @returns the current listing, then every change.
+   */
+  @Remote({ mode: 'stream' })
+  async *watch(signal: AbortSignal): AsyncIterable<MindeckSkillCatalog> {
+    let dirty = true
+    let wake: (() => void) | undefined
+    const wakeUp = (): void => { dirty = true; wake?.() }
+    this.listeners.add(wakeUp)
+    signal.addEventListener('abort', wakeUp, { once: true })
+    try {
+      while (!signal.aborted && !this.lifetime.signal.aborted) {
+        if (dirty) { dirty = false; yield this.catalog; continue }
+        await new Promise<void>((resolve) => { wake = resolve })
+      }
+    } finally {
+      this.listeners.delete(wakeUp)
+      signal.removeEventListener('abort', wakeUp)
+    }
+  }
 }

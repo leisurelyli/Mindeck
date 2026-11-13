@@ -64,6 +64,7 @@
     { "path": "./packages/experimental/client-ui-cot-translation/tsconfig.client.json" },
     { "path": "./packages/mindeck/mindeck-account/tsconfig.client.json" },
     { "path": "./packages/mindeck/mindeck-files/tsconfig.client.json" },
+    { "path": "./packages/mindeck/mindeck-skills/tsconfig.client.json" },
     { "path": "./packages/client/product-analytics/tsconfig.client.json" },
     { "path": "./apps/desktop/tsconfig.client.json" },
     { "path": "./packages/util/atomic-write" },

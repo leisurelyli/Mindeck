@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path'
 import { isSkillName } from '@deepseek-ai/dsh-skill'
 import { z } from 'zod'
 import type { SkillDetail } from './cloud.ts'
+import type { MindeckSkillView } from './types.ts'
 
 /** Owner and content of the cached skills. */
 export interface CacheManifest {
@@ -12,13 +13,25 @@ export interface CacheManifest {
   readonly userId: string
   /** Content hash of each cached skill by name. */
   readonly skills: Readonly<Record<string, string>>
+  /** How the cached skills are listed, in Mindeck Cloud order; empty in a manifest written before listings were kept. */
+  readonly listing: readonly MindeckSkillView[]
 }
+
+const viewSchema = z.object({
+  name: z.string(),
+  displayName: z.string().nullable(),
+  category: z.string().nullable(),
+  description: z.string(),
+  recommended: z.boolean(),
+  searchKeys: z.array(z.string()),
+})
 
 const manifestSchema = z.object({
   version: z.literal(1),
   cloudUrl: z.string(),
   userId: z.string(),
   skills: z.record(z.string(), z.string()),
+  listing: z.array(viewSchema).default([]),
 })
 
 /** Limits applied to one downloaded skill. */
@@ -58,7 +71,9 @@ export async function readManifest(layout: CacheLayout): Promise<CacheManifest |
   try { parsed = JSON.parse(text) }
   catch (_error) { return undefined } // A torn write: rebuild the cache from Mindeck Cloud.
   const result = manifestSchema.safeParse(parsed)
-  return result.success ? { cloudUrl: result.data.cloudUrl, userId: result.data.userId, skills: result.data.skills } : undefined
+  if (!result.success) return undefined
+  const { cloudUrl, userId, skills, listing } = result.data
+  return { cloudUrl, userId, skills, listing }
 }
 
 /**
