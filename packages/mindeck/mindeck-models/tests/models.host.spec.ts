@@ -79,8 +79,10 @@ async function fixture(gatewayUrl: string) {
   ctx.on('llm/models-updated', updated)
   const signIn = (token: string) => { current = session(token); ctx.emit('mindeck-account/changed') }
   const signOut = () => { current = undefined; ctx.emit('mindeck-account/changed') }
+  // The session ends before the account announces it, as when a request starts during sign-out.
+  const loseSession = () => { current = undefined }
   const providers = () => ctx.llm.listProviders().map(provider => provider.id).filter(id => id.startsWith('mindeck-')).sort()
-  return { ctx, catalog, model, account, defaults, updated, signIn, signOut, providers, selection: () => selection }
+  return { ctx, catalog, model, account, defaults, updated, signIn, signOut, loseSession, providers, selection: () => selection }
 }
 
 it('registers one route per client API while signed in and withdraws them after sign-out', async () => {
@@ -116,7 +118,7 @@ it('ends the session when Mindeck Cloud refuses the catalog request', async () =
   expect(f.providers()).toEqual([])
 })
 
-it('sends the session token to the gateway and reports quota and session refusals in the Cloud words', async () => {
+it('sends the session token to the gateway and reports quota, sign-out, and session refusals in Mindeck and Cloud words', async () => {
   const gateway = await mockServer([
     { events: anthropicTextEvents },
     { status: 402, body: JSON.stringify({ type: 'error', error: { type: 'billing_error', message: '本月额度已用完，请联系管理员。' } }) },
@@ -136,6 +138,12 @@ it('sends the session token to the gateway and reports quota and session refusal
   const quota = await assemble(f.ctx, request)
   expect(quota.finish).toMatchObject({ kind: 'error', failure: { code: QUOTA_EXCEEDED_CODE, status: 402, message: '本月额度已用完，请联系管理员。' } })
   expect(f.account.rejectToken).not.toHaveBeenCalled()
+
+  f.loseSession()
+  const signedOut = await assemble(f.ctx, request)
+  expect(signedOut.finish).toMatchObject({ kind: 'error', failure: { code: MindeckModels.SIGN_IN_REQUIRED_CODE, message: '已退出 Mindeck 公司账号，请登录后重试。' } })
+  expect(gateway.paths).toHaveLength(2)
+  f.signIn('desktop-token-1')
 
   const ended = await assemble(f.ctx, request)
   expect(ended.finish).toMatchObject({ kind: 'error', failure: { code: MindeckModels.SESSION_ENDED_CODE, message: '登录已失效，请重新登录。' } })

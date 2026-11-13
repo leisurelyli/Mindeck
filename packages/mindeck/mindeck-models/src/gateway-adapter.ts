@@ -9,6 +9,15 @@ import type {
 /** Failure code of a request Mindeck Cloud refused because the desktop session ended. */
 export const SESSION_ENDED_CODE = 'ACCOUNT_TOKEN_INVALID'
 
+/**
+ * Failure code of a request Mindeck Cloud refused because the member's account cannot use models now, such as a
+ * disabled account or an initial password still to change. Its message is the Cloud's explanation.
+ */
+export const ACCOUNT_UNAVAILABLE_CODE = 'ACCOUNT_UNAVAILABLE'
+
+/** Failure code of a model request made while no Mindeck account is signed in. */
+export const SIGN_IN_REQUIRED_CODE = 'MINDECK_SIGN_IN_REQUIRED'
+
 /** What the gateway adapter does after a refused request. */
 export interface GatewayHooks {
   /** Read the token a request is about to use; undefined while signed out. */
@@ -66,7 +75,7 @@ export function mapGatewayFailure(failure: LlmFailure, token: string | undefined
     case 402:
       return { ...failure, status, code: QUOTA_EXCEEDED_CODE, message }
     case 403:
-      return { ...failure, status, code: 'AUTH', message }
+      return { ...failure, status, code: ACCOUNT_UNAVAILABLE_CODE, message: read.text ?? '账号暂时无法使用公司模型，请联系管理员。' }
     case 404:
       hooks.modelMissing()
       return { ...failure, status, code: 'UNKNOWN_MODEL', message }

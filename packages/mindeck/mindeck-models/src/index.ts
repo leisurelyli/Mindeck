@@ -16,11 +16,13 @@ import type {} from '@deepseek-ai/dsh-mindeck-account'
 import { deadline } from '@deepseek-ai/dsh-timeout'
 import { deepEqualJson } from '@deepseek-ai/dsh-util-values'
 import { fetchCatalog, routeProfiles } from './catalog.ts'
-import { GatewayAdapter } from './gateway-adapter.ts'
+import { GatewayAdapter, SIGN_IN_REQUIRED_CODE } from './gateway-adapter.ts'
 
 export { parseCatalog, routeProfiles, ROUTES } from './catalog.ts'
 export type { CatalogModel, ModelApi, ParsedCatalog } from './catalog.ts'
-export { GatewayAdapter, mapGatewayFailure, readGatewayFailure, SESSION_ENDED_CODE } from './gateway-adapter.ts'
+export {
+  ACCOUNT_UNAVAILABLE_CODE, GatewayAdapter, mapGatewayFailure, readGatewayFailure, SESSION_ENDED_CODE, SIGN_IN_REQUIRED_CODE,
+} from './gateway-adapter.ts'
 
 export const name = 'mindeck-models'
 export const inject = ['llm', 'mindeckAccount']
@@ -62,7 +64,8 @@ export function apply(ctx: Context, config: Config): void {
     profiles: () => catalog,
     resolveApiKey: async () => {
       const current = await token()
-      if (current === undefined) throw new LlmError('Sign in to Mindeck to use company models.', 'ACCOUNT_SIGN_IN_REQUIRED')
+      // The transcript shows this message as written; Mindeck Cloud explains its own refusals in Chinese as well.
+      if (current === undefined) throw new LlmError('已退出 Mindeck 公司账号，请登录后重试。', SIGN_IN_REQUIRED_CODE)
       return current
     },
     auth: piAiAuthFrom(ctx),

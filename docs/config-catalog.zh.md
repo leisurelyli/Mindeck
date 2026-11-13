@@ -2609,7 +2609,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-mindeck-models`
 
 - `inject`: `llm` · `mindeckAccount`
-- `source`: [`packages/mindeck/mindeck-models/src/index.ts:29`](../packages/mindeck/mindeck-models/src/index.ts)
+- `source`: [`packages/mindeck/mindeck-models/src/index.ts:31`](../packages/mindeck/mindeck-models/src/index.ts)
 
 ```ts config-catalog
 /** Deployment options. */

@@ -29,7 +29,7 @@ Mount the plugin on the Host after the [Mindeck account](../mindeck-account/READ
 
 The catalog is read again after each sign-in or sign-out, every `refreshIntervalMs` (ten minutes by default), and after the gateway reports a model that no longer exists. A failed refresh keeps the current models. `defaultContextWindow` and `defaultMaxTokens` size a model whose catalog entry leaves the size unset; `requestTimeoutMs` bounds each catalog request.
 
-Gateway refusals keep Mindeck Cloud's own message. A 401 ends the desktop session, and the sign-in dialog appears. A 402 means the member's or department's monthly quota is used up and is not retried. A 404 means the administrator removed the model or the member's access to it, and the catalog is read again.
+Gateway refusals keep Mindeck Cloud's own message. A 401 ends the desktop session, and the sign-in dialog appears. A 402 means the member's or department's monthly quota is used up and is not retried. A 403 means the account cannot use models now, such as a disabled account or an initial password still to change, and the transcript shows the Cloud's reason. A 404 means the administrator removed the model or the member's access to it, and the catalog is read again. A request that starts after the session ends fails with "已退出 Mindeck 公司账号，请登录后重试。" and is not sent.
 
 -----
 
@@ -41,7 +41,7 @@ Gateway refusals keep Mindeck Cloud's own message. A 401 ends the desktop sessio
 
 The plugin reads `GET {endpoints.models}` from the session bootstrap and groups the models by client API into three pi-ai routes: `mindeck-anthropic` (`anthropic-messages`), `mindeck-openai` (`openai-completions`), and `mindeck-openai-responses` (`openai-responses`). A route exists only while it has models; its endpoint is the gateway URL of its first model. The adapter comes from `createPiAiAdapter` in [llm-pi-ai](../../llm/llm-pi-ai/README.md), so request headers, image attachments, and replay follow the ordinary pi-ai routes; the credential is the current session token, read for each request. An unchanged catalog changes no registration. Each route whose models change emits `llm/models-updated`.
 
-`GatewayAdapter` delegates to the pi-ai adapter and rewrites error finishes. It reads the HTTP status and the gateway's `error.message` from the SDK failure text, maps 401 to `ACCOUNT_TOKEN_INVALID` and reports the token to `mindeckAccount.rejectToken`, maps 402 to `QUOTA`, 403 to `AUTH`, and 404 to `UNKNOWN_MODEL`, and keeps other codes.
+`GatewayAdapter` delegates to the pi-ai adapter and rewrites error finishes. It reads the HTTP status and the gateway's `error.message` from the SDK failure text, maps 401 to `ACCOUNT_TOKEN_INVALID` and reports the token to `mindeckAccount.rejectToken`, maps 402 to `QUOTA`, 403 to `ACCOUNT_UNAVAILABLE`, and 404 to `UNKNOWN_MODEL`, and keeps other codes. A request without a session fails with `MINDECK_SIGN_IN_REQUIRED`. The transcript shows the message of a code it does not translate, so these Mindeck codes carry Chinese explanations instead of the DeepSeek account and API-key texts.
 
 </details>
 
