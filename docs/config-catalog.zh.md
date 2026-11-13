@@ -3963,13 +3963,18 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-system-prompt`
 
-- `source`: [`packages/core/system-prompt/src/index.ts:264`](../packages/core/system-prompt/src/index.ts)
+- `source`: [`packages/core/system-prompt/src/index.ts:267`](../packages/core/system-prompt/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config: the deployment-authored fragment of the system prompt (see {@link Config.personaPrefix} for its contract). */
 export interface Config {
-  /** Include the fixed DeepSeek Harness identity before the deployment persona (default true). */
+  /** Include the identity opener before the deployment persona (default true). */
   includeHarnessIdentity?: boolean
+  /**
+   * Identity opener template, the `harness:identity` section that agent presets cannot shadow.
+   * Defaults to {@link DEFAULT_IDENTITY}; `{{variable}}` references are strict.
+   */
+  identity?: string
   /** Include optional runtime-context snapshots in model history (default true); required context remains. */
   includeRuntimeContext?: boolean
   /**

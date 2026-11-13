@@ -239,6 +239,15 @@ describe('SystemPrompt', () => {
       expect(renderPrompt(await ctx.systemPrompt.assemble())).toBe(IDENTITY)
     })
 
+    it('opens with the deployment identity in place of the DeepSeek Harness opener', async () => {
+      const ctx = new Context()
+      await ctx.plugin(SystemPrompt, { identity: 'You are Mindeck, powered by {{model}}.', personaPrefix: 'You help with office work.' })
+      ctx.systemPrompt.variable('model', () => 'm1')
+      const assembly = await ctx.systemPrompt.assemble()
+      expect(assembly.sections[0]?.name).toBe('harness:identity')
+      expect(renderPrompt(assembly)).toBe('You are Mindeck, powered by m1.\n\nYou help with office work.')
+    })
+
     it('can omit the harness identity for a deployment that owns the complete persona', async () => {
       const ctx = new Context()
       await ctx.plugin(SystemPrompt, {
