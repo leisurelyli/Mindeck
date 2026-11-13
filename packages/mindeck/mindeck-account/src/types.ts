@@ -51,6 +51,11 @@ export interface MindeckQuota {
   readonly user: MindeckQuotaUsage
   /** The department's shared limit; null when the member has no department. */
   readonly department: MindeckQuotaUsage | null
+  /**
+   * Share of the company's monthly budget used, in percent, when the budget stops every member's requests once
+   * used up; null otherwise. Mindeck Cloud does not tell members the company's amounts.
+   */
+  readonly companyBudgetPercent: number | null
   /** `YYYY-MM-DD` of the first day of the next month in the company time zone, when usage starts over. */
   readonly resetDate: string
 }

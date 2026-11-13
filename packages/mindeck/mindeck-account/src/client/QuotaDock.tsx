@@ -1,19 +1,13 @@
 /** Reminder above the composer when a company model quota is nearly or fully used. */
 import { IconCloseOutlineRegular, IconWarningOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { MindeckAccountKey } from './locales.ts'
 import type { MindeckAccountInjected } from './operations.ts'
-import { formatCny, monthDay, QUOTA_REMINDER_RATIOS, tightestQuota } from './quota.ts'
+import { QUOTA_REMINDER_RATIOS, quotaText, tightestQuota } from './quota.ts'
 import css from './Account.module.css'
 
 /** Composed dock props. */
 export type QuotaDockProps = PropsRuntime<'conversation.input.dock'> & PropsLocale<'mindeckAccount'>
   & InjectFace<MindeckAccountInjected>
-
-const TEXT_KEYS = {
-  user: { warning: 'quotaDockUser', urgent: 'quotaDockUser', out: 'quotaDockUserOut' },
-  department: { warning: 'quotaDockDepartment', urgent: 'quotaDockDepartment', out: 'quotaDockDepartmentOut' },
-} as const satisfies Record<string, Record<string, MindeckAccountKey>>
 
 /**
  * Shown from 75% of the limit that runs out first, again from 95%, and when it is used up. Dismissing hides
@@ -30,12 +24,7 @@ export function QuotaDock({ useAccount, useReminders, dismissReminder, t }: Quot
   const level = position.ratio >= 1 ? 'out' : position.ratio >= QUOTA_REMINDER_RATIOS.urgent ? 'urgent' : 'warning'
   const key = `${quota.resetDate}:${position.scope}:${level}`
   if (dismissed.includes(key)) return null
-  const text = t(TEXT_KEYS[position.scope][level], {
-    percent: String(Math.floor(position.ratio * 100)),
-    used: formatCny(position.used),
-    limit: formatCny(position.limit),
-    reset: t('quotaReset', monthDay(quota.resetDate)),
-  })
+  const text = quotaText(position, level, quota.resetDate, t)
   return <div className={css.quotaDock} data-level={level} role="status">
     <IconWarningOutlineRegular size={16} className={css.quotaDockIcon} />
     <span className={css.quotaDockText}>{text}</span>

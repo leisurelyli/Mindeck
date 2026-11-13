@@ -7487,7 +7487,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'MindeckQuota',
-    declaration: 'export interface MindeckQuota {\n    readonly user: MindeckQuotaUsage;\n    readonly department: MindeckQuotaUsage | null;\n    readonly resetDate: string;\n}',
+    declaration: 'export interface MindeckQuota {\n    readonly user: MindeckQuotaUsage;\n    readonly department: MindeckQuotaUsage | null;\n    readonly companyBudgetPercent: number | null;\n    readonly resetDate: string;\n}',
   },
   {
     name: 'MindeckQuotaUsage',

@@ -271,6 +271,8 @@ const quotaUsageSchema = z.object({ used: z.number(), limit: z.number().nullable
 const quotaSchema = z.object({
   user: quotaUsageSchema,
   department: quotaUsageSchema.nullable(),
+  // Mindeck Cloud releases before company budgets leave the field out.
+  companyBudget: z.object({ usedPercent: z.number() }).nullable().optional(),
   resetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 })
 
@@ -288,7 +290,12 @@ export async function readQuota(
   if (!response.ok) return await desktopFailure(response)
   const quota = parse(quotaSchema, await json(response), 'quota')
   const usage = ({ used, limit }: z.infer<typeof quotaUsageSchema>) => ({ used, limit })
-  return { user: usage(quota.user), department: quota.department === null ? null : usage(quota.department), resetDate: quota.resetDate }
+  return {
+    user: usage(quota.user),
+    department: quota.department === null ? null : usage(quota.department),
+    companyBudgetPercent: quota.companyBudget?.usedPercent ?? null,
+    resetDate: quota.resetDate,
+  }
 }
 
 /**

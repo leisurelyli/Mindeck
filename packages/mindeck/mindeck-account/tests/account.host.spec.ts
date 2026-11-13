@@ -156,11 +156,13 @@ it('reads the quota after sign-in and on request, and forgets it with the sessio
   const f = await fixture()
   await signIn(f)
   await vi.waitFor(async () => {
-    expect((await f.state()).quota).toEqual({ user: { used: 12.5, limit: 50 }, department: { used: 30, limit: null }, resetDate: '2026-12-01' })
+    expect((await f.state()).quota).toEqual({
+      user: { used: 12.5, limit: 50 }, department: { used: 30, limit: null }, companyBudgetPercent: null, resetDate: '2026-12-01',
+    })
   })
-  f.cloud.quota = { resetDate: '2026-12-01', user: { limit: 50, used: 40 }, department: null }
+  f.cloud.quota = { resetDate: '2026-12-01', user: { limit: 50, used: 40 }, department: null, companyBudget: { usedPercent: 101.5 } }
   expect((await f.account().refreshQuota(new AbortController().signal)).quota)
-    .toEqual({ user: { used: 40, limit: 50 }, department: null, resetDate: '2026-12-01' })
+    .toEqual({ user: { used: 40, limit: 50 }, department: null, companyBudgetPercent: 101.5, resetDate: '2026-12-01' })
   f.cloud.quota = { broken: true }
   expect((await f.account().refreshQuota(new AbortController().signal)).quota?.user.used).toBe(40)
   await f.account().signOut()
