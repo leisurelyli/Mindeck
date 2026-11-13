@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /** The library page registers its sidebar type, maps Remote failures, writes draft references, and leaves with the plugin. */
 import { Context, Service } from '@deepseek-ai/cordis'
 import { expect, it, vi } from 'vitest'
@@ -40,6 +41,8 @@ async function fixture() {
       ok: false, error: new RemoteError('mindeck-files/denied', 'no access', {}),
     })),
     search: vi.fn(async (_query: string): Promise<RemoteResult<LibraryEntryView[]>> => ({ ok: true, value: [] })),
+    upload: vi.fn(async (_folder: string, _name: string, _content: string, _overwrite: boolean)
+    : Promise<RemoteResult<LibraryEntryView>> => ({ ok: false, error: new RemoteError('mindeck-files/exists', 'taken', {}) })),
   }
   ctx.provide('remote.mindeckFiles', remote as never)
   ctx.provide('locale', new LocaleRuntime(ctx))
@@ -88,6 +91,8 @@ it('registers the sidebar page, writes library references into the draft, shows 
     await vi.waitFor(() => { expect(operations.hooks.library.getSnapshot().availability).toBe('ready') })
     expect(await operations.list('/研发部')).toEqual({ ok: false, reason: 'denied' })
     expect(await operations.spaces()).toEqual({ ok: true, value: [] })
+    expect(await operations.upload('/研发部', new File(['周报'], '周报.md'), false)).toEqual({ ok: false, reason: 'exists' })
+    expect(f.remote.upload).toHaveBeenCalledWith('/研发部', '周报.md', Buffer.from('周报').toString('base64'), false)
 
     const file: LibraryEntryView = { path: '/研发部/规范.md', name: '规范.md', kind: 'file', writable: true }
     expect(operations.addToConversation(file)).toBe(true)

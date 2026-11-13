@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-/** The library page follows availability, browses spaces and folders, searches, and adds items to the draft. */
+/** The library page follows availability, browses spaces and folders, searches, adds items to the draft, and uploads files. */
 import { afterEach, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, within } from '@testing-library/react'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
@@ -30,6 +30,8 @@ function fixture(availability: LibraryAvailability | undefined) {
     spaces: vi.fn(async () => ok(spaces)),
     list: vi.fn(async (_path: string): Promise<LibraryResult<LibraryEntryView[]>> => ok(folder)),
     search: vi.fn(async (_query: string) => ok([folder[1]!])),
+    upload: vi.fn(async (_folder: string, file: File, _overwrite: boolean): Promise<LibraryResult<LibraryEntryView>> =>
+      ok({ path: `/研发部/${file.name}`, name: file.name, kind: 'file', writable: true })),
     addToConversation: vi.fn((_entry: LibraryEntryView) => true),
   }
   // Pane runtime hooks are unused by the page; the renderer supplies them in production.
@@ -50,18 +52,21 @@ it('explains why the library is unavailable and loads the spaces once it is read
   expect(view.getByRole('button', { name: '研发部' })).toBeTruthy()
 })
 
-it('opens a space, shows read-only files, adds an item to the draft, and goes back', async () => {
+it('opens a space, adds a file to the draft with a click, keeps the browser one step away, and goes back', async () => {
   const f = fixture('ready')
   const view = render(<LibraryPanel {...f.props} />)
+  expect(view.getByText(en.hint)).toBeTruthy()
   fireEvent.click(await view.findByRole('button', { name: '研发部' }))
   await vi.waitFor(() => { expect(f.operations.list).toHaveBeenCalledWith('/研发部') })
-  const file = await view.findByRole('link', { name: /规范\.md/ })
-  expect(file.getAttribute('href')).toBe('https://files.example.com/f/s')
+  const file = await view.findByRole('button', { name: `${en.addToConversation}: 规范.md` })
   expect(file.textContent).toContain(en.readOnly)
+  expect(view.getByRole('link', { name: `${en.openInBrowser}: 规范.md` }).getAttribute('href')).toBe('https://files.example.com/f/s')
   expect(view.getByRole('link', { name: en.openInBrowser }).getAttribute('href')).toBe('https://files.example.com/f/d')
-  fireEvent.click(view.getByRole('button', { name: `${en.addToConversation}: 规范.md` }))
+  fireEvent.click(file)
   expect(f.operations.addToConversation).toHaveBeenCalledWith(folder[1])
   expect(view.getAllByRole('status').some(node => node.textContent === en.added)).toBe(true)
+  fireEvent.click(view.getByRole('button', { name: `${en.addToConversation}: 周报` }))
+  expect(f.operations.addToConversation).toHaveBeenLastCalledWith(folder[0])
   fireEvent.click(view.getByRole('button', { name: '周报' }))
   await vi.waitFor(() => { expect(f.operations.list).toHaveBeenLastCalledWith('/研发部/周报') })
   const crumbs = within(view.getByRole('navigation', { name: en.title }))
@@ -79,10 +84,53 @@ it('searches after typing pauses and offers a retry after a failure', async () =
   fireEvent.click(await view.findByRole('button', { name: '研发部' }))
   expect((await view.findByRole('alert')).textContent).toContain(en.unavailable)
   fireEvent.click(view.getByRole('button', { name: en.retry }))
-  expect(await view.findByRole('link', { name: /规范\.md/ })).toBeTruthy()
+  expect(await view.findByRole('button', { name: `${en.addToConversation}: 规范.md` })).toBeTruthy()
   fireEvent.change(view.getByRole('searchbox', { name: en.searchPlaceholder }), { target: { value: '规范' } })
   expect(f.operations.search).not.toHaveBeenCalled()
   await vi.waitFor(() => { expect(f.operations.search).toHaveBeenCalledWith('规范') })
-  const result = await view.findByRole('link', { name: /规范\.md/ })
+  const result = await view.findByRole('button', { name: `${en.addToConversation}: 规范.md` })
   expect(result.textContent).toContain('研发部')
+  expect(view.queryByRole('button', { name: en.upload })).toBeNull()
+})
+
+it('uploads picked and dropped files into the open folder, offers to replace same-named files, and explains a failure', async () => {
+  const f = fixture('ready')
+  const view = render(<LibraryPanel {...f.props} />)
+  expect(view.queryByRole('button', { name: en.upload })).toBeNull()
+  fireEvent.click(await view.findByRole('button', { name: '研发部' }))
+  await view.findByRole('button', { name: `${en.addToConversation}: 规范.md` })
+  const picker = view.container.querySelector('input[type=file]')
+  if (!(picker instanceof HTMLInputElement)) throw new Error('Expected the file picker')
+  const click = vi.spyOn(picker, 'click')
+  fireEvent.click(view.getByRole('button', { name: en.upload }))
+  expect(click).toHaveBeenCalledOnce()
+  const notes = new File(['n'], 'notes.md')
+  fireEvent.change(picker, { target: { files: [notes] } })
+  await vi.waitFor(() => { expect(view.getAllByRole('status').some(node => node.textContent === 'Files uploaded: 1')).toBe(true) })
+  expect(f.operations.upload).toHaveBeenCalledWith('/研发部', notes, false)
+  await vi.waitFor(() => { expect(f.operations.list).toHaveBeenCalledTimes(2) })
+
+  // A dropped file whose name is taken waits until the member replaces it.
+  f.operations.upload.mockResolvedValueOnce({ ok: false, reason: 'exists' })
+  const page = view.container.firstElementChild
+  if (page === null) throw new Error('Expected the page')
+  const report = new File(['r'], 'report.md')
+  const transfer = { types: ['Files'], files: [report], dropEffect: 'none' }
+  fireEvent.dragEnter(page, { dataTransfer: transfer })
+  expect(view.getByText('Drop to upload to 研发部')).toBeTruthy()
+  fireEvent.drop(page, { dataTransfer: transfer })
+  expect(view.queryByText('Drop to upload to 研发部')).toBeNull()
+  const conflict = await view.findByRole('alert')
+  expect(conflict.textContent).toContain('Files not uploaded because the name is taken: 1')
+  fireEvent.click(within(conflict).getByRole('button', { name: en.replaceAll }))
+  await vi.waitFor(() => { expect(f.operations.upload).toHaveBeenLastCalledWith('/研发部', report, true) })
+  await vi.waitFor(() => { expect(view.queryByRole('alert')).toBeNull() })
+
+  f.operations.upload.mockResolvedValueOnce({ ok: false, reason: 'tooLarge' })
+  fireEvent.change(picker, { target: { files: [new File(['b'], 'big.bin'), new File(['c'], 'after.md')] } })
+  const failure = await view.findByRole('alert')
+  expect(failure.textContent).toContain(`big.bin was not uploaded. ${en.tooLarge}`)
+  expect(f.operations.upload).not.toHaveBeenCalledWith('/研发部', expect.objectContaining({ name: 'after.md' }), false)
+  fireEvent.click(within(failure).getByRole('button', { name: en.dismiss }))
+  expect(view.queryByRole('alert')).toBeNull()
 })

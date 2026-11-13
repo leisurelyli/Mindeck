@@ -55,9 +55,11 @@ export function resolveDownloadDir(config: Pick<Config, 'downloadDir'>): string 
   return config.downloadDir === '' ? join(resolveDshHome(), 'mindeck', 'library-downloads') : resolve(config.downloadDir)
 }
 
-const REMOTE_CODES: Readonly<Record<LibraryFailureCode, 'signed-out' | 'not-configured' | 'not-found' | 'denied' | 'unavailable'>> = {
+type RemoteCode = 'signed-out' | 'not-configured' | 'not-found' | 'denied' | 'exists' | 'quota' | 'too-large' | 'unavailable'
+
+const REMOTE_CODES: Readonly<Record<LibraryFailureCode, RemoteCode>> = {
   'signed-out': 'signed-out', 'not-configured': 'not-configured', 'not-found': 'not-found', denied: 'denied',
-  exists: 'denied', quota: 'denied', 'too-large': 'denied', unavailable: 'unavailable', protocol: 'unavailable',
+  exists: 'exists', quota: 'quota', 'too-large': 'too-large', unavailable: 'unavailable', protocol: 'unavailable',
 }
 
 /** File-library tools and the panel's Remote for the signed-in member. */
@@ -209,6 +211,35 @@ export default class MindeckFiles extends TypertRemoteService {
       return text === '' ? [] : (await this.library.search(text, this.options.maxSearchResults, signal)).map(entry => ({ ...entry }))
     })
   }
+  /**
+   * Save a file from the member's computer into a library folder.
+   * @param folder - library path of a space or folder.
+   * @param name - file name without folders.
+   * @param contentBase64 - file content in base64, at most `maxUploadBytes` once decoded.
+   * @param overwrite - replace a file of the same name; the library keeps the replaced content as a version.
+   * @param signal - caller cancellation.
+   * @returns the saved file.
+   */
+  @Remote
+  async upload(folder: string, name: string, contentBase64: string, overwrite: boolean, signal: AbortSignal): Promise<LibraryEntryView> {
+    return await this.run(async () => {
+      if (name === '' || name === '.' || name === '..' || /[\\/\0]/u.test(name)) {
+        throw new LibraryError('denied', `"${name}" is not a file name`)
+      }
+      if (contentBase64.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/u.test(contentBase64)) {
+        throw new LibraryError('protocol', `the content of "${name}" is not base64`)
+      }
+      // Refuse an oversized file before decoding it.
+      if (contentBase64.length / 4 * 3 - (contentBase64.match(/=+$/u)?.[0].length ?? 0) > this.options.maxUploadBytes) {
+        throw new LibraryError('too-large', `"${name}" is larger than the upload limit of ${this.options.maxUploadBytes} bytes`)
+      }
+      const content = Buffer.from(contentBase64, 'base64')
+      // Without overwrite, the library refuses an existing name with `exists`.
+      return { ...await this.library.write(`${folder.replace(/\/+$/u, '')}/${name}`, content, overwrite, signal) }
+    })
+  }
+
+
 }
 
 /**

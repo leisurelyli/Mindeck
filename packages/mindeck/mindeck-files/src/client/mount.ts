@@ -14,7 +14,7 @@ import { IconFolderCloseRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { RemoteFailure, RemoteResult, TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
 import { libraryReference } from '../reference.ts'
-import type { LibraryAvailability } from '../types.ts'
+import type { LibraryAvailability, LibraryEntryView } from '../types.ts'
 import { LibraryPanel } from './LibraryPanel.tsx'
 import { LIBRARY_TEXT_NODE, LibraryReference, libraryReferenceRule } from './LibraryReference.tsx'
 import { en, NS, zh, type MindeckFilesKey } from './locales.ts'
@@ -39,9 +39,29 @@ function failureReason(error: RemoteFailure): MindeckFilesKey {
     case 'mindeck-files/not-configured': return 'notConfigured'
     case 'mindeck-files/not-found': return 'notFound'
     case 'mindeck-files/denied': return 'denied'
+    case 'mindeck-files/exists': return 'exists'
+    case 'mindeck-files/quota': return 'quota'
+    case 'mindeck-files/too-large': return 'tooLarge'
     case 'mindeck-files/unavailable': return 'unavailable'
     default: return 'failed'
   }
+}
+
+/**
+ * Read a file the member picked as base64 for the upload Remote.
+ * @param file - picked or dropped file.
+ * @returns its content in base64.
+ */
+async function fileBase64(file: File): Promise<string> {
+  const url = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    // readAsDataURL always produces a string.
+    reader.onload = () => { resolve(typeof reader.result === 'string' ? reader.result : '') }
+    reader.onerror = () => { reject(reader.error ?? new Error(`could not read ${file.name}`)) }
+    reader.readAsDataURL(file)
+  })
+  // A data URL is `data:<type>;base64,<content>`.
+  return url.slice(url.indexOf(',') + 1)
 }
 
 function result<T>(outcome: RemoteResult<T>): LibraryResult<T> {
@@ -88,6 +108,12 @@ function registerUi(ctx: Context): void {
     spaces: async () => result(await ctx.remote.mindeckFiles.spaces()),
     list: async (path: string) => result(await ctx.remote.mindeckFiles.list(path)),
     search: async (query: string) => result(await ctx.remote.mindeckFiles.search(query)),
+    upload: async (folder: string, file: File, overwrite: boolean): Promise<LibraryResult<LibraryEntryView>> => {
+      let content: string
+      try { content = await fileBase64(file) }
+      catch (_error) { return { ok: false, reason: 'unreadable' } } // Moved or deleted on the computer after it was picked.
+      return result(await ctx.remote.mindeckFiles.upload(folder, file.name, content, overwrite))
+    },
   }
   const createFace = (sessionId: SessionId): MindeckFilesInjected => ({
     hooks: { library: state },

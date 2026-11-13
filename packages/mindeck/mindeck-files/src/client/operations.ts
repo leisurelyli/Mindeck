@@ -24,6 +24,14 @@ export interface MindeckFilesInjected {
   /** @param query - text contained in names. @returns matching entries. */
   search: (query: string) => Promise<LibraryResult<LibraryEntryView[]>>
   /**
+   * Save a file from the member's computer into a library folder.
+   * @param folder - library path of a space or folder.
+   * @param file - file the member picked or dropped.
+   * @param overwrite - replace a file of the same name.
+   * @returns the saved file, or why it was not saved; `exists` when the name is taken and `overwrite` is false.
+   */
+  upload: (folder: string, file: File, overwrite: boolean) => Promise<LibraryResult<LibraryEntryView>>
+  /**
    * Put a reference to the library item into this Session's message draft.
    * @param entry - file or folder.
    * @returns whether the composer accepted it.

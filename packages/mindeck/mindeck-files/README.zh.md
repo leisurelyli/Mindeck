@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-在 Mindeck Desktop 中使用公司资源库。智能体可以列出成员的空间、按文件名搜索、下载文件后阅读，并把工作区文件存回资源库。成员在侧栏页面中浏览同样的空间，并把文件加入消息。上传、预览、历史版本和分享仍在资源库网页中进行。
+在 Mindeck Desktop 中使用公司资源库。智能体可以列出成员的空间、按文件名搜索、下载文件后阅读，并把工作区文件存回资源库。成员在侧栏页面中浏览同样的空间，把文件加入消息，并从电脑上传文件。预览、历史版本和分享仍在资源库网页中进行。
 
 ## 目录
 
@@ -31,7 +31,7 @@ kind: "package-reference"
 
 `library_download` 把文件保存到 `downloadDir`（默认是 DeepSeek Harness 主目录下的 `mindeck/library-downloads`）中按会话划分的目录，并返回本地路径。智能体用文件工具读取这份副本，修改前先复制进工作区。超过 `downloadRetentionDays`（默认七天）未变化的会话目录会在插件启动时删除。`library_upload` 通过文件系统服务读取工作区文件，创建缺少的文件夹；目标文件已存在时，除非设置 `overwrite`，否则拒绝替换；资源库会把被替换的内容保留为历史版本。`maxDownloadBytes` 与 `maxUploadBytes`（默认各 100 MiB）限制传输大小。
 
-页面列出空间、打开文件夹，并在输入停顿片刻后按名称搜索。每个条目都可以在资源库网页中打开，成员在那里上传、预览、恢复历史版本和分享；加号按钮把引用加入消息草稿。消息中的引用写作 `library:"/路径"`，文件夹以 `/` 结尾；发出的消息把它显示为文件或文件夹标签。成员未登录、公司未启用资源库或资源库无响应时，页面会说明原因。
+页面列出空间（个人、部门与公司、共享各有图标）、打开文件夹，并在输入停顿片刻后按名称搜索。单击文件把引用加入消息草稿；文件夹的加号按钮把文件夹加入草稿；文件的箭头在资源库网页中打开它，成员在那里预览、恢复历史版本和分享。在文件夹中，上传按钮和拖到页面上的文件会逐个保存到该文件夹；同名文件会列出并提供替换按钮，其他失败会停止上传并说明原因。消息中的引用写作 `library:"/路径"`，文件夹以 `/` 结尾；发出的消息把它显示为文件或文件夹标签。成员未登录、公司未启用资源库或资源库无响应时，页面会说明原因。
 
 -----
 
@@ -45,7 +45,7 @@ Mindeck Cloud 在 `POST {endpoints.files.token}` 为桌面会话签发 15 分钟
 
 空间来自 `GET /graph/v1.0/me/drives`（个人空间、项目空间和虚拟的共享空间）。文件通过 `/dav/spaces/{driveId}/` 下的 WebDAV 访问：深度为 0 或 1 的 `PROPFIND`、`GET`、不覆盖时带 `If-None-Match: *` 的 `PUT`，以及为每个缺少的文件夹发送的 `MKCOL`。名称搜索向 `/dav/spaces/` 发送带 `oc:search-files` 的 `REPORT`，模式为 `name:"*文本*"`；OpenCloud 异步建立索引，刚保存的文件可能暂时搜不到。不在成员已列出空间中的结果没有资源库路径，会被略过。条目的网页地址是 `{opencloud}/f/{fileid}`。
 
-本地下载路径会替换 Windows 不接受的字符、末尾的点和空格以及保留设备名。Remote 命名空间 `mindeckFiles` 以 `watch` 流式提供可用状态，并为页面提供 `spaces`、`list` 和 `search`；失败带有 `mindeck-files/*` 错误码。
+本地下载路径会替换 Windows 不接受的字符、末尾的点和空格以及保留设备名。Remote 命名空间 `mindeckFiles` 以 `watch` 流式提供可用状态，并为页面提供 `spaces`、`list`、`search` 和 `upload`；`upload` 以 base64 接收内容，超过 `maxUploadBytes` 时在解码前拒绝。失败带有 `mindeck-files/*` 错误码，上传另有 `exists`、`quota` 和 `too-large`。
 
 </details>
 
@@ -82,7 +82,7 @@ Mindeck Cloud 在 `POST {endpoints.files.token}` 为桌面会话签发 15 分钟
 <a id="known-limitations-and-deferred-work"></a>
 
 - 下载的文件写在 Host 所在机器上；执行环境在另一台机器（例如 SSH 工作区）的智能体无法读取。
-- 页面只把资源库引用加入消息；把条目拖进输入框和从页面上传交给资源库网页完成。
+- 不支持把资源库条目拖进输入框；页面通过单击加入引用。
 
 -----
 

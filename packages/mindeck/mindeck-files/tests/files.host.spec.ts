@@ -204,3 +204,23 @@ it('serves the panel the spaces, a folder, and search results', async () => {
   f.signOut()
   await vi.waitFor(async () => { expect(await f.ctx.mindeckFiles.getAvailability()).toBe('signed-out') })
 })
+
+it('saves files the member drops into a folder and names each refusal the panel explains', async () => {
+  const f = await fixture()
+  const signal = new AbortController().signal
+  const base64 = (text: string) => Buffer.from(text).toString('base64')
+  expect(await f.ctx.mindeckFiles.upload('/研发部/周报/', '第二周.md', base64('w2'), false, signal))
+    .toMatchObject({ path: '/研发部/周报/第二周.md', name: '第二周.md', kind: 'file', size: 2 })
+  await expect(f.ctx.mindeckFiles.upload('/研发部/周报', '第二周.md', base64('w2b'), false, signal))
+    .rejects.toMatchObject({ code: 'mindeck-files/exists' })
+  expect(await f.ctx.mindeckFiles.upload('/研发部/周报', '第二周.md', base64('w2b'), true, signal)).toMatchObject({ size: 3 })
+  expect(new TextDecoder().decode(f.oc.state.nodes.get('drive-dept')?.get('周报/第二周.md')?.content)).toBe('w2b')
+  await expect(f.ctx.mindeckFiles.upload('/星河科技', 'a.md', base64('a'), false, signal))
+    .rejects.toMatchObject({ code: 'mindeck-files/denied' })
+  await expect(f.ctx.mindeckFiles.upload('/研发部', 'big.bin', Buffer.alloc(2049).toString('base64'), false, signal))
+    .rejects.toMatchObject({ code: 'mindeck-files/too-large' })
+  await expect(f.ctx.mindeckFiles.upload('/研发部', '../x.md', base64('x'), false, signal))
+    .rejects.toMatchObject({ code: 'mindeck-files/denied' })
+  await expect(f.ctx.mindeckFiles.upload('/研发部', 'x.md', 'not base64!', false, signal))
+    .rejects.toMatchObject({ code: 'mindeck-files/unavailable' })
+})

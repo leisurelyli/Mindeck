@@ -140,6 +140,17 @@ File-library tools and the panel's Remote for the signed-in member.
  * @returns matching files and folders, at most `maxSearchResults`.
  */
 @Remote async search(query: string, signal: AbortSignal): Promise<LibraryEntryView[]>
+
+/**
+ * Save a file from the member's computer into a library folder.
+ * @param folder - library path of a space or folder.
+ * @param name - file name without folders.
+ * @param contentBase64 - file content in base64, at most `maxUploadBytes` once decoded.
+ * @param overwrite - replace a file of the same name; the library keeps the replaced content as a version.
+ * @param signal - caller cancellation.
+ * @returns the saved file.
+ */
+@Remote async upload(folder: string, name: string, contentBase64: string, overwrite: boolean, signal: AbortSignal): Promise<LibraryEntryView>
 ```
 
 Source: [`packages/mindeck/mindeck-files/src/index.ts`](../../packages/mindeck/mindeck-files/src/index.ts)

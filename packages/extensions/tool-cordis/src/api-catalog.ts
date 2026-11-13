@@ -2217,6 +2217,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'query', description: 'text contained in names.' }, { name: 'signal', description: 'caller cancellation.' }],
         returns: 'matching files and folders, at most `maxSearchResults`.',
       },
+      {
+        signature: '@Remote async upload(folder: string, name: string, contentBase64: string, overwrite: boolean, signal: AbortSignal): Promise<LibraryEntryView>',
+        description: 'Save a file from the member\'s computer into a library folder.',
+        parameters: [{ name: 'folder', description: 'library path of a space or folder.' }, { name: 'name', description: 'file name without folders.' }, { name: 'contentBase64', description: 'file content in base64, at most `maxUploadBytes` once decoded.' }, { name: 'overwrite', description: 'replace a file of the same name; the library keeps the replaced content as a version.' }, { name: 'signal', description: 'caller cancellation.' }],
+        returns: 'the saved file.',
+      },
     ],
   },
   {

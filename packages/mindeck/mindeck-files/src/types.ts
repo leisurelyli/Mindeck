@@ -39,6 +39,12 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'mindeck-files/not-found': Record<string, never>
     /** The member may not open or change this item. */
     'mindeck-files/denied': Record<string, never>
+    /** A file of the same name already exists. */
+    'mindeck-files/exists': Record<string, never>
+    /** The space has no room for the file. */
+    'mindeck-files/quota': Record<string, never>
+    /** The file is larger than the upload or download limit. */
+    'mindeck-files/too-large': Record<string, never>
     /** The file library did not respond or failed. */
     'mindeck-files/unavailable': Record<string, never>
   }
