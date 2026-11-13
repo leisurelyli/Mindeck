@@ -183,6 +183,39 @@ it('signs out a personal DeepSeek account the company does not allow, and leaves
   } finally { await f.ctx.fiber.dispose() }
 })
 
+it('starts a personal DeepSeek sign-in on Desktop with the transport origin', async () => {
+  const f = await fixture()
+  const links = { usageUrl: 'https://platform.deepseek.com/usage', topUpUrl: 'https://platform.deepseek.com/top_up' }
+  const started: AccountView = {
+    status: 'signed-out', links,
+    attempt: { id: 'a1' as never, phase: 'waiting-browser', authorizeUrl: 'https://platform.deepseek.com/authorize' } as never,
+  }
+  const account = {
+    async *watch(signal: AbortSignal): AsyncIterable<AccountView> {
+      yield { status: 'signed-out', attempt: null, links }
+      await new Promise<void>((resolve) => { signal.addEventListener('abort', () => { resolve() }, { once: true }) })
+    },
+    signOut: vi.fn(),
+    startSignIn: vi.fn(async (): Promise<RemoteResult<AccountView>> => ({ ok: true, value: started })),
+    cancelSignIn: vi.fn(),
+  }
+  const desktop = globalThis as typeof globalThis & { dshDesktop?: unknown; __DSH_TRANSPORT__?: { streamBaseUrl: string } }
+  desktop.dshDesktop = {}
+  desktop.__DSH_TRANSPORT__ = { streamBaseUrl: 'http://127.0.0.1:52131' }
+  try {
+    await f.ctx.plugin({ inject: ['remote', 'slots', 'locale', 'remoteAccess'], apply: async (ctx: Context) => { await mountAccount(ctx, contribution) } })
+    f.ctx.provide('remote.account', account as never)
+    const face = operations(f.ctx.slots.entries('settings.section')[0])
+    await vi.waitFor(() => { expect(face.hooks.personal.getSnapshot().available).toBe(true) })
+    await expect(face.startPersonalSignIn()).resolves.toEqual({ ok: true })
+    expect(account.startSignIn).toHaveBeenCalledWith(expect.anything(), 'http://127.0.0.1:52131', 'desktop')
+  } finally {
+    delete desktop.dshDesktop
+    delete desktop.__DSH_TRANSPORT__
+    await f.ctx.fiber.dispose()
+  }
+})
+
 it('provides the composer service once the conversation services exist and withdraws it with the UI', async () => {
   const f = await fixture()
   try {
