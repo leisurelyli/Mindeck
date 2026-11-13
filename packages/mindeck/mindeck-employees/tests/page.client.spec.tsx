@@ -8,6 +8,7 @@ import type { MindeckEmployeeCard, MindeckEmployeeCatalog } from '../src/types.t
 import { EmployeesPage, type EmployeesPageProps } from '../src/client/EmployeesPage.tsx'
 import { zh } from '../src/client/locales.ts'
 import { starterInsertion } from '../src/client/cards.ts'
+import { portrait } from '../src/client/avatars.ts'
 import type { MindeckEmployeesSnapshot } from '../src/client/operations.ts'
 
 afterEach(() => { cleanup() })
@@ -45,7 +46,16 @@ it('lists the general assistant first with its own starters, then the company\'s
   expect(within(cards[2]!).getByText(zh.draft)).toBeTruthy()
   expect(within(cards[2]!).queryByRole('list')).toBeNull()
   expect(cards[2]!.querySelector('[data-tint]')?.textContent).toBe('人')
-  expect(cards[1]!.querySelector('img')).not.toBeNull()
+  expect(cards[1]!.querySelector('img')?.getAttribute('data-backdrop')).toBe('lavender')
+})
+
+it('bundles a banner on a backdrop for every avatar key Mindeck Cloud offers', () => {
+  const keys = [
+    'general', 'admin', 'hr', 'legal', 'finance', 'it', 'sales', 'marketing', 'analyst', 'product', 'engineer', 'support',
+    ...Array.from({ length: 12 }, (_, index) => `neutral-${index + 1}`),
+  ]
+  expect(keys.filter(key => portrait(key) === undefined)).toEqual([])
+  expect(portrait('neutral-13')).toBeUndefined()
 })
 
 it('starts a conversation from a card or a starter and keeps every action off until it opens', async () => {

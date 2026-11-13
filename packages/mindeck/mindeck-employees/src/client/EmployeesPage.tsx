@@ -4,7 +4,7 @@ import { IconChevronRightOutlineRegular, IconNewChatOutlineRegular, Tag } from '
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { MindeckEmployeeCard } from '../types.ts'
-import { portraitImage } from './avatars.ts'
+import { portrait } from './avatars.ts'
 import { avatarInitial, avatarTint } from './cards.ts'
 import type { MindeckEmployeesKey } from './locales.ts'
 import type { MindeckEmployeesPageInjected } from './operations.ts'
@@ -29,15 +29,18 @@ interface CardView {
 /**
  * @param props.avatar - the avatar key.
  * @param props.name - the card's name, whose first character replaces a missing or broken image.
- * @returns the half-body portrait, or its tinted initial.
+ * @returns the transparent banner on its backdrop, or the tinted initial.
  */
 function Portrait({ avatar, name }: { avatar: string; name: string }) {
   const [failed, setFailed] = useState(false)
-  const src = portraitImage(avatar)
-  if (src === undefined || failed) {
+  const banner = portrait(avatar)
+  if (banner === undefined || failed) {
     return <span className={css.initial} data-tint={avatarTint(avatar)} aria-hidden="true">{avatarInitial(name)}</span>
   }
-  return <img className={css.image} src={src} alt="" draggable={false} onError={() => { setFailed(true) }} />
+  return (
+    <img className={css.image} src={banner.image} data-backdrop={banner.backdrop} alt="" draggable={false}
+      onError={() => { setFailed(true) }} />
+  )
 }
 
 /**

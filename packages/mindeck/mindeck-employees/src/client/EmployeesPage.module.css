@@ -81,8 +81,39 @@
   border-radius: calc(var(--dsw-radius-xl) - var(--employee-card-inset));
   background: var(--dsw-alias-bg-skeleton);
 }
-/* The portraits are square half-body drawings: the crop keeps the head and shoulders. */
-.image { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0%; transition: transform 240ms ease; user-select: none; }
+/* The banners are transparent 16:9 head-to-chest crops of one character set, so the image fills the frame
+   uncropped. Each is drawn on a soft backdrop picked against the character's clothing, from eight families shared
+   with the Mindeck Cloud console; dark mode dims them so the line art keeps its contrast without a bright block on a
+   dark card. */
+.page {
+  --employee-backdrop-butter: rgb(247, 236, 209);
+  --employee-backdrop-blue: rgb(218, 235, 247);
+  --employee-backdrop-sage: rgb(220, 237, 223);
+  --employee-backdrop-lavender: rgb(233, 229, 247);
+  --employee-backdrop-aqua: rgb(214, 237, 240);
+  --employee-backdrop-rose: rgb(248, 226, 226);
+  --employee-backdrop-peach: rgb(249, 227, 213);
+  --employee-backdrop-slate: rgb(221, 229, 241);
+}
+:global(body[data-ds-dark-theme]) .page {
+  --employee-backdrop-butter: rgb(212, 194, 160);
+  --employee-backdrop-blue: rgb(178, 199, 215);
+  --employee-backdrop-sage: rgb(181, 203, 185);
+  --employee-backdrop-lavender: rgb(197, 192, 216);
+  --employee-backdrop-aqua: rgb(173, 203, 206);
+  --employee-backdrop-rose: rgb(216, 188, 189);
+  --employee-backdrop-peach: rgb(217, 190, 173);
+  --employee-backdrop-slate: rgb(186, 197, 211);
+}
+.image { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 240ms ease; user-select: none; }
+.image[data-backdrop='butter'] { background: var(--employee-backdrop-butter); }
+.image[data-backdrop='blue'] { background: var(--employee-backdrop-blue); }
+.image[data-backdrop='sage'] { background: var(--employee-backdrop-sage); }
+.image[data-backdrop='lavender'] { background: var(--employee-backdrop-lavender); }
+.image[data-backdrop='aqua'] { background: var(--employee-backdrop-aqua); }
+.image[data-backdrop='rose'] { background: var(--employee-backdrop-rose); }
+.image[data-backdrop='peach'] { background: var(--employee-backdrop-peach); }
+.image[data-backdrop='slate'] { background: var(--employee-backdrop-slate); }
 .initial { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-size: 40px; font-weight: 500; line-height: 1; user-select: none; }
 .initial[data-tint='0'] { background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 14%, transparent); color: var(--dsw-alias-state-business-primary); }
 .initial[data-tint='1'] { background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 14%, transparent); color: var(--dsw-alias-state-success-primary); }

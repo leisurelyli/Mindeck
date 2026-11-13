@@ -40,7 +40,7 @@ kind: "package-reference"
 
 只有预设仍在注册时，对话才能继续，因此离开 Cloud 列表的员工会以已停用状态保留注册：名称后加**（已停用）**，说明为“管理员已停用这位数字员工，可以继续之前的对话。”，英文界面为 **(deactivated)** 和“An administrator deactivated this digital employee. Earlier conversations can continue.”，排在最后，保留最后的人设，并带 `listed: false`：预设选择器只在已经使用它的对话里显示它，注册表也拒绝把别的对话切换到它。启动时，插件先注册已保存的员工，再请求 Mindeck Cloud。退出登录后这些预设仍然保留。另一位成员在同一台电脑上登录时，上一位成员的员工预设会移除，新成员已保存的员工随即注册。
 
-企业至少提供一位员工时，客户端入口 `@deepseek-ai/dsh-mindeck-employees/client` 会在左侧栏“插件”之前加入**数字员工**，其页面显示在主区域。页面先显示通用助手，再显示每位当前员工，附半身像（按头像键使用随包附带的图片；未知的键或加载失败的图片显示名称首字和带色方块）、一句话介绍和示例请求；已停用的员工不列出，草稿带**草稿**标记，通用助手的卡片提供 3 条通用请求。单击卡片会通过 [Mindeck 账号](../mindeck-account/README.zh.md)的 `mindeckComposer` 在当前工作区以该卡片的预设打开一个空白对话，光标位于输入框；单击示例请求还会把它填入输入框，但不会发送。对话显示之前，页面上的所有操作都会等待。企业不再提供员工或成员退出登录时，左侧栏的这一行随之移除。
+企业至少提供一位员工时，客户端入口 `@deepseek-ai/dsh-mindeck-employees/client` 会在左侧栏“插件”之前加入**数字员工**，其页面显示在主区域。页面先显示通用助手，再显示每位当前员工，附头部到胸口的人物横幅（Mindeck Cloud 的 24 个头像键各有一张随包附带的插图，画在柔和的底色上，深色模式下底色调暗；未知的键，例如较新的 Mindeck Cloud 新增的键，或加载失败的图片显示名称首字和带色方块）、一句话介绍和示例请求；已停用的员工不列出，草稿带**草稿**标记，通用助手的卡片提供 3 条通用请求。单击卡片会通过 [Mindeck 账号](../mindeck-account/README.zh.md)的 `mindeckComposer` 在当前工作区以该卡片的预设打开一个空白对话，光标位于输入框；单击示例请求还会把它填入输入框，但不会发送。对话显示之前，页面上的所有操作都会等待。企业不再提供员工或成员退出登录时，左侧栏的这一行随之移除。
 
 其他 Host 插件可以调用 `ctx.mindeckEmployees.employeeForSession(sessionId)`，得到进行中对话所属员工的 Cloud id；通用助手和其他预设返回 undefined。[mindeck-models](../mindeck-models/README.zh.md) 会在网关请求中带上它。
 
