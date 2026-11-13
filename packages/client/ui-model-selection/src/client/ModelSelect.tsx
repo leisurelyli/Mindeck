@@ -3,7 +3,7 @@
  * Two-level selection per figma 496:26454's MenuDropdown: the root menu is
  * the Model / Effort row pair (label + current value + a right chevron),
  * each drilling into its own list — the provider-grouped model list over
- * the shared directory, and the effort levels. The trigger (313:14108's
+ * the shared directory, where consecutive providers with the same name share one heading, and the effort levels. The trigger (313:14108's
  * ToggleButton) shows both: model name + effort in the caption tone.
  * Model catalogs above four entries show search, which retains focus while
  * ↑/↓ cycle the highlighted result; Enter and Tab accept it. Smaller model
@@ -42,7 +42,7 @@ import {
 import type { PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ModelLabelOwner, ModelSelectInjected } from './slots.ts'
 import css from './ModelSelect.module.css'
-import { orderModelProviders } from './provider-order.ts'
+import { orderModelProviders, providerSections } from './provider-order.ts'
 
 /** Which pane the dropdown shows: the two-row root or one drilled-in list. */
 type Pane = 'root' | 'model' | 'effort'
@@ -567,10 +567,10 @@ export function ModelSelect(
                 aria-label={t('menu.model')}
                 hidden={filteredGroups.length === 0}
               >
-                {filteredGroups.map((group) => {
+                {providerSections(filteredGroups, group => group.provider.name).map((section) => {
                   return (
-                    <MenuGroup key={group.id} label={group.provider.name}>
-                      {group.models.map((model) => {
+                    <MenuGroup key={section.key} label={section.name}>
+                      {section.groups.flatMap(group => group.models.map((model) => {
                         const index = modelIndex++
                         const selected = state.current?.provider === group.id && state.current.model === model.id
                         return (
@@ -605,7 +605,7 @@ export function ModelSelect(
                             </span>
                           </button>
                         )
-                      })}
+                      }))}
                     </MenuGroup>
                   )
                 })}

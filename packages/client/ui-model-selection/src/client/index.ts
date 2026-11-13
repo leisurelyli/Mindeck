@@ -28,7 +28,7 @@ import { ModelDirectoryResolver } from './service.ts'
 import type { ModelSelectInjected } from './slots.ts'
 import { ModelSelect } from './ModelSelect.tsx'
 import { en, ja, es, fr, de, ru, pt, zh, type ModelKey } from './locales.ts'
-import { orderModelProviders } from './provider-order.ts'
+import { orderModelProviders, providerSections } from './provider-order.ts'
 
 export { ModelDirectory } from './directory.ts'
 export type { ModelDirectoryState } from './directory.ts'
@@ -51,18 +51,23 @@ function rowId(providerId: string, modelId: string): string {
 /** Flatten the directory into popup rows; failure rows are listed for visibility but never selectable. */
 function optionsOf(directory: ModelDirectoryState, t: TranslateNS<'model'>): SelectOption[] {
   const rows: SelectOption[] = []
-  for (const group of orderModelProviders(directory.groups)) {
-    const name = group.id === 'deepseek-account' ? t('provider.account') : group.name
-    for (const model of group.models) {
-      rows.push({
-        id: rowId(group.id, model.id),
-        label: model.name,
-        group: { name: group.id, label: name },
-        ...(directory.current !== null
-          && directory.current.provider === group.id
-          && directory.current.model === model.id
-          ? { active: true } : {}),
-      })
+  const sections = providerSections(
+    orderModelProviders(directory.groups),
+    group => group.id === 'deepseek-account' ? t('provider.account') : group.name,
+  )
+  for (const section of sections) {
+    for (const group of section.groups) {
+      for (const model of group.models) {
+        rows.push({
+          id: rowId(group.id, model.id),
+          label: model.name,
+          group: { name: section.key, label: section.name },
+          ...(directory.current !== null
+            && directory.current.provider === group.id
+            && directory.current.model === model.id
+            ? { active: true } : {}),
+        })
+      }
     }
   }
   for (const failure of directory.failures) {

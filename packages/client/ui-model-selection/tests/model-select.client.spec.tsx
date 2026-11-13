@@ -155,6 +155,32 @@ describe('ModelSelect label slot', () => {
   })
 })
 
+describe('ModelSelect provider headings', () => {
+  it('puts consecutive providers with the same name under one heading and selects each model on its own provider', () => {
+    const select = vi.fn()
+    const directory = createSnapshotStore(state({
+      current: { provider: 'company-anthropic', model: 'claude' },
+      groups: [
+        { id: 'company-anthropic', name: 'Company', models: [{ id: 'claude', name: 'Claude' }] },
+        { id: 'company-openai', name: 'Company', models: [{ id: 'gpt', name: 'GPT' }] },
+        { id: 'other', name: 'Other', models: [{ id: 'local', name: 'Local' }] },
+      ],
+    }))
+    render(<ModelSelect renderSlot={renderLabel} locked={false} available directory={directory}
+      load={vi.fn()} resolveText={resolveText} select={select} t={t} />)
+    fireEvent.click(screen.getByRole('button', { name: /Claude/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /^模型/ }))
+    const headings = screen.getAllByRole('group').flatMap((group) => {
+      const id = group.getAttribute('aria-labelledby')
+      return id === null ? [] : [document.getElementById(id)?.textContent]
+    })
+    expect(headings).toEqual(['Company', 'Other'])
+    expect(screen.getAllByRole('menuitemradio').map(row => row.textContent)).toEqual(['Claude', 'GPT', 'Local'])
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'GPT' }))
+    expect(select).toHaveBeenCalledWith(expect.objectContaining({ provider: 'company-openai', model: 'gpt' }))
+  })
+})
+
 describe('ModelSelect catalog badges', () => {
   const BADGE = { text: { en: 'New', zh: '新' }, tone: 'info' } as const
   const badged = () => state({

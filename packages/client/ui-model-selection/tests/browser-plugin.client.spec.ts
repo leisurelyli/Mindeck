@@ -270,6 +270,28 @@ describe('ui-model-selection dual entry', () => {
     }
   })
 
+  it('lists consecutive popup providers with the same name under one heading', async () => {
+    const b = await bench()
+    try {
+      b.setGroups([
+        { ...GROUPS[1]!, id: 'company-anthropic', name: 'Company' },
+        { ...GROUPS[1]!, id: 'company-openai', name: 'Company' },
+        { ...GROUPS[0]!, id: 'deepseek-official' },
+      ])
+      b.remote.emit('llm/adapters-updated', [])
+      b.mint('s1')
+      const options = await b.popup().options(projection('s1'), new AbortController().signal)
+      // The official provider comes first; the two company routes that follow share one heading.
+      expect(options.map(option => [option.id.split('/')[0], option.group?.name, option.group?.label])).toEqual([
+        ...GROUPS[0]!.models.map(() => ['deepseek-official', 'deepseek-official', GROUPS[0]!.name]),
+        ...GROUPS[1]!.models.map(() => ['company-anthropic', 'company-anthropic', 'Company']),
+        ...GROUPS[1]!.models.map(() => ['company-openai', 'company-anthropic', 'Company']),
+      ])
+    } finally {
+      await b.ctx.fiber.dispose()
+    }
+  })
+
   it('a seat selection is the current the popup marks active next — one shared state', async () => {
     const b = await bench()
     b.mint('s1')
