@@ -21,6 +21,9 @@ export interface PersonalDeepSeekSnapshot {
   readonly failed: boolean
 }
 
+/** The DeepSeek account Remote as an injecting scope sees it. */
+type AccountRemote = Context['remote']['account']
+
 /** Phases of a DeepSeek sign-in attempt that are still running. */
 const ACTIVE_PHASES = new Set(['initializing', 'waiting-browser', 'exchanging', 'committing'])
 
@@ -61,6 +64,9 @@ export function followPersonalDeepSeek(ctx: Context, account: SnapshotStore<Mind
     // Date.getTimezoneOffset reports minutes west of UTC; the account expects seconds east.
     timezoneOffsetSeconds: -new Date().getTimezoneOffset() * 60,
   })
+  // The account Remote resolves only in the scope that injects it; the actions read it from there while the grant
+  // lasts, and fail while it is absent.
+  const remote: { account: AccountRemote | undefined } = { account: undefined }
   ctx.inject(['remote.account'], (scope) => {
     scope.remoteAccess.whenAccess('account/watch', function* () {
       const stream = scope.remote.$stream<AccountView>({
@@ -69,9 +75,11 @@ export function followPersonalDeepSeek(ctx: Context, account: SnapshotStore<Mind
       })
       // Read across closures: the disposer ends this grant while the frame loop awaits.
       const grant = { ended: false }
+      remote.account = scope.remote.account
       store.set({ available: true, view: undefined, failed: false })
       yield () => {
         grant.ended = true
+        remote.account = undefined
         store.set({ available: false, view: undefined, failed: false })
         return stream.dispose()
       }
@@ -86,8 +94,10 @@ export function followPersonalDeepSeek(ctx: Context, account: SnapshotStore<Mind
   })
 
   const signOut = async (): Promise<OperationOutcome> => {
+    const account = remote.account
+    if (account === undefined) return { ok: false, reason: 'failed' }
     try {
-      const result = await ctx.remote.account.signOut(client())
+      const result = await account.signOut(client())
       return result.ok ? { ok: true } : { ok: false, reason: 'failed' }
     } catch (_error) {
       // The Remote is not mounted or the call did not complete; the page shows the generic failure.
@@ -116,8 +126,10 @@ export function followPersonalDeepSeek(ctx: Context, account: SnapshotStore<Mind
       if (!desktop) return { ok: false, reason: 'personalDesktopOnly' }
       const transport = (globalThis as typeof globalThis & { __DSH_TRANSPORT__?: { streamBaseUrl?: string } }).__DSH_TRANSPORT__
       const origin = transport?.streamBaseUrl === undefined ? window.location.origin : new URL(transport.streamBaseUrl).origin
+      const account = remote.account
+      if (account === undefined) return { ok: false, reason: 'personalFailed' }
       try {
-        const result = await ctx.remote.account.startSignIn(client(), origin, 'desktop')
+        const result = await account.startSignIn(client(), origin, 'desktop')
         return result.ok ? { ok: true } : { ok: false, reason: 'personalFailed' }
       } catch (_error) {
         // The Remote is not mounted or the call did not complete; the page asks the member to try again.
@@ -127,7 +139,7 @@ export function followPersonalDeepSeek(ctx: Context, account: SnapshotStore<Mind
     async cancel() {
       const attempt = store.getSnapshot().view?.attempt
       if (attempt == null || !ACTIVE_PHASES.has(attempt.phase)) return
-      await ctx.remote.account.cancelSignIn(attempt.id).catch(() => undefined)
+      await remote.account?.cancelSignIn(attempt.id).catch(() => undefined)
     },
     signOut,
   }
