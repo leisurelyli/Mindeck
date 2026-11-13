@@ -65,3 +65,6 @@
 .quotaDockText { flex: 1 1 auto; min-width: 0; }
 .quotaDockLink { flex: none; color: var(--dsw-alias-state-business-primary); text-decoration: none; white-space: nowrap; }
 @media (hover: hover) { .quotaDockLink:hover { text-decoration: underline; } }
+
+/* The sync row: the last sync and its action on one line, the text wrapping before the action is squeezed. */
+.syncValue { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 4px 12px; min-width: 0; text-align: end; }

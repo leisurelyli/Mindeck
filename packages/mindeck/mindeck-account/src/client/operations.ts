@@ -49,6 +49,11 @@ export interface MindeckAccountInjected {
   appVersion: string
   /** Ask the Host to read the quota now; the account state carries the result. */
   refreshQuota: () => void
+  /**
+   * Sync with Mindeck Cloud now and refresh every company list; the account state carries the outcome.
+   * @returns after the sync, or with the copy that explains a refused request.
+   */
+  syncNow: () => Promise<OperationOutcome>
   /** @param key - reminder to hide until its level or month changes. */
   dismissReminder: (key: string) => void
   /** @returns whether a personal DeepSeek sign-in started in the browser. */

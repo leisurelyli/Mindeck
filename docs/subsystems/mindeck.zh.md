@@ -13,10 +13,13 @@
 | [mindeck-skills](../../packages/mindeck/mindeck-skills/README.zh.md) | 成员可用的企业技能：缓存在本机，登录期间由技能提供方提供；以及技能页面 |
 | [mindeck-files](../../packages/mindeck/mindeck-files/README.zh.md) | `ctx.mindeckFiles`：资源库工具、右侧栏面板、资源库页面和消息中的 `library:` 引用 |
 | [mindeck-employees](../../packages/mindeck/mindeck-employees/README.zh.md) | `ctx.mindeckEmployees`：作为带各自人设的 Agent 预设的通用助手和企业数字员工、数字员工页面，以及进行中对话所属的员工 |
+| [mindeck-inbox](../../packages/mindeck/mindeck-inbox/README.zh.md) | `ctx.mindeckInbox`：成员的企业消息、侧栏行旁的未读数、已读上报和推荐的桌面端版本 |
 
 ## 账号会话
 
 `ctx.mindeckAccount.session()` 返回已登录成员的 Cloud 地址、访问令牌和启动数据，未登录时返回 `undefined`。使用方在每次 Cloud 请求时读取它，Cloud 拒绝令牌时调用 `rejectToken(token)`；只有当保存的会话仍持有该令牌时服务才结束会话，因此较晚到达的拒绝不会影响更新的登录。`mindeck-account/changed` 通告每次登录、退出和令牌被拒，使用方据此重新读取 `session()`，而不是读取事件载荷。
+
+登录到带同步端点的 Mindeck Cloud 期间，账号每分钟轮询一次该端点，并发出 `mindeck-account/revised`，带上数据发生变化的[主题](../../packages/mindeck/mindeck-account/README.zh.md#use-this-package)；各使用方重新读取自己主题涵盖的内容，并保留各自 10 分钟一次的兜底刷新，没有同步端点的 Mindeck Cloud 只有这种刷新。使用方不自己启动同步定时器；`requestSync()` 请账号同步一次，`syncAnswer()` 返回最近一次应答。
 
 ## 登录与账号页
 
@@ -28,7 +31,7 @@ mindeck-account 用 [ui-settings-account](../../packages/client/ui-settings-acco
 
 ## 侧栏页面
 
-成员拥有 Mindeck 访问权限期间，左侧栏在“插件”上方列出**数字员工**、**技能**和**资源库**，在 `sidebar.panellist` 中的 order 分别为 -30、-20 和 -10，各自在根 `main` 插槽打开一个页面；企业提供员工时才显示数字员工这一行。各页面通过 `ctx.mindeckComposer` 开始对话：像“新会话”一样在当前工作区打开一个空白对话，使用所选员工的预设，否则使用 Host 的默认预设，并在对话显示前把示例请求、`/name ` 或 `library:` 引用放进草稿。输入框获得焦点，不会自动发送。右侧栏保留资源库面板；技能不再有右侧栏页面。
+成员拥有 Mindeck 访问权限期间，左侧栏在“插件”上方列出**数字员工**、**技能**、**资源库**和**企业消息**，在 `sidebar.panellist` 中的 order 分别为 -30、-20、-10 和 -5，各自在根 `main` 插槽打开一个页面；企业提供员工时才显示数字员工这一行，成员的 Mindeck Cloud 有收件箱时才显示企业消息这一行，它的未读数在 `sidebar.panellist.badge` 中。各页面通过 `ctx.mindeckComposer` 开始对话：像“新会话”一样在当前工作区打开一个空白对话，使用所选员工的预设，否则使用 Host 的默认预设，并在对话显示前把示例请求、`/name ` 或 `library:` 引用放进草稿。输入框获得焦点，不会自动发送。右侧栏保留资源库面板；技能不再有右侧栏页面。
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
@@ -52,8 +55,35 @@ Mindeck Cloud account service and its Remote namespace.
 @Remote async getState(): Promise<MindeckAccountView>
 
 /**
+ * Sync with Mindeck Cloud now and refresh every company list on this computer, as the member asks on the Account
+ * page. A Mindeck Cloud without the sync endpoint has its bootstrap read again instead.
+ * @returns state after the sync; its `sync.problem` tells whether Mindeck Cloud answered.
+ */
+@Remote async syncNow(): Promise<MindeckAccountView>
+
+/**
+ * Sync soon after the window regained focus or the network came back, unless a sync succeeded within the
+ * configured cool-down.
+ */
+@Remote async syncSoon(): Promise<void>
+
+/**
+ * Ask for a sync from another Host plugin, such as after Mindeck Cloud refused a request in a way a company change
+ * may explain. Prompted syncs within the cool-down after a successful one are skipped.
+ * @param reason - `prompt` for such an event; `timer` for a scheduled sync.
+ */
+requestSync(reason: 'prompt' | 'timer' = 'prompt'): void
+
+/**
+ * Read the latest sync answer of the signed-in session, such as for the inbox summary.
+ * @returns the answer, or undefined while signed out, before the first answer, or on a Mindeck Cloud without sync.
+ */
+syncAnswer(): MindeckSyncAnswer | undefined
+
+/**
  * Read the month-to-date quota from Mindeck Cloud now, as after a refused request or when the account
- * menu opens. A failed read keeps the previous quota; a rejected token ends the session.
+ * menu opens, and prompt a sync, since a decided quota request or a changed policy may explain the refusal. A
+ * failed read keeps the previous quota; a rejected token ends the session.
  * @param signal - caller cancellation.
  * @returns state with the latest quota.
  */
@@ -212,6 +242,44 @@ File-library tools and the panel's Remote for the signed-in member.
 
 Source: [`packages/mindeck/mindeck-files/src/index.ts`](../../packages/mindeck/mindeck-files/src/index.ts)
 
+<a id="ctxmindeckinbox--mindeckinbox"></a>
+
+### `ctx.mindeckInbox` — `MindeckInbox`
+
+Unread count, inbox items, and read reports of the signed-in member's company messages.
+
+```ts cordis-catalog
+/**
+ * Stream the unread count and the recommended version for the sidebar row and the page header.
+ * @param signal - stream lifetime.
+ * @returns the current summary, then every change.
+ */
+@Remote({ mode: 'stream' }) async *watch(signal: AbortSignal): AsyncIterable<MindeckInboxSummary>
+
+/**
+ * Stream the inbox items while the company messages page is open. Opening it reads the newest items; while it is
+ * open, a sync that reports new or read items or changed announcements reads them again.
+ * @param signal - the page's lifetime.
+ * @returns the loaded items, then every change.
+ */
+@Remote({ mode: 'stream' }) async *items(signal: AbortSignal): AsyncIterable<MindeckInboxPage>
+
+/** Read the newest items again, as after a failed read; the page stream carries the result. */
+@Remote async reload(): Promise<void>
+
+/** Read the next older page, unless a read is running or no older items remain; the page stream carries the result. */
+@Remote async loadMore(): Promise<void>
+
+/**
+ * Mark items read, as when the member opens one or marks everything read. The items show as read at once; a report
+ * that does not reach Mindeck Cloud is sent again after the next sync.
+ * @param target - every unread item, or up to 100 listed ones.
+ */
+@Remote async markRead(target: MindeckInboxReadTarget): Promise<void>
+```
+
+Source: [`packages/mindeck/mindeck-inbox/src/index.ts`](../../packages/mindeck/mindeck-inbox/src/index.ts)
+
 <a id="ctxmindeckskills--mindeckskills"></a>
 
 ### `ctx.mindeckSkills` — `MindeckSkills`
@@ -256,6 +324,24 @@ The stored session started, ended, or its cached account details changed. Consum
  * @mode emit
  */
 'mindeck-account/changed'(): void
+```
+
+Source: [`packages/mindeck/mindeck-account/src/index.ts`](../../packages/mindeck/mindeck-account/src/index.ts)
+
+<a id="mindeck-accountrevised--emit"></a>
+
+#### `mindeck-account/revised` — emit
+
+A sync with Mindeck Cloud found company or member data that changed, or the member asked to sync, which names every topic. Each plugin reads again what its topics cover; the account has already stored a changed bootstrap.
+
+```ts cordis-catalog
+/**
+ * A sync with Mindeck Cloud found company or member data that changed, or the member asked to sync, which names
+ * every topic. Each plugin reads again what its topics cover; the account has already stored a changed bootstrap.
+ * @param topics - what changed.
+ * @mode emit
+ */
+'mindeck-account/revised'(topics: ReadonlySet<MindeckSyncTopic>): void
 ```
 
 Source: [`packages/mindeck/mindeck-account/src/index.ts`](../../packages/mindeck/mindeck-account/src/index.ts)

@@ -123,6 +123,23 @@ it('downloads listed skills, refreshes only changed ones, and prunes removed one
   await vi.waitFor(() => { expect(f.cloud.state.requests).toEqual(['/api/desktop/skills']) })
 })
 
+it('refreshes when a sync reports changed skills, and not for other topics', async () => {
+  const f = await fixture()
+  f.cloud.state.skills = [{ name: 'weekly-report', hash: 'h1', description: 'Write the weekly report.' }]
+  await f.ctx.plugin(MindeckSkills, f.config)
+  await vi.waitFor(async () => { expect(await f.names()).toEqual(['weekly-report']) })
+
+  f.cloud.state.requests.length = 0
+  f.cloud.state.skills = [
+    { name: 'weekly-report', hash: 'h1', description: 'Write the weekly report.' },
+    { name: 'contract-review', hash: 'c1', description: 'Review a contract.' },
+  ]
+  f.ctx.emit('mindeck-account/revised', new Set(['models', 'employees']))
+  f.ctx.emit('mindeck-account/revised', new Set(['skills']))
+  await vi.waitFor(async () => { expect(await f.names()).toEqual(['contract-review', 'weekly-report']) })
+  expect(f.cloud.state.requests).toEqual(['/api/desktop/skills', '/api/desktop/skills/contract-review'])
+})
+
 it('clears the cache on sign-out and for another member, and ends a refused session', async () => {
   const f = await fixture()
   f.cloud.state.skills = [{ name: 'weekly-report', hash: 'h1', description: 'Write the weekly report.' }]

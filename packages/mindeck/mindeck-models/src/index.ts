@@ -41,7 +41,10 @@ export const inject = ['llm', 'mindeckAccount']
 
 /** Deployment options. */
 export interface Config {
-  /** Interval between catalog refreshes while signed in, in milliseconds. */
+  /**
+   * Interval between full catalog refreshes while signed in, in milliseconds. The account's sync refreshes the catalog
+   * as soon as Mindeck Cloud reports a change, so this interval only bounds the delay on a Mindeck Cloud without sync.
+   */
   refreshIntervalMs: number
   /** First wait after a failed catalog read, in milliseconds; it doubles after each failure up to `refreshIntervalMs`. */
   retryIntervalMs: number
@@ -59,7 +62,7 @@ export interface Config {
 
 export const Config: z<Config> = z.object({
   refreshIntervalMs: z.natural().min(60_000).default(600_000)
-    .description('Interval between model catalog refreshes while signed in, in milliseconds.'),
+    .description('Interval between full model catalog refreshes while signed in, in milliseconds; a sync refreshes sooner.'),
   retryIntervalMs: z.natural().min(1000).default(15_000)
     .description('First wait after a failed model catalog read, in milliseconds; it doubles up to refreshIntervalMs.'),
   cacheDir: z.string().default('')
@@ -102,7 +105,8 @@ export function apply(ctx: Context, config: Config): void {
         ctx.logger.warn('mindeck-models: could not end the rejected session', error)
       })
     },
-    modelMissing: () => { refresh() },
+    // The company may have withdrawn the model, so the other company lists are checked as well.
+    modelMissing: () => { refresh(); ctx.mindeckAccount.requestSync() },
     notes: model => notes.get(model),
   })
 
@@ -272,6 +276,7 @@ export function apply(ctx: Context, config: Config): void {
   }
 
   ctx.on('mindeck-account/changed', () => { refresh() })
+  ctx.on('mindeck-account/revised', (topics) => { if (topics.has('models') || topics.has('webSearch')) refresh() })
   ctx.effect(() => {
     const timer = setInterval(() => { refresh() }, config.refreshIntervalMs)
     return () => { clearInterval(timer) }

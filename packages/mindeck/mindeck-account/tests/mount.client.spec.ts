@@ -1,4 +1,5 @@
-/** The account UI follows the Host stream, maps Remote failures, and leaves with the plugin. */
+// @vitest-environment jsdom
+/** The account UI follows the Host stream, maps Remote failures, syncs on focus and reconnection, and leaves with the plugin. */
 import { Context, Service } from '@deepseek-ai/cordis'
 import { expect, it, vi } from 'vitest'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
@@ -13,7 +14,7 @@ import { MindeckOnboarding } from '../src/client/MindeckOnboarding.tsx'
 
 const contribution: TypertRemoteContribution = { package: '@deepseek-ai/dsh-mindeck-account', descriptors: [] }
 const signedOut: MindeckAccountView = {
-  cloudUrl: 'https://cloud.example.com', welcomed: true, status: 'signed-out', user: null, companyName: null, notice: null, attempt: null, quota: null, adminContact: null, personalDeepSeek: false,
+  cloudUrl: 'https://cloud.example.com', welcomed: true, status: 'signed-out', user: null, companyName: null, notice: null, attempt: null, quota: null, adminContact: null, personalDeepSeek: false, sync: null, release: null,
 }
 
 /** Host state frames the fake `watch` stream delivers in order. */
@@ -59,6 +60,8 @@ async function fixture() {
     signOut: vi.fn(async (): Promise<RemoteResult<MindeckAccountView>> => ok(signedOut)),
     refreshQuota: vi.fn(async (): Promise<RemoteResult<MindeckAccountView>> => ok(signedOut)),
     finishWelcome: vi.fn(async (): Promise<RemoteResult<MindeckAccountView>> => ok(signedOut)),
+    syncNow: vi.fn(async (): Promise<RemoteResult<MindeckAccountView>> => ok(signedOut)),
+    syncSoon: vi.fn(async (): Promise<RemoteResult<undefined>> => ok(undefined)),
   }
   ctx.provide('remote.mindeckAccount', remote as never)
   ctx.provide('locale', new LocaleRuntime(ctx))
@@ -237,5 +240,22 @@ it('provides the composer service once the conversation services exist and withd
     expect(f.ctx.get('mindeckComposer')?.draft('s1' as never)).toBeUndefined()
     await dispose()
     expect(f.ctx.get('mindeckComposer')).toBeUndefined()
+  } finally { await f.ctx.fiber.dispose() }
+})
+
+it('syncs when the window regains focus or the network returns, on request, and stops listening with the UI', async () => {
+  const f = await fixture()
+  try {
+    const dispose = await mountAccount(f.ctx, contribution)
+    window.dispatchEvent(new Event('focus'))
+    window.dispatchEvent(new Event('online'))
+    expect(f.remote.syncSoon).toHaveBeenCalledTimes(2)
+    const face = operations(f.ctx.slots.entries('settings.section')[0])
+    expect(await face.syncNow()).toEqual({ ok: true })
+    f.remote.syncNow.mockResolvedValueOnce({ ok: false, error: new RemoteError('mindeck-account/storage', 'x', {}) })
+    expect(await face.syncNow()).toEqual({ ok: false, reason: 'storage' })
+    await dispose()
+    window.dispatchEvent(new Event('focus'))
+    expect(f.remote.syncSoon).toHaveBeenCalledTimes(2)
   } finally { await f.ctx.fiber.dispose() }
 })

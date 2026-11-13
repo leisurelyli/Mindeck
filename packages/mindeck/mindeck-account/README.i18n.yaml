@@ -3,23 +3,23 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/mindeck/mindeck-account/README.md
 /:
-  en: a7fc855d6156e4d0
-  zh: 5b0901316d81976a
+  en: 1d3a957d98a1c455
+  zh: 16287be239fb293e
 /deepseek-ai-dsh-mindeck-account:
   en: 765c78af966e15e9
   zh: 0c243e18333b7e4d
 /deepseek-ai-dsh-mindeck-account/summary:
-  en: abae2d2612b0fdb3
-  zh: 5315f455c3c1081d
+  en: adfcdf23dc68c6bd
+  zh: 54e2bc2ac75f4c11
 /deepseek-ai-dsh-mindeck-account/table-of-contents:
   en: d152484eb41ac6b4
   zh: ce40cab8e7534137
 /deepseek-ai-dsh-mindeck-account/use-this-package:
-  en: d6cbbc9ec9758a67
-  zh: ae9a5baa9cb4c581
+  en: 144470da7af422a6
+  zh: bcc6839af7240fc0
 /deepseek-ai-dsh-mindeck-account/understand-the-implementation:
-  en: 9a957b924f5bb6fe
-  zh: 49237e619f83363e
+  en: 65a3ee68967a3607
+  zh: aada5a6bef9e63d2
 /deepseek-ai-dsh-mindeck-account/further-exploration:
   en: d9ff2fd7a16dc781
   zh: 8d057def3852db75
@@ -30,8 +30,8 @@
   en: 08a3e409ebff476a
   zh: ee6f1d9fa12e6a69
 /deepseek-ai-dsh-mindeck-account/known-limitations-and-deferred-work:
-  en: 2f79d054ad2b8e88
-  zh: 0b0cf8aebf3efcd3
+  en: a47ad323d7babab5
+  zh: 23e2c1911e746040
 /deepseek-ai-dsh-mindeck-account/known-limitations-and-deferred-work/dev-note:
   en: 0225ba087c5266f3
   zh: 0400e21a2683a23c

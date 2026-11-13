@@ -7,8 +7,8 @@
       name: '@deepseek-ai/dsh-client-ui-brand-mindeck'
 
 # Mindeck Enterprise: the Mindeck Cloud account, company models, company web
-# search, company skills, the company file library, and the company's digital
-# employees come from Mindeck Cloud.
+# search, company skills, the company file library, the company's digital
+# employees, and company messages come from Mindeck Cloud.
 # Members sign in through the full-screen Mindeck sign-in and use the models and
 # search the company configures, metered by the Mindeck Cloud gateway. The
 # DeepSeek account stays available as a second sign-in under Settings, with its
@@ -38,6 +38,8 @@
       name: '@deepseek-ai/dsh-mindeck-files'
     - id: mindeck-employees
       name: '@deepseek-ai/dsh-mindeck-employees'
+    - id: mindeck-inbox
+      name: '@deepseek-ai/dsh-mindeck-inbox'
 
 # A member who also signs in to a personal DeepSeek account skips DeepSeek's
 # first-run introduction: its full-screen welcome, recharge, and purpose pages

@@ -28,6 +28,7 @@ it('adds the Mindeck Cloud plugins, company search, and digital employees beside
       ['mindeck-skills', '@deepseek-ai/dsh-mindeck-skills'],
       ['mindeck-files', '@deepseek-ai/dsh-mindeck-files'],
       ['mindeck-employees', '@deepseek-ai/dsh-mindeck-employees'],
+      ['mindeck-inbox', '@deepseek-ai/dsh-mindeck-inbox'],
     ] as const) {
       expect(row(id)).toEqual({ id, name })
     }

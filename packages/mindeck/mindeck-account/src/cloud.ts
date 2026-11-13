@@ -1,12 +1,15 @@
 /** Mindeck Cloud HTTP endpoints used by desktop sign-in; every response is validated before use. */
 import { z } from 'zod'
-import type { MindeckAccountErrorCode, MindeckFeedback, MindeckQuota } from './types.ts'
+import type { MindeckAccountErrorCode, MindeckFeedback, MindeckQuota, MindeckSyncAnswer } from './types.ts'
 
 /** OAuth client id Mindeck Cloud accepts on its device authorization endpoints. */
 export const DESKTOP_CLIENT_ID = 'mindeck-desktop'
 
 /** A failed Mindeck Cloud call, classified for the Client's dictionary. */
 export class MindeckCloudError extends Error {
+  /** `x-request-id` of the Mindeck Cloud response that failed, for its server log; null without one. */
+  requestId: string | null = null
+
   /**
    * @param code - user-facing failure class.
    * @param message - diagnostic text; never contains a token.
@@ -56,11 +59,21 @@ const bootstrapSchema = z.object({
     webSearch: z.url().optional(),
     /** The member's digital employees; absent from a Mindeck Cloud without them. */
     employees: z.url().optional(),
+    /** Revisions and the inbox summary, polled every minute; absent from a Mindeck Cloud that predates it. */
+    sync: z.url().optional(),
+    /** The member's inbox; absent from a Mindeck Cloud that predates it. */
+    inbox: z.url().optional(),
   }),
   /** Company decisions the desktop applies; absent from an older Mindeck Cloud, which allows nothing extra. */
   policies: z.object({
     /** Whether members may sign in to a personal DeepSeek account beside the company account. */
     personalDeepSeek: z.boolean(),
+  }).optional(),
+  /** The desktop version the company recommends and its installers; absent from a Mindeck Cloud that predates it. */
+  client: z.object({
+    recommendedVersion: z.string().nullable(),
+    notes: z.string().nullable(),
+    downloads: z.object({ windows: z.url().nullable(), macos: z.url().nullable() }),
   }).optional(),
 })
 
@@ -339,6 +352,62 @@ export async function readBootstrap(
   const response = await send(`${cloudUrl}/api/desktop/bootstrap`, bearer(token), signal)
   if (!response.ok) return await desktopFailure(response)
   return parse(bootstrapSchema, await json(response), 'bootstrap')
+}
+
+/** Revision topics of the sync answer that this desktop acts on. */
+const REVISION_TOPICS = ['models', 'skills', 'employees', 'webSearch', 'policies', 'announcements', 'client'] as const
+
+const syncSchema = z.object({
+  // Topics added by a newer Mindeck Cloud are ignored.
+  revisions: z.record(z.string(), z.unknown()).transform(revisions => Object.fromEntries(REVISION_TOPICS.flatMap((topic) => {
+    const value = revisions[topic]
+    return typeof value === 'number' ? [[topic, value]] : []
+  })) as MindeckSyncAnswer['revisions']),
+  me: z.object({
+    accessRevision: z.number(),
+    inbox: z.object({ unread: z.number().int().nonnegative(), latestAt: z.string().nullable() }),
+    quotaRequest: z.object({ id: z.string(), status: z.string(), month: z.string(), decidedAt: z.string().nullable() }).nullable(),
+  }),
+})
+
+/** One poll of the sync endpoint. */
+export type SyncPoll =
+  | { readonly status: 'unchanged' }
+  | { readonly status: 'changed'; readonly answer: MindeckSyncAnswer; readonly etag: string | null }
+  | { readonly status: 'sign-in-required' }
+
+/**
+ * Poll the sync endpoint once.
+ * @param url - the bootstrap's `endpoints.sync`.
+ * @param token - desktop session token.
+ * @param etag - `ETag` of the previous changed answer for this session, sent as `If-None-Match`.
+ * @param signal - cancellation and timeout.
+ * @returns whether the answer changed since `etag`, or that the token is no longer valid.
+ * @throws MindeckCloudError `unreachable` without a response, `account-unavailable` for a refused account, or
+ *   `protocol` for another failure; its `requestId` names the request in the Mindeck Cloud log when known.
+ */
+export async function readSync(url: string, token: string, etag: string | null, signal: AbortSignal): Promise<SyncPoll> {
+  const response = await send(url, bearer(token, etag === null ? {} : { headers: { 'if-none-match': etag } }), signal)
+  if (response.status === 304) { await response.body?.cancel(); return { status: 'unchanged' } }
+  if (!response.ok) {
+    let refusal: 'sign-in-required'
+    try { refusal = await desktopFailure(response) }
+    catch (error) { throw withRequestId(error, response) }
+    return { status: refusal }
+  }
+  const answer = parse(syncSchema, await json(response), 'sync')
+  return { status: 'changed', answer, etag: response.headers.get('etag') }
+}
+
+/**
+ * Attach the request id of a Mindeck Cloud response to its failure.
+ * @param error - failure classified from the response.
+ * @param response - the response that failed.
+ * @returns the same failure, carrying the response's `x-request-id`.
+ */
+function withRequestId(error: unknown, response: Response): unknown {
+  if (error instanceof MindeckCloudError) error.requestId = response.headers.get('x-request-id')
+  return error
 }
 
 /**

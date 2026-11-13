@@ -2134,8 +2134,30 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'configured address, signed-in member, and the latest sign-in attempt; never the token.',
       },
       {
+        signature: '@Remote async syncNow(): Promise<MindeckAccountView>',
+        description: 'Sync with Mindeck Cloud now and refresh every company list on this computer, as the member asks on the Account page. A Mindeck Cloud without the sync endpoint has its bootstrap read again instead.',
+        parameters: [],
+        returns: 'state after the sync; its `sync.problem` tells whether Mindeck Cloud answered.',
+      },
+      {
+        signature: '@Remote async syncSoon(): Promise<void>',
+        description: 'Sync soon after the window regained focus or the network came back, unless a sync succeeded within the configured cool-down.',
+        parameters: [],
+      },
+      {
+        signature: 'requestSync(reason: \'prompt\' | \'timer\' = \'prompt\'): void',
+        description: 'Ask for a sync from another Host plugin, such as after Mindeck Cloud refused a request in a way a company change may explain. Prompted syncs within the cool-down after a successful one are skipped.',
+        parameters: [{ name: 'reason', description: '`prompt` for such an event; `timer` for a scheduled sync.' }],
+      },
+      {
+        signature: 'syncAnswer(): MindeckSyncAnswer | undefined',
+        description: 'Read the latest sync answer of the signed-in session, such as for the inbox summary.',
+        parameters: [],
+        returns: 'the answer, or undefined while signed out, before the first answer, or on a Mindeck Cloud without sync.',
+      },
+      {
         signature: '@Remote async refreshQuota(signal: AbortSignal): Promise<MindeckAccountView>',
-        description: 'Read the month-to-date quota from Mindeck Cloud now, as after a refused request or when the account menu opens. A failed read keeps the previous quota; a rejected token ends the session.',
+        description: 'Read the month-to-date quota from Mindeck Cloud now, as after a refused request or when the account menu opens, and prompt a sync, since a decided quota request or a changed policy may explain the refusal. A failed read keeps the previous quota; a rejected token ends the session.',
         parameters: [{ name: 'signal', description: 'caller cancellation.' }],
         returns: 'state with the latest quota.',
       },
@@ -2254,6 +2276,40 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Save a file from the member\'s computer into a library folder.',
         parameters: [{ name: 'folder', description: 'library path of a space or folder.' }, { name: 'name', description: 'file name without folders.' }, { name: 'contentBase64', description: 'file content in base64, at most `maxUploadBytes` once decoded.' }, { name: 'overwrite', description: 'replace a file of the same name; the library keeps the replaced content as a version.' }, { name: 'signal', description: 'caller cancellation.' }],
         returns: 'the saved file.',
+      },
+    ],
+  },
+  {
+    key: 'mindeckInbox',
+    summary: 'Unread count, inbox items, and read reports of the signed-in member\'s company messages.',
+    description: 'Unread count, inbox items, and read reports of the signed-in member\'s company messages.',
+    methods: [
+      {
+        signature: '@Remote({ mode: \'stream\' }) async *watch(signal: AbortSignal): AsyncIterable<MindeckInboxSummary>',
+        description: 'Stream the unread count and the recommended version for the sidebar row and the page header.',
+        parameters: [{ name: 'signal', description: 'stream lifetime.' }],
+        returns: 'the current summary, then every change.',
+      },
+      {
+        signature: '@Remote({ mode: \'stream\' }) async *items(signal: AbortSignal): AsyncIterable<MindeckInboxPage>',
+        description: 'Stream the inbox items while the company messages page is open. Opening it reads the newest items; while it is open, a sync that reports new or read items or changed announcements reads them again.',
+        parameters: [{ name: 'signal', description: 'the page\'s lifetime.' }],
+        returns: 'the loaded items, then every change.',
+      },
+      {
+        signature: '@Remote async reload(): Promise<void>',
+        description: 'Read the newest items again, as after a failed read; the page stream carries the result.',
+        parameters: [],
+      },
+      {
+        signature: '@Remote async loadMore(): Promise<void>',
+        description: 'Read the next older page, unless a read is running or no older items remain; the page stream carries the result.',
+        parameters: [],
+      },
+      {
+        signature: '@Remote async markRead(target: MindeckInboxReadTarget): Promise<void>',
+        description: 'Mark items read, as when the member opens one or marks everything read. The items show as read at once; a report that does not reach Mindeck Cloud is sent again after the next sync.',
+        parameters: [{ name: 'target', description: 'every unread item, or up to 100 listed ones.' }],
       },
     ],
   },
@@ -5283,6 +5339,14 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [],
   },
   {
+    name: 'mindeck-account/revised',
+    mode: 'emit',
+    signature: '\'mindeck-account/revised\'(topics: ReadonlySet<MindeckSyncTopic>): void',
+    summary: 'A sync with Mindeck Cloud found company or member data that changed, or the member asked to sync, which names every topic.',
+    description: 'A sync with Mindeck Cloud found company or member data that changed, or the member asked to sync, which names every topic. Each plugin reads again what its topics cover; the account has already stored a changed bootstrap.',
+    parameters: [{ name: 'topics', description: 'what changed.' }],
+  },
+  {
     name: 'permission-presets/catalog-changed',
     mode: 'emit',
     signature: '\'permission-presets/catalog-changed\'(): void',
@@ -7512,11 +7576,15 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'MindeckAccountView',
-    declaration: 'export interface MindeckAccountView {\n    readonly cloudUrl: string | null;\n    readonly welcomed: boolean;\n    readonly status: \'signed-out\' | \'signed-in\';\n    readonly user: MindeckAccountUser | null;\n    readonly companyName: string | null;\n    readonly notice: \'session-expired\' | null;\n    readonly attempt: MindeckSignInAttempt | null;\n    readonly quota: MindeckQuota | null;\n    readonly adminContact: string | null;\n    readonly personalDeepSeek: boolean;\n}',
+    declaration: 'export interface MindeckAccountView {\n    readonly cloudUrl: string | null;\n    readonly welcomed: boolean;\n    readonly status: \'signed-out\' | \'signed-in\';\n    readonly user: MindeckAccountUser | null;\n    readonly companyName: string | null;\n    readonly notice: \'session-expired\' | null;\n    readonly attempt: MindeckSignInAttempt | null;\n    readonly quota: MindeckQuota | null;\n    readonly adminContact: string | null;\n    readonly personalDeepSeek: boolean;\n    readonly sync: MindeckSyncView | null;\n    readonly release: MindeckClientRelease | null;\n}',
   },
   {
     name: 'MindeckBootstrap',
     declaration: 'export type MindeckBootstrap = z.infer<typeof bootstrapSchema>;',
+  },
+  {
+    name: 'MindeckClientRelease',
+    declaration: 'export interface MindeckClientRelease {\n    readonly recommendedVersion: string | null;\n    readonly notes: string | null;\n    readonly downloadUrl: string | null;\n}',
   },
   {
     name: 'MindeckEmployeeCard',
@@ -7533,6 +7601,34 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'MindeckGeneralView',
     declaration: 'export interface MindeckGeneralView {\n    readonly kind: \'general\';\n    readonly presetId: string;\n}',
+  },
+  {
+    name: 'MindeckInboxFailure',
+    declaration: 'export interface MindeckInboxFailure {\n    readonly reason: \'unreachable\' | \'failed\';\n    readonly requestId: string | null;\n}',
+  },
+  {
+    name: 'MindeckInboxItem',
+    declaration: 'export interface MindeckInboxItem extends MindeckInboxItemRef {\n    readonly kind: string;\n    readonly level: \'info\' | \'important\';\n    readonly title: string;\n    readonly body: string | null;\n    readonly link: string | null;\n    readonly createdAt: string;\n    readonly readAt: string | null;\n}',
+  },
+  {
+    name: 'MindeckInboxItemRef',
+    declaration: 'export interface MindeckInboxItemRef {\n    readonly type: MindeckInboxItemType;\n    readonly id: string;\n}',
+  },
+  {
+    name: 'MindeckInboxItemType',
+    declaration: 'export type MindeckInboxItemType = \'notification\' | \'announcement\';',
+  },
+  {
+    name: 'MindeckInboxPage',
+    declaration: 'export interface MindeckInboxPage {\n    readonly items: readonly MindeckInboxItem[] | null;\n    readonly more: boolean;\n    readonly loading: \'first\' | \'more\' | null;\n    readonly failure: MindeckInboxFailure | null;\n}',
+  },
+  {
+    name: 'MindeckInboxReadTarget',
+    declaration: 'export type MindeckInboxReadTarget = {\n    readonly all: true;\n} | {\n    readonly items: readonly MindeckInboxItemRef[];\n};',
+  },
+  {
+    name: 'MindeckInboxSummary',
+    declaration: 'export interface MindeckInboxSummary {\n    readonly available: boolean;\n    readonly unread: number;\n    readonly release: MindeckClientRelease | null;\n}',
   },
   {
     name: 'MindeckQuota',
@@ -7561,6 +7657,22 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'MindeckSkillView',
     declaration: 'export interface MindeckSkillView {\n    readonly name: string;\n    readonly displayName: string | null;\n    readonly category: string | null;\n    readonly description: string;\n    readonly recommended: boolean;\n    readonly searchKeys: readonly string[];\n}',
+  },
+  {
+    name: 'MindeckSyncAnswer',
+    declaration: 'export interface MindeckSyncAnswer {\n    readonly revisions: Readonly<Partial<Record<\'models\' | \'skills\' | \'employees\' | \'webSearch\' | \'policies\' | \'announcements\' | \'client\', number>>>;\n    readonly me: MindeckSyncMember;\n}',
+  },
+  {
+    name: 'MindeckSyncMember',
+    declaration: 'export interface MindeckSyncMember {\n    readonly accessRevision: number;\n    readonly inbox: {\n        readonly unread: number;\n        readonly latestAt: string | null;\n    };\n    readonly quotaRequest: {\n        readonly id: string;\n        readonly status: string;\n        readonly month: string;\n        readonly decidedAt: string | null;\n    } | null;\n}',
+  },
+  {
+    name: 'MindeckSyncTopic',
+    declaration: 'export type MindeckSyncTopic = \'models\' | \'skills\' | \'employees\' | \'webSearch\' | \'policies\' | \'announcements\' | \'client\' | \'access\' | \'inbox\' | \'quota-request\';',
+  },
+  {
+    name: 'MindeckSyncView',
+    declaration: 'export interface MindeckSyncView {\n    readonly supported: boolean;\n    readonly running: boolean;\n    readonly syncedAt: number | null;\n    readonly problem: \'unreachable\' | \'failed\' | null;\n}',
   },
   {
     name: 'ModDefinition',

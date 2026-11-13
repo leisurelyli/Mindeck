@@ -91,6 +91,7 @@ export const SERVICE_PAGE: Record<string, string> = {
   mindeckAccount: 'mindeck.md',
   mindeckEmployees: 'mindeck.md',
   mindeckFiles: 'mindeck.md',
+  mindeckInbox: 'mindeck.md',
   mindeckSkills: 'mindeck.md',
   credentials: 'credentials.md',
   credentialsController: 'credentials.md',
@@ -1125,6 +1126,11 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   LibrarySpaceView: 'Mindeck file-library spaces are owned by packages/mindeck/mindeck-files/README.md',
   MindeckEmployeeCatalog: 'Mindeck digital-employee cards are owned by packages/mindeck/mindeck-employees/README.md',
   MindeckSkillCatalog: 'Mindeck company-skill listings are owned by packages/mindeck/mindeck-skills/README.md',
+  MindeckSyncAnswer: 'Mindeck Cloud sync answers are owned by packages/mindeck/mindeck-account/README.md',
+  MindeckSyncTopic: 'Mindeck sync topics are owned by packages/mindeck/mindeck-account/README.md',
+  MindeckInboxSummary: 'Mindeck company-message summaries are owned by packages/mindeck/mindeck-inbox/README.md',
+  MindeckInboxPage: 'Mindeck company-message pages are owned by packages/mindeck/mindeck-inbox/README.md',
+  MindeckInboxReadTarget: 'Mindeck company-message read marks are owned by packages/mindeck/mindeck-inbox/README.md',
 }
 
 /** Repository data policy consumed by the Cordis catalog projector. */

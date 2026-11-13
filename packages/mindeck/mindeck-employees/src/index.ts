@@ -43,7 +43,10 @@ export interface Config {
   generalPersona: string
   /** Cache directory; empty means `mindeck` under the DeepSeek Harness home (`$DSH_HOME` or `~/.dsh`). */
   cacheDir: string
-  /** Interval between listing refreshes while signed in, in milliseconds. */
+  /**
+   * Interval between full listing refreshes while signed in, in milliseconds. The account's sync refreshes the listing
+   * as soon as Mindeck Cloud reports a change, so this interval only bounds the delay on a Mindeck Cloud without sync.
+   */
   refreshIntervalMs: number
   /** First wait after a failed refresh, in milliseconds; it doubles after each failure up to `refreshIntervalMs`. */
   retryIntervalMs: number
@@ -79,7 +82,7 @@ export default class MindeckEmployees extends TypertRemoteService {
     cacheDir: z.string().default('')
       .description('Cache directory; empty means `mindeck` under the DeepSeek Harness home.'),
     refreshIntervalMs: z.natural().min(60_000).default(600_000)
-      .description('Interval between digital-employee refreshes while signed in, in milliseconds.'),
+      .description('Interval between full digital-employee refreshes while signed in, in milliseconds; a sync refreshes sooner.'),
     retryIntervalMs: z.natural().min(1000).default(15_000)
       .description('First wait after a failed refresh, in milliseconds; it doubles up to refreshIntervalMs.'),
     requestTimeoutMs: z.natural().min(1000).default(15_000)
@@ -115,6 +118,7 @@ export default class MindeckEmployees extends TypertRemoteService {
       }
     }, 'mindeck-employees: agent presets')
     ctx.on('mindeck-account/changed', () => { this.refresh() })
+    ctx.on('mindeck-account/revised', (topics) => { if (topics.has('employees')) this.refresh() })
     ctx.effect(() => {
       const timer = setInterval(() => { this.refresh() }, config.refreshIntervalMs)
       return () => { clearInterval(timer) }

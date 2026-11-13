@@ -32,11 +32,11 @@ kind: "package-reference"
 | `basePreset` | `standard` | 所有 Mindeck 预设沿用其插件行的预设 |
 | `generalPersona` | `You are a work assistant powered by the {{model}} model.` | 通用助手的人设前缀 |
 | `cacheDir` | `''` | 缓存目录；为空时使用 DeepSeek Harness 主目录下的 `mindeck` |
-| `refreshIntervalMs` | `600000` | 登录期间两次刷新的间隔 |
+| `refreshIntervalMs` | `600000` | 登录期间两次兜底刷新的间隔 |
 | `retryIntervalMs` | `15000` | 刷新失败后的首次等待时间，之后逐次加倍，最多到 `refreshIntervalMs` |
 | `requestTimeoutMs` | `15000` | 单次 Mindeck Cloud 请求的超时时间 |
 
-预设列表中通用助手名为**通用助手**，英文界面为 **General assistant**，排在最前。每位员工的预设是 `mindeck-employee-<Cloud id>`，名称为岗位名称，说明为一句话介绍，二者都按 Mindeck Cloud 中的原文显示；管理员自己的草稿只有该管理员能收到，名称后加**（草稿）**，英文界面为 **(draft)**。插件在每次登录或退出后、每隔 `refreshIntervalMs` 以及刷新失败后按 `retryIntervalMs` 的规则刷新；401 会结束桌面会话。bootstrap 中没有 `endpoints.employees` 的 Mindeck Cloud 不提供数字员工。
+预设列表中通用助手名为**通用助手**，英文界面为 **General assistant**，排在最前。每位员工的预设是 `mindeck-employee-<Cloud id>`，名称为岗位名称，说明为一句话介绍，二者都按 Mindeck Cloud 中的原文显示；管理员自己的草稿只有该管理员能收到，名称后加**（草稿）**，英文界面为 **(draft)**。插件在每次登录或退出后、[账号的同步](../mindeck-account/README.zh.md#use-this-package)报告 `employees` 有变化时（管理员的改动因此约 1 分钟内到达桌面端）、作为兜底每隔 `refreshIntervalMs`，以及刷新失败后按 `retryIntervalMs` 的规则刷新；401 会结束桌面会话。bootstrap 中没有 `endpoints.employees` 的 Mindeck Cloud 不提供数字员工。
 
 只有预设仍在注册时，对话才能继续，因此离开 Cloud 列表的员工会以已停用状态保留注册：名称后加**（已停用）**，说明为“管理员已停用这位数字员工，可以继续之前的对话。”，英文界面为 **(deactivated)** 和“An administrator deactivated this digital employee. Earlier conversations can continue.”，排在最后，保留最后的人设，并带 `listed: false`：预设选择器只在已经使用它的对话里显示它，注册表也拒绝把别的对话切换到它。启动时，插件先注册已保存的员工，再请求 Mindeck Cloud。退出登录后这些预设仍然保留。另一位成员在同一台电脑上登录时，上一位成员的员工预设会移除，新成员已保存的员工随即注册。
 

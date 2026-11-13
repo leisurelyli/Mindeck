@@ -1,0 +1,221 @@
+/* The company messages page: the Plugins and skills page column (960px, the same inline insets and title step).
+   The heading stays in place; the recommended version and the messages scroll beneath it. */
+.page {
+  --inbox-inset: clamp(24px, 4vw, 48px);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* A 9px rail carries the 5px thumb inset 2px from the page edge, as on the skills page; the heading reserves the
+   same rail so its column stays over the list's column. */
+.scroll, .head {
+  scrollbar-gutter: stable;
+  --dsh-scrollbar-width: 9px;
+  --dsh-scrollbar-thumb-border: 2px;
+}
+.scroll { flex: 1; min-height: 0; overflow: auto; }
+
+.column { box-sizing: border-box; max-width: calc(960px + 2 * var(--inbox-inset)); margin: 0 auto; padding: 0 var(--inbox-inset); }
+.body { display: flex; flex-direction: column; gap: 12px; padding-top: 4px; padding-bottom: 48px; }
+
+@media (max-width: 767px) {
+  .page { --inbox-inset: 20px; }
+}
+
+/* The heading row starts at the window's top edge; its 28px inset is the page's top inset. */
+.head { flex: none; overflow: hidden; padding: 28px 0 20px; }
+:global([data-platform='darwin']) .head { padding-top: calc(28px + var(--dsh-frame-top-clearance, 0px)); }
+.titleRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 28px; }
+.title { margin: 0; font-size: 20px; font-weight: 500; line-height: 28px; }
+.intro { margin: 4px 0 0; color: var(--dsw-alias-label-secondary); text-wrap: pretty; }
+
+/* Settings card material, one card for the whole list; rows are separated by hairlines. */
+.list {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+  border: 0.5px solid var(--dsw-alias-settings-card-stroke);
+  border-radius: var(--dsw-radius-xl);
+  background: var(--dsw-alias-settings-card-fill);
+}
+.item + .item, .skeletonRow + .skeletonRow { border-top: 0.5px solid var(--dsw-alias-border-l3); }
+
+.itemButton {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.itemButton:focus-visible { outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: -2px; }
+@media (hover: hover) {
+  .itemButton:hover { background: var(--dsw-alias-interactive-bg-hover); }
+  .noticeAction:hover { text-decoration: underline; }
+}
+
+/* The Plugins page's icon tile at the list's size; the unread dot sits on its top-right corner. */
+.tile {
+  position: relative;
+  box-sizing: border-box;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: var(--dsw-radius-lg);
+  color: var(--dsw-alias-label-secondary);
+}
+.tile[data-family='announcement'] {
+  border-color: color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 24%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 8%, transparent);
+  color: var(--dsw-alias-brand-primary-new-colorprimary-new-color);
+}
+.dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 8px;
+  height: 8px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--dsw-alias-settings-card-fill);
+  border-radius: 50%;
+  corner-shape: round;
+  background: var(--dsw-alias-brand-primary-new-colorprimary-new-color);
+}
+
+.itemText { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
+/* The title shares the tile's 32px first line box when it is one line. */
+.itemHead { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 22px; padding-top: 5px; }
+.itemTitle { min-width: 0; overflow: hidden; font-size: 14px; font-weight: 400; line-height: 22px; text-overflow: ellipsis; white-space: nowrap; }
+.item[data-unread] .itemTitle { font-weight: 500; }
+.importantTag { flex: none; }
+.itemMeta { flex: none; margin-left: auto; padding-left: 8px; color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 18px; white-space: nowrap; }
+.preview {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--dsw-alias-label-secondary);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
+/* The opened body continues under the title, past the tile and its gap. */
+.detail { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 0 16px 16px 60px; }
+.fullBody { margin: 0; color: var(--dsw-alias-label-secondary); white-space: pre-wrap; overflow-wrap: anywhere; }
+.inlineLink, .detailLink { color: var(--dsw-alias-state-business-primary); text-decoration: none; }
+.detailLink { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; line-height: 20px; }
+@media (hover: hover) {
+  .inlineLink:hover, .detailLink:hover { text-decoration: underline; }
+}
+.inlineLink:focus-visible, .detailLink:focus-visible, .noticeAction:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 2px;
+  border-radius: var(--dsw-radius-sm);
+}
+
+.skeletonRow { height: 76px; background: var(--dsw-alias-bg-skeleton); }
+
+/* The recommended version leads the page as its own card, tinted like an announcement tile. */
+.release {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 0.5px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 24%, transparent);
+  border-radius: var(--dsw-radius-xl);
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 6%, var(--dsw-alias-settings-card-fill));
+}
+.releaseTile {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--dsw-radius-lg);
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 12%, transparent);
+  color: var(--dsw-alias-brand-primary-new-colorprimary-new-color);
+}
+.releaseText { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; padding-top: 5px; }
+.releaseTitle { margin: 0; font-size: 14px; font-weight: 500; line-height: 22px; }
+.releaseMeta { margin: 0; color: var(--dsw-alias-label-secondary); }
+.releaseNotes { margin: 4px 0 0; color: var(--dsw-alias-label-secondary); white-space: pre-wrap; overflow-wrap: anywhere; }
+.releaseAction { flex: none; margin-top: 2px; }
+
+/* A failed refresh above items that stay: one compact line with its retry. */
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--dsw-radius-lg);
+  background: var(--dsw-alias-bg-skeleton);
+  color: var(--dsw-alias-label-secondary);
+}
+.notice > svg { flex: none; }
+.noticeText { flex: 1; min-width: 0; }
+.requestIdInline { margin-left: 8px; color: var(--dsw-alias-label-tertiary); font-size: 12px; }
+.noticeAction { flex: none; padding: 0; border: 0; background: transparent; color: var(--dsw-alias-state-business-primary); font: inherit; cursor: pointer; }
+
+/* Empty and failed pages center a short stack in the space below the heading. */
+.state { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 64px 0; text-align: center; }
+/* The Plugins page's icon tile: a hairline square around the glyph. */
+.stateIcon { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; margin-bottom: 4px; border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-lg); color: var(--dsw-alias-label-secondary); }
+.stateTitle { margin: 0; font-size: 14px; font-weight: 500; line-height: 22px; }
+.stateHint { margin: 0; max-width: 420px; color: var(--dsw-alias-label-secondary); text-wrap: pretty; }
+.requestId { margin: 0; color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 18px; user-select: all; }
+.state > button { margin-top: 8px; }
+
+.more { display: flex; justify-content: center; }
+
+/* The sidebar row's unread count: a brand capsule after the title, and on the icon's corner in the rail. */
+.badge {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  corner-shape: round;
+  background: var(--dsw-alias-brand-primary-new-colorprimary-new-color);
+  /* White on the brand fill in both themes. */
+  color: var(--dsw-static-neutral-bluish-00);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

@@ -149,8 +149,10 @@ flowchart LR
   pkg_mindeck_skills["mindeck-skills"]
   pkg_mindeck_files["mindeck-files"]
   pkg_mindeck_employees["mindeck-employees"]
+  pkg_mindeck_inbox["mindeck-inbox"]
   svc_mindeckFiles["ctx.mindeckFiles<br/>Mindeck file library"]
   svc_mindeckEmployees["ctx.mindeckEmployees<br/>Mindeck digital employees"]
+  svc_mindeckInbox["ctx.mindeckInbox<br/>Mindeck company messages"]
   svc_mindeckSkills["ctx.mindeckSkills<br/>Mindeck company skills"]
   pkg_authorization["authorization"]
   svc_authorization["ctx.authorization<br/>Authorization flow registry"]
@@ -417,6 +419,7 @@ flowchart LR
   pkg_mindeck_account --> svc_mindeckAccount
   pkg_mindeck_employees --> svc_mindeckEmployees
   pkg_mindeck_files --> svc_mindeckFiles
+  pkg_mindeck_inbox --> svc_mindeckInbox
   pkg_mindeck_skills --> svc_mindeckSkills
   pkg_office_to_pdf --> svc_officeToPdf
   pkg_otel --> svc_otel
@@ -552,6 +555,7 @@ flowchart LR
   svc_mcpResources --> pkg_mcp_resources
   svc_mindeckAccount --> pkg_mindeck_employees
   svc_mindeckAccount --> pkg_mindeck_files
+  svc_mindeckAccount --> pkg_mindeck_inbox
   svc_mindeckAccount --> pkg_mindeck_models
   svc_mindeckAccount --> pkg_mindeck_skills
   svc_mindeckEmployees --> pkg_mindeck_models
@@ -717,9 +721,10 @@ flowchart LR
 | `ctx.subagentModelSelection` | `core` | [`tool-subagent`](../packages/subagent/tool-subagent) | - | [`tool-subagent`](../packages/subagent/tool-subagent) | - | Owns the default-off settings namespace that Agent-scoped delegation tools sample when composing a new top-level Session. |
 | `ctx.credentials` | `seam` | [`credentials`](../packages/credentials/credentials) | [`credentials-local`](../packages/credentials/credentials-local) | [`api-settings-controller`](../packages/api/settings-controller), [`llm-deepseek`](../packages/llm/llm-deepseek), [`llm-pi-ai`](../packages/llm/llm-pi-ai) | - | Configuration carries references to secrets; providers own the values. Consumers resolve per operation, so a rotated credential reaches the very next request; the settings controller exposes value-free views and write-only storage. |
 | `ctx.deepseekAccount` | `seam` | [`deepseek-account`](../packages/credentials/deepseek-account) | [`deepseek-account-platform`](../packages/credentials/deepseek-account-platform) | [`api-account-controller`](../packages/api/account-controller), [`llm-deepseek`](../packages/llm/llm-deepseek) | - | The Host owns browser authorization and local credentials; UI consumers receive state without tokens. |
-| `ctx.mindeckAccount` | `service` | [`mindeck-account`](../packages/mindeck/mindeck-account) | - | [`mindeck-models`](../packages/mindeck/mindeck-models), [`mindeck-skills`](../packages/mindeck/mindeck-skills), [`mindeck-files`](../packages/mindeck/mindeck-files), [`mindeck-employees`](../packages/mindeck/mindeck-employees) | - | Owns the device sign-in and the Mindeck Cloud session; company models, skills, the file library, and digital employees read the session token and its endpoints. |
+| `ctx.mindeckAccount` | `service` | [`mindeck-account`](../packages/mindeck/mindeck-account) | - | [`mindeck-models`](../packages/mindeck/mindeck-models), [`mindeck-skills`](../packages/mindeck/mindeck-skills), [`mindeck-files`](../packages/mindeck/mindeck-files), [`mindeck-employees`](../packages/mindeck/mindeck-employees), [`mindeck-inbox`](../packages/mindeck/mindeck-inbox) | - | Owns the device sign-in, the Mindeck Cloud session, and the sync that reports changed company data; company models, skills, the file library, digital employees, and company messages read the session token and its endpoints. |
 | `ctx.mindeckFiles` | `service` | [`mindeck-files`](../packages/mindeck/mindeck-files) | - | - | - | Registers the file-library tools while the library is available and serves the sidebar page over its Remote. |
 | `ctx.mindeckEmployees` | `service` | [`mindeck-employees`](../packages/mindeck/mindeck-employees) | - | [`mindeck-models`](../packages/mindeck/mindeck-models) | - | Registers the general assistant and each digital employee as an agent preset, streams the employee cards to the digital-employee page, and names the employee of a live conversation for gateway requests. |
+| `ctx.mindeckInbox` | `service` | [`mindeck-inbox`](../packages/mindeck/mindeck-inbox) | - | - | - | Keeps the unread count from the account sync, reads the inbox while the company messages page is open, and reports read items to Mindeck Cloud. |
 | `ctx.mindeckSkills` | `service` | [`mindeck-skills`](../packages/mindeck/mindeck-skills) | - | - | - | Keeps the company skills in a local cache served as a skill provider and streams their listing to the skills sidebar page. |
 | `ctx.authorization` | `seam` | [`authorization`](../packages/credentials/authorization) | - | [`llm-pi-ai`](../packages/llm/llm-pi-ai) | - | Flows are registered by the plugin that knows how to obtain one credential and keyed by the record they write; the seam owns the conversation and the one-attempt-per-key lifecycle, never the protocol. |
 | `ctx.productAnalytics` | `service` | [`client-product-analytics`](../packages/client/product-analytics) | - | - | - | Accepts selected Desktop events, enriches available login identity, and observes live compaction under the live Host collection policy. |

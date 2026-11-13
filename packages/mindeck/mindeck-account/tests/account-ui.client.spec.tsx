@@ -20,10 +20,10 @@ import { baseFactories, noFactories } from './base-factories.client.tsx'
 afterEach(cleanup)
 
 const signedOut: MindeckAccountView = {
-  cloudUrl: null, welcomed: true, status: 'signed-out', user: null, companyName: null, notice: null, attempt: null, quota: null, adminContact: null, personalDeepSeek: false,
+  cloudUrl: null, welcomed: true, status: 'signed-out', user: null, companyName: null, notice: null, attempt: null, quota: null, adminContact: null, personalDeepSeek: false, sync: null, release: null,
 }
 const signedIn: MindeckAccountView = {
-  cloudUrl: 'https://cloud.example.com', welcomed: true, status: 'signed-in', companyName: '星河科技', notice: null, attempt: null, quota: null, adminContact: null, personalDeepSeek: false,
+  cloudUrl: 'https://cloud.example.com', welcomed: true, status: 'signed-in', companyName: '星河科技', notice: null, attempt: null, quota: null, adminContact: null, personalDeepSeek: false, sync: null, release: null,
   user: { id: 'user-1', name: '林晓', email: 'lin@example.com', role: 'admin', department: null },
 }
 
@@ -45,6 +45,7 @@ function fixture(view: MindeckAccountView | undefined, failed = false) {
     startPersonalSignIn: vi.fn(async (): Promise<OperationOutcome> => ok),
     cancelPersonalSignIn: vi.fn(async () => {}),
     signOutPersonal: vi.fn(async (): Promise<OperationOutcome> => ok),
+    syncNow: vi.fn(async (): Promise<OperationOutcome> => ok),
   }
   // Global standard hooks are unused by these components; the renderer supplies them in production.
   const props = {
@@ -254,7 +255,58 @@ it('opens help in the browser, sends feedback with retry after a failure, and sh
   expect(about.textContent).toContain('星河科技')
   fireEvent.click(within(about).getByRole('button', { name: en.aboutPrivacy }))
   expect(open).toHaveBeenLastCalledWith('https://cloud.example.com/privacy', '_blank', 'noopener,noreferrer')
+  // Without a company installer, the download action opens the Mindeck Cloud home page that lists them.
+  fireEvent.click(within(about).getByRole('button', { name: en.aboutDownloads }))
+  expect(open).toHaveBeenLastCalledWith('https://cloud.example.com/', '_blank', 'noopener,noreferrer')
+  expect(about.textContent).not.toContain(en.aboutRecommended)
   open.mockRestore()
+})
+
+it('names the recommended version in About and opens the company installer for this computer', async () => {
+  const open = vi.spyOn(window, 'open').mockReturnValue(null)
+  const f = fixture({ ...signedIn, release: { recommendedVersion: '1.8.0', notes: null, downloadUrl: 'https://dl.example.com/mindeck.exe' } })
+  render(<AccountMenu {...f.props} />)
+  fireEvent.click(screen.getByRole('button', { name: en.menu }))
+  fireEvent.click(await screen.findByRole('menuitem', { name: en.about }))
+  const about = await screen.findByRole('dialog', { name: en.aboutTitle })
+  expect(about.textContent).toContain(`${en.aboutRecommended}1.8.0`)
+  fireEvent.click(within(about).getByRole('button', { name: en.aboutDownloads }))
+  expect(open).toHaveBeenLastCalledWith('https://dl.example.com/mindeck.exe', '_blank', 'noopener,noreferrer')
+  open.mockRestore()
+})
+
+it('shows when company data was last synced and syncs on request without a dialog, offline included', async () => {
+  const sync = { supported: true, running: false, syncedAt: new Date(2026, 10, 13, 14, 3).getTime(), problem: null } as const
+  const f = fixture({ ...signedIn, sync })
+  const view = render(<AccountSection {...f.props} />)
+  const page = view.getByRole('region', { name: en.nav })
+  expect(within(page).getByText(en.sync)).toBeTruthy()
+  const time = new Intl.DateTimeFormat('en-US', {
+    ...new Date().toDateString() === new Date(sync.syncedAt).toDateString() ? {} : { month: 'numeric', day: 'numeric' },
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(sync.syncedAt)
+  expect(within(page).getByText(`Up to date as of ${time}`)).toBeTruthy()
+  const gate = Promise.withResolvers<OperationOutcome>()
+  f.operations.syncNow.mockReturnValueOnce(gate.promise)
+  const button = within(page).getByRole('button', { name: en.syncNow }) as HTMLButtonElement
+  fireEvent.click(button)
+  expect(f.operations.syncNow).toHaveBeenCalledOnce()
+  expect(within(page).getByText(en.syncRunning)).toBeTruthy()
+  expect(button.disabled).toBe(true)
+  await act(async () => { gate.resolve({ ok: true }); await gate.promise })
+  expect(button.disabled).toBe(false)
+
+  f.set({ ...signedIn, sync: { ...sync, running: true } })
+  expect(within(page).getByText(en.syncRunning)).toBeTruthy()
+  f.set({ ...signedIn, sync: { ...sync, problem: 'unreachable' } })
+  expect(within(page).getByText(en.syncUnreachable)).toBeTruthy()
+  f.set({ ...signedIn, sync: { ...sync, problem: 'failed' } })
+  expect(within(page).getByText(en.syncFailed)).toBeTruthy()
+  f.set({ ...signedIn, sync: { ...sync, syncedAt: null } })
+  expect(within(page).getByText(en.syncPending)).toBeTruthy()
+  expect(screen.queryByRole('dialog')).toBeNull()
+  f.set({ ...signedIn, sync: null })
+  expect(within(page).queryByText(en.sync)).toBeNull()
 })
 
 it('offers only About while signed out without a Cloud address', async () => {

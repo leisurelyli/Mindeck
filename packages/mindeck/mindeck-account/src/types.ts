@@ -60,6 +60,72 @@ export interface MindeckQuota {
   readonly resetDate: string
 }
 
+/**
+ * What changed on Mindeck Cloud since the previous sync answer, for the plugin that shows it. The company catalogs
+ * `models`, `skills`, `employees`, `webSearch`, `policies`, `announcements`, and `client` follow the Cloud revisions of
+ * the same names; `access` is the member's department or role, which also changes `models`, `skills`, `employees`, and
+ * `policies`; `inbox` is the unread count or the newest item; `quota-request` is the member's latest quota request.
+ */
+export type MindeckSyncTopic =
+  | 'models' | 'skills' | 'employees' | 'webSearch' | 'policies' | 'announcements' | 'client'
+  | 'access' | 'inbox' | 'quota-request'
+
+/** The member's own part of a sync answer. */
+export interface MindeckSyncMember {
+  /** Revision of the member's department and role. */
+  readonly accessRevision: number
+  readonly inbox: {
+    /** Unread personal notifications and visible announcements. */
+    readonly unread: number
+    /** ISO 8601 time of the newest inbox item; null for an empty inbox. */
+    readonly latestAt: string | null
+  }
+  /** The member's latest quota request; null when they never made one. */
+  readonly quotaRequest: {
+    readonly id: string
+    /** `pending`, `approved`, `rejected`, `cancelled`, `expired`, or a status a newer Mindeck Cloud adds. */
+    readonly status: string
+    /** `YYYY-MM-DD` of the first day of the month the request is for. */
+    readonly month: string
+    readonly decidedAt: string | null
+  } | null
+}
+
+/** One answer of the Mindeck Cloud sync endpoint, with the revision topics this desktop knows. */
+export interface MindeckSyncAnswer {
+  /** Committed revision of each known company catalog; compare with `!==`. */
+  readonly revisions: Readonly<Partial<Record<'models' | 'skills' | 'employees' | 'webSearch' | 'policies' | 'announcements' | 'client', number>>>
+  readonly me: MindeckSyncMember
+}
+
+/** How the desktop follows changes on Mindeck Cloud while signed in. */
+export interface MindeckSyncView {
+  /**
+   * Whether this Mindeck Cloud reports changes through its sync endpoint; false for one that predates it, which the
+   * desktop reads again every ten minutes.
+   */
+  readonly supported: boolean
+  /** Whether a sync the member asked for is running. */
+  readonly running: boolean
+  /** Epoch milliseconds when Mindeck Cloud last answered a sync; null before the first answer of this session. */
+  readonly syncedAt: number | null
+  /**
+   * Why the last sync failed, until one succeeds: `unreachable` without a response, such as offline; `failed` for an
+   * error response. Syncs continue on schedule either way.
+   */
+  readonly problem: 'unreachable' | 'failed' | null
+}
+
+/** The desktop version the company recommends, from Mindeck Cloud. */
+export interface MindeckClientRelease {
+  /** Recommended version such as `1.8.0`; null when the company recommends none. */
+  readonly recommendedVersion: string | null
+  /** Release notes shown with it; null when unset. */
+  readonly notes: string | null
+  /** Installer address for this computer's platform; null when the company offers none for it. */
+  readonly downloadUrl: string | null
+}
+
 /** Account state the Client renders. */
 export interface MindeckAccountView {
   /** Configured Mindeck Cloud address, or null until one is set. */
@@ -82,6 +148,10 @@ export interface MindeckAccountView {
    * and for a Mindeck Cloud that predates the policy.
    */
   readonly personalDeepSeek: boolean
+  /** How the desktop follows company changes; null while signed out. */
+  readonly sync: MindeckSyncView | null
+  /** The recommended desktop version; null while signed out and for a Mindeck Cloud that predates it. */
+  readonly release: MindeckClientRelease | null
 }
 
 /** One piece of feedback for the company's Mindeck Cloud. */

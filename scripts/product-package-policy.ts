@@ -49,6 +49,7 @@ export const PRODUCT_PACKAGE_POLICY: Readonly<Record<string, ProductPackagePolic
   'packages/mindeck/mindeck-account': { category: 'optional', reason: 'Mindeck Cloud account mounted by the Mindeck presentation layer.' },
   'packages/mindeck/mindeck-employees': { category: 'optional', reason: 'Mindeck Cloud digital employees and their agent presets mounted by the Mindeck presentation layer.' },
   'packages/mindeck/mindeck-files': { category: 'optional', reason: 'Mindeck file library tools and panel mounted by the Mindeck presentation layer.' },
+  'packages/mindeck/mindeck-inbox': { category: 'optional', reason: 'Mindeck company messages page and unread count mounted by the Mindeck presentation layer.' },
   'packages/mindeck/mindeck-models': { category: 'optional', reason: 'Mindeck Cloud company models mounted by the Mindeck presentation layer.' },
   'packages/mindeck/mindeck-skills': { category: 'optional', reason: 'Mindeck Cloud company skills mounted by the Mindeck presentation layer.' },
   'packages/client/web': { category: 'web-distribution', reason: 'Browser boot kernel bundled into the Web distribution.' },

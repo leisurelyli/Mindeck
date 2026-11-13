@@ -1,7 +1,8 @@
 /**
  * Mindeck Cloud account for Mindeck Desktop: the configured Cloud address, device sign-in, the stored
- * desktop session, and that session's token for other Mindeck Host plugins. The Client reaches it
- * through the `mindeckAccount` Remote namespace, which never carries the token.
+ * desktop session, that session's token for other Mindeck Host plugins, and the sync with Mindeck Cloud that
+ * tells them when company data changed. The Client reaches it through the `mindeckAccount` Remote namespace,
+ * which never carries the token.
  * @module @deepseek-ai/dsh-mindeck-account
  */
 import { randomUUID } from 'node:crypto'
@@ -24,14 +25,17 @@ import {
   cloudUrlCandidates, type DeviceInfo, type MindeckBootstrap, MindeckCloudError, normalizeCloudUrl, pollDeviceToken, probeCloud,
   readBootstrap, readQuota, reportDevice, reportDeviceRequest, requestDeviceCode, sendFeedback, signOutDevice,
 } from './cloud.ts'
+import { type BootstrapRead, SyncLoop } from './sync.ts'
 import type {
-  MindeckAccountErrorCode, MindeckAccountView, MindeckFeedback, MindeckQuota, MindeckSignInAttempt, MindeckSignInAttemptId,
+  MindeckAccountErrorCode, MindeckAccountView, MindeckClientRelease, MindeckFeedback, MindeckQuota, MindeckSignInAttempt,
+  MindeckSignInAttemptId, MindeckSyncAnswer, MindeckSyncTopic,
 } from './types.ts'
 
 export type * from './types.ts'
 export type { MindeckBootstrap } from './cloud.ts'
 export { cloudUrlCandidates, normalizeCloudUrl } from './cloud.ts'
 export { followChanges } from './changes.ts'
+export { ALL_SYNC_TOPICS, changedTopics } from './sync.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -44,6 +48,13 @@ declare module '@deepseek-ai/cordis' {
      * @mode emit
      */
     'mindeck-account/changed'(): void
+    /**
+     * A sync with Mindeck Cloud found company or member data that changed, or the member asked to sync, which names
+     * every topic. Each plugin reads again what its topics cover; the account has already stored a changed bootstrap.
+     * @param topics - what changed.
+     * @mode emit
+     */
+    'mindeck-account/revised'(topics: ReadonlySet<MindeckSyncTopic>): void
   }
 }
 
@@ -63,6 +74,15 @@ export interface Config {
   requestTimeoutMs: number
   /** Interval in milliseconds between quota reads while signed in. */
   quotaRefreshMs: number
+  /** Interval in milliseconds between polls of the sync endpoint while signed in. */
+  syncIntervalMs: number
+  /** Interval in milliseconds between bootstrap reads on a Mindeck Cloud without the sync endpoint. */
+  fallbackRefreshMs: number
+  /**
+   * Milliseconds after a successful sync during which a sync prompted by the window regaining focus, the network
+   * returning, or a refused request is skipped.
+   */
+  syncCooldownMs: number
 }
 
 /** Credential record holding the desktop session. */
@@ -93,9 +113,14 @@ const storedSessionSchema = zod.object({
       anthropicBaseUrl: zod.string(), openaiBaseUrl: zod.string(),
       files: zod.object({ url: zod.string(), token: zod.string() }).nullable().optional(),
       webSearch: zod.string().optional(), employees: zod.string().optional(),
+      sync: zod.string().optional(), inbox: zod.string().optional(),
     }),
     // Fields added after version 1 are optional, so records written before them still load.
     policies: zod.object({ personalDeepSeek: zod.boolean() }).optional(),
+    client: zod.object({
+      recommendedVersion: zod.string().nullable(), notes: zod.string().nullable(),
+      downloads: zod.object({ windows: zod.string().nullable(), macos: zod.string().nullable() }),
+    }).optional(),
   }),
 })
 
@@ -138,6 +163,18 @@ export function feedbackOf(event: SessionEvent): MindeckFeedback | undefined {
   }
 }
 
+/**
+ * Choose what this computer learns about the recommended desktop version.
+ * @param client - the stored bootstrap's `client`.
+ * @returns the recommendation with the installer for this platform, or null from a Mindeck Cloud that predates it.
+ */
+function clientRelease(client: MindeckBootstrap['client']): MindeckClientRelease | null {
+  if (client === undefined) return null
+  const { windows, macos } = client.downloads
+  const downloadUrl = process.platform === 'win32' ? windows : process.platform === 'darwin' ? macos : null
+  return { recommendedVersion: client.recommendedVersion, notes: client.notes, downloadUrl }
+}
+
 /** Mindeck Cloud account service and its Remote namespace. */
 export default class MindeckAccount extends TypertRemoteService {
   static inject = ['credentials', 'typert']
@@ -150,6 +187,12 @@ export default class MindeckAccount extends TypertRemoteService {
       .description('Timeout of each request to Mindeck Cloud in milliseconds.'),
     quotaRefreshMs: z.natural().min(10_000).default(120_000)
       .description('Interval in milliseconds between quota reads while signed in.'),
+    syncIntervalMs: z.natural().min(10_000).default(60_000)
+      .description('Interval in milliseconds between polls of the Mindeck Cloud sync endpoint while signed in.'),
+    fallbackRefreshMs: z.natural().min(60_000).default(600_000)
+      .description('Interval in milliseconds between bootstrap reads on a Mindeck Cloud without the sync endpoint.'),
+    syncCooldownMs: z.natural().default(10_000)
+      .description('Milliseconds after a successful sync during which a focus, network, or refusal prompt does not sync again.'),
   })
 
   private readonly settingsNs: string
@@ -162,6 +205,7 @@ export default class MindeckAccount extends TypertRemoteService {
   private notice: MindeckAccountView['notice'] = null
   /** Latest quota with the token it was read for, so a quota never outlives its session. */
   private quota: { readonly token: string; readonly value: MindeckQuota } | undefined
+  private readonly sync: SyncLoop
 
   /** @param ctx - Host with the credentials service. @param config - deployment options. */
   constructor(ctx: Context, private readonly config: Config) {
@@ -173,9 +217,26 @@ export default class MindeckAccount extends TypertRemoteService {
       this.lifetime.abort()
       this.attempt?.controller.abort()
     }, 'mindeck-account: sign-in and background requests')
-    // Validate the stored session; an unreachable Cloud keeps it for offline use.
-    this.track(this.revalidate())
+    this.sync = new SyncLoop({
+      session: async () => {
+        const stored = await this.load()
+        return stored === undefined ? undefined : { token: stored.token, syncUrl: stored.bootstrap.endpoints.sync }
+      },
+      request: run => this.request(this.lifetime.signal, run),
+      rejectToken: token => this.rejectToken(token),
+      readBootstrap: () => this.revalidate(),
+      readQuota: () => this.readQuota(this.lifetime.signal),
+      revised: (topics) => { this.ctx.emit('mindeck-account/revised', topics) },
+      changed: () => { this.changed() },
+      warn: (message, error) => { this.ctx.logger.warn(message, error) },
+    }, { intervalMs: config.syncIntervalMs, fallbackIntervalMs: config.fallbackRefreshMs, cooldownMs: config.syncCooldownMs })
+    // Validate the stored session, then sync for the inbox summary; an unreachable Cloud keeps the session for offline use.
+    this.track(this.revalidate().then(() => this.sync.request('timer')))
     this.track(this.pollQuota())
+    ctx.effect(() => {
+      const timer = setInterval(() => { this.requestSync('timer') }, config.syncIntervalMs)
+      return () => { clearInterval(timer) }
+    }, 'mindeck-account: sync timer')
     // Answers rated down and `/feedback` remarks also reach the company, in live and closed conversations alike.
     ctx.on('session/event', (_session, event) => { this.forwardFeedback(event) })
     ctx.on('feedback/committed', (inspection) => {
@@ -203,17 +264,60 @@ export default class MindeckAccount extends TypertRemoteService {
       quota: stored !== undefined && this.quota?.token === stored.token ? this.quota.value : null,
       adminContact: stored?.bootstrap.company.adminContact ?? null,
       personalDeepSeek: stored?.bootstrap.policies?.personalDeepSeek === true,
+      sync: stored === undefined ? null : this.sync.viewFor({ token: stored.token, syncUrl: stored.bootstrap.endpoints.sync }),
+      release: stored === undefined ? null : clientRelease(stored.bootstrap.client),
     }
   }
 
   /**
+   * Sync with Mindeck Cloud now and refresh every company list on this computer, as the member asks on the Account
+   * page. A Mindeck Cloud without the sync endpoint has its bootstrap read again instead.
+   * @returns state after the sync; its `sync.problem` tells whether Mindeck Cloud answered.
+   */
+  @Remote
+  async syncNow(): Promise<MindeckAccountView> {
+    await this.sync.request('manual')
+    return await this.getState()
+  }
+
+  /**
+   * Sync soon after the window regained focus or the network came back, unless a sync succeeded within the
+   * configured cool-down.
+   */
+  @Remote
+  syncSoon(): Promise<void> {
+    this.requestSync('prompt')
+    return Promise.resolve()
+  }
+
+  /**
+   * Ask for a sync from another Host plugin, such as after Mindeck Cloud refused a request in a way a company change
+   * may explain. Prompted syncs within the cool-down after a successful one are skipped.
+   * @param reason - `prompt` for such an event; `timer` for a scheduled sync.
+   */
+  requestSync(reason: 'prompt' | 'timer' = 'prompt'): void {
+    this.track(this.sync.request(reason))
+  }
+
+  /**
+   * Read the latest sync answer of the signed-in session, such as for the inbox summary.
+   * @returns the answer, or undefined while signed out, before the first answer, or on a Mindeck Cloud without sync.
+   */
+  syncAnswer(): MindeckSyncAnswer | undefined {
+    const stored = this.stored
+    return stored === undefined ? undefined : this.sync.answer(stored.token)
+  }
+
+  /**
    * Read the month-to-date quota from Mindeck Cloud now, as after a refused request or when the account
-   * menu opens. A failed read keeps the previous quota; a rejected token ends the session.
+   * menu opens, and prompt a sync, since a decided quota request or a changed policy may explain the refusal. A
+   * failed read keeps the previous quota; a rejected token ends the session.
    * @param signal - caller cancellation.
    * @returns state with the latest quota.
    */
   @Remote
   async refreshQuota(signal: AbortSignal): Promise<MindeckAccountView> {
+    this.requestSync('prompt')
     await this.readQuota(signal)
     return await this.getState()
   }
@@ -462,12 +566,15 @@ export default class MindeckAccount extends TypertRemoteService {
     this.changed()
   }
 
-  /** Refresh cached account details; a rejected token ends the session. */
-  private async revalidate(): Promise<void> {
+  /**
+   * Refresh cached account details; a rejected token ends the session.
+   * @returns whether Mindeck Cloud answered, or `signed-out` without a session to refresh.
+   */
+  private async revalidate(): Promise<BootstrapRead> {
     let stored: StoredSession | undefined
     try { stored = await this.load() }
-    catch (error) { this.ctx.logger.warn('mindeck-account: could not read the stored session', error); return }
-    if (stored === undefined) return
+    catch (error) { this.ctx.logger.warn('mindeck-account: could not read the stored session', error); return 'failed' }
+    if (stored === undefined) return 'signed-out'
     // A device that signed in before the welcome page existed has no use for it.
     this.track(this.markWelcomed().catch((_error: unknown) => {
       // markWelcomed logged the failure; the next start tries again.
@@ -476,12 +583,15 @@ export default class MindeckAccount extends TypertRemoteService {
     try { bootstrap = await this.request(this.lifetime.signal, signal => readBootstrap(stored.cloudUrl, stored.token, signal)) }
     catch (error) {
       if (!this.lifetime.signal.aborted) this.ctx.logger.info('mindeck-account: keeping the stored session; Cloud check failed', error)
-      return
+      return error instanceof MindeckCloudError && error.code === 'unreachable' ? 'unreachable' : 'failed'
     }
-    if (bootstrap === 'sign-in-required') { await this.rejectToken(stored.token); return }
-    if (JSON.stringify(bootstrap) === JSON.stringify(stored.bootstrap)) return
+    if (bootstrap === 'sign-in-required') { await this.rejectToken(stored.token); return 'signed-out' }
+    // A sign-in or sign-out during the read stores its own bootstrap.
+    if (this.stored?.token !== stored.token) return 'signed-out'
+    if (JSON.stringify(bootstrap) === JSON.stringify(stored.bootstrap)) return 'ok'
     await this.store({ ...stored, bootstrap })
     this.changed(true)
+    return 'ok'
   }
 
   private async runAttempt(attempt: Attempt, cloudUrl: string, appVersion: string): Promise<void> {
@@ -536,6 +646,7 @@ export default class MindeckAccount extends TypertRemoteService {
       issued = undefined
       this.update(attempt, { phase: 'succeeded' }, true)
       this.track(this.readQuota(this.lifetime.signal))
+      this.requestSync('timer')
       this.track(this.markWelcomed().catch((_error: unknown) => {
         // markWelcomed logged the failure; a later sign-out may show the welcome page again.
       }))

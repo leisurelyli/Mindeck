@@ -27,7 +27,7 @@ kind: "package-reference"
 
 在 Host 上于 [Mindeck 账号](../mindeck-account/README.zh.md)和 LLM 服务之后挂载本插件，Mindeck 应用组合包已完成这一步。登录后模型按企业名称分组出现；默认模型指向本机无法使用的模型时，会改为第一个企业模型。
 
-每次登录或退出后、每隔 `refreshIntervalMs`（默认十分钟），以及网关报告模型已不存在后，都会重新读取目录。读取失败时保留当前模型，并在 `retryIntervalMs`（默认 15 秒）后重试，此后每失败一次等待时间加倍，最长为 `refreshIntervalMs`。每次读到的目录保存到 `cacheDir` 下的 `models-catalog.json`（为空时使用 DeepSeek Harness 主目录下的 `mindeck`）；启动时，在云端应答之前先提供该成员在同一 Mindeck Cloud 下保存的目录。企业推荐的模型排在前面，并在模型选择器中带**推荐**徽标；企业对模型的说明随模型列表提供。`defaultContextWindow` 和 `defaultMaxTokens` 为目录未给出尺寸的模型提供尺寸；`requestTimeoutMs` 限制每次目录请求的时长。
+每次登录或退出后、[账号的同步](../mindeck-account/README.zh.md#use-this-package)报告 `models` 或 `webSearch` 有变化时、作为兜底每隔 `refreshIntervalMs`（默认十分钟），以及网关报告模型已不存在后（这时还会请账号同步一次），都会重新读取目录和联网搜索状态。读取失败时保留当前模型，并在 `retryIntervalMs`（默认 15 秒）后重试，此后每失败一次等待时间加倍，最长为 `refreshIntervalMs`。每次读到的目录保存到 `cacheDir` 下的 `models-catalog.json`（为空时使用 DeepSeek Harness 主目录下的 `mindeck`）；启动时，在云端应答之前先提供该成员在同一 Mindeck Cloud 下保存的目录。企业推荐的模型排在前面，并在模型选择器中带**推荐**徽标；企业对模型的说明随模型列表提供。`defaultContextWindow` 和 `defaultMaxTokens` 为目录未给出尺寸的模型提供尺寸；`requestTimeoutMs` 限制每次目录请求的时长。
 
 存在[网页服务](../../web/web/README.zh.md)时，插件注册 `mindeck-search` 搜索提供方，Mindeck 应用组合包通过 `web.searchProvider` 选中它。每次读取目录时，也会读取 `GET {endpoints.webSearch}`：企业开启搜索时，模型步骤可以使用 `web_search`；关闭时则不提供。一次搜索把查询词、结果条数（`searchCount`，默认 10，调用方给出更小的上限时取其值）和成员最近的提问（截断到 128 个字符）发给网关。网关使用企业的 DeepSeek 密钥，把这次搜索计入成员的额度和每日搜索次数，再返回 DeepSeek 搜索接口的结果。网关拒绝时的消息（例如额度或当天次数已用完）就是模型读到的搜索失败原因。没有联网搜索的 Mindeck Cloud 不提供搜索。
 

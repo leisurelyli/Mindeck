@@ -76,6 +76,7 @@ async function fixture(gatewayUrl: string) {
       current = undefined
       ctx.emit('mindeck-account/changed')
     }),
+    requestSync: vi.fn(),
   }
   let selection = { provider: 'deepseek-official', model: 'deepseek-chat' }
   const defaults = {
@@ -159,6 +160,22 @@ it('serves the member\'s saved catalog while Mindeck Cloud is unreachable and re
   expect(f.catalog.state.requests).toBeGreaterThanOrEqual(2)
 })
 
+it('reads the catalog again when a sync reports changed models or web search, and only then', async () => {
+  const f = await fixture('http://127.0.0.1:9/gateway/anthropic')
+  f.catalog.state.models = [f.model('deepseek-chat')]
+  await f.ctx.plugin(MindeckModels, options())
+  await vi.waitFor(() => { expect(f.providers()).toEqual(['mindeck-anthropic']) })
+  expect(f.catalog.state.requests).toBe(1)
+
+  f.ctx.emit('mindeck-account/revised', new Set(['skills', 'employees', 'inbox']))
+  f.catalog.state.models = [f.model('deepseek-chat'), f.model('gpt-4.1', 'openai-completions')]
+  f.ctx.emit('mindeck-account/revised', new Set(['models']))
+  await vi.waitFor(() => { expect(f.providers()).toEqual(['mindeck-anthropic', 'mindeck-openai']) })
+  expect(f.catalog.state.requests).toBe(2)
+  f.ctx.emit('mindeck-account/revised', new Set(['webSearch']))
+  await vi.waitFor(() => { expect(f.catalog.state.requests).toBe(3) })
+})
+
 it('ends the session when Mindeck Cloud refuses the catalog request', async () => {
   const f = await fixture('http://127.0.0.1:9/gateway/anthropic')
   f.catalog.state.status = 401
@@ -198,6 +215,20 @@ it('sends the session token to the gateway and reports quota, sign-out, and sess
   expect(ended.finish).toMatchObject({ kind: 'error', failure: { code: MindeckModels.SESSION_ENDED_CODE, message: '登录已失效，请重新登录。' } })
   expect(f.account.rejectToken).toHaveBeenCalledWith('desktop-token-1')
   await vi.waitFor(() => { expect(f.providers()).toEqual([]) })
+})
+
+it('reads the catalog again and asks the account to sync when the gateway no longer offers a model', async () => {
+  const gateway = await mockServer([
+    { status: 404, body: JSON.stringify({ type: 'error', error: { type: 'not_found_error', message: '模型不存在或已停用。' } }) },
+  ])
+  const f = await fixture(`${gateway.url}/gateway/anthropic`)
+  f.catalog.state.models = [f.model('deepseek-chat')]
+  await f.ctx.plugin(MindeckModels, options())
+  await vi.waitFor(() => { expect(f.providers()).toEqual(['mindeck-anthropic']) })
+  const missing = await assemble(f.ctx, { provider: 'mindeck-anthropic', model: 'deepseek-chat', messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }] })
+  expect(missing.finish).toMatchObject({ kind: 'error', failure: { code: 'UNKNOWN_MODEL', status: 404 } })
+  expect(f.account.requestSync).toHaveBeenCalledOnce()
+  await vi.waitFor(() => { expect(f.catalog.state.requests).toBe(2) })
 })
 
 it('names the digital employee of a conversation in its gateway requests', async () => {

@@ -27,7 +27,7 @@ kind: "package-reference"
 
 在 Host 上于 [Mindeck 账号](../mindeck-account/README.zh.md)和技能注册表之后挂载本插件，Mindeck 应用组合包已完成这一步。企业技能以 `mindeck` 提供方、`custom` 来源出现：项目技能优先于它们，它们又优先于成员自己的同名用户技能。
 
-每次登录或退出后，以及每隔 `refreshIntervalMs`（默认十分钟），插件都会刷新。它只下载内容有变化的技能，并删除成员已不再可用的技能。下载失败的技能保留之前的副本，等待下次刷新。`maxSkillBytes` 和 `maxSkillFiles` 限制单个技能，`requestTimeoutMs` 限制每次请求，`cacheDir` 可把缓存从默认位置（DeepSeek Harness 主目录下的 `mindeck`）移走。
+每次登录或退出后、[账号的同步](../mindeck-account/README.zh.md#use-this-package)报告 `skills` 有变化时，以及作为兜底每隔 `refreshIntervalMs`（默认十分钟），插件都会刷新。它只下载内容有变化的技能，并删除成员已不再可用的技能。下载失败的技能保留之前的副本，等待下次刷新。`maxSkillBytes` 和 `maxSkillFiles` 限制单个技能，`requestTimeoutMs` 限制每次请求，`cacheDir` 可把缓存从默认位置（DeepSeek Harness 主目录下的 `mindeck`）移走。
 
 Client 入口 `@deepseek-ai/dsh-mindeck-skills/client` 在左侧栏“插件”之前加入**技能**，其页面显示在主区域。页面写明提供技能的企业和技能数量，先在**企业推荐**下列出推荐技能，再按中文读音顺序列出各分类，最后在**其他**下列出未分类的技能；推荐技能不会在其分类中重复出现。搜索匹配名称、分类、描述以及 Mindeck Cloud 下发的拼音，因此输入 `zb` 能找到“周报助手”。**使用**通过 [Mindeck 账号](../mindeck-account/README.zh.md)的 `mindeckComposer` 打开一个空白对话，把 `/name ` 放在草稿开头（替换已经在那里的技能），光标留在输入框；**查看说明**在对话框中显示技能的 `SKILL.md`，对话框中也可以直接开始对话。在对话中输入 `/` 也会列出这些技能。Mindeck Cloud 应答之前，页面列出随缓存保存的技能。
 

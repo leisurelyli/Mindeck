@@ -216,6 +216,20 @@ it('registers the general assistant and each employee on the base preset\'s rows
   ])
 })
 
+it('reads the employees again when a sync reports changed employees, and not for other topics', async () => {
+  const f = await fixture()
+  f.cloud.state.byToken['token-u1'] = [LEGAL]
+  await f.ctx.plugin(MindeckEmployees, f.config)
+  await vi.waitFor(async () => { expect(await f.ids()).toEqual(['mindeck-general', 'mindeck-employee-e1']) })
+  const asked = f.cloud.state.tokens.length
+
+  f.cloud.state.byToken['token-u1'] = [LEGAL, SALES]
+  f.ctx.emit('mindeck-account/revised', new Set(['models', 'skills', 'inbox']))
+  f.ctx.emit('mindeck-account/revised', new Set(['employees']))
+  await vi.waitFor(async () => { expect(await f.ids()).toEqual(['mindeck-general', 'mindeck-employee-e1', 'mindeck-employee-e2']) })
+  expect(f.cloud.state.tokens).toHaveLength(asked + 1)
+})
+
 it('registers cached employees before Mindeck Cloud answers, keeps retired ones, and leaves with the plugin', async () => {
   const f = await fixture()
   f.cloud.state.byToken['token-u1'] = [LEGAL, SALES]

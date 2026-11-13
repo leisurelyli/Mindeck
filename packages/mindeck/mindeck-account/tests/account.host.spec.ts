@@ -295,3 +295,174 @@ it('sends down-rated answers and /feedback remarks, and keeps up-ratings on this
   expect(feedbackOf({ seq: 2, time: 2, type: 'feedback/record', data: {} } as never)).toBeUndefined()
   expect(feedbackOf({ seq: 3, time: 3, type: 'user/message', data: {} } as never)).toBeUndefined()
 })
+
+/** A signed-in fixture against a Mindeck Cloud with the sync endpoint, recording each sync's topics. */
+async function syncFixture() {
+  const f = await fixture()
+  f.cloud.syncEnabled = true
+  const revised: string[][] = []
+  f.ctx.on('mindeck-account/revised', (topics) => { revised.push([...topics].sort()) })
+  await signIn(f)
+  // The first answer of a session changes only the member's own state; the catalogs load with the session.
+  await vi.waitFor(() => { expect(revised).toEqual([['inbox', 'quota-request']]) })
+  const sync = async () => {
+    const polls = f.cloud.syncTags.length
+    f.account().requestSync('timer')
+    await vi.waitFor(() => { expect(f.cloud.syncTags.length).toBeGreaterThan(polls) })
+    // Let the answer reach the topics and the view.
+    await vi.waitFor(async () => { expect((await f.state()).sync?.running).toBe(false) })
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  return { ...f, revised, sync }
+}
+
+it('polls the sync endpoint with the last ETag and reports only the topics that changed', async () => {
+  const f = await syncFixture()
+  expect(f.cloud.syncTags).toEqual([null])
+  expect(f.account().syncAnswer()).toEqual({ revisions: f.cloud.sync.revisions, me: f.cloud.sync.me })
+  const syncedAt: unknown = expect.any(Number)
+  expect((await f.state()).sync).toMatchObject({ supported: true, running: false, problem: null, syncedAt })
+
+  await f.sync()
+  expect(f.cloud.syncTags[1]).toMatch(/^"[\w-]{32}"$/)
+  expect(f.revised).toHaveLength(1)
+
+  f.cloud.sync.revisions.models = 2
+  f.cloud.sync.revisions.employees = 5
+  await f.sync()
+  expect(f.revised.at(-1)).toEqual(['employees', 'models'])
+
+  // A topic this desktop does not know changes the answer but no topic.
+  f.cloud.sync.revisions.future = 3
+  await f.sync()
+  expect(f.revised).toHaveLength(2)
+
+  f.cloud.sync.me = { ...f.cloud.sync.me, inbox: { unread: 2, latestAt: '2026-11-13T08:20:00.000Z' } }
+  await f.sync()
+  expect(f.revised.at(-1)).toEqual(['inbox'])
+  expect(f.account().syncAnswer()?.me.inbox).toEqual({ unread: 2, latestAt: '2026-11-13T08:20:00.000Z' })
+})
+
+it('reads the bootstrap again when policies or the recommended version change, so a turned-off personal DeepSeek applies at once', async () => {
+  const f = await syncFixture()
+  const changed = vi.fn()
+  f.ctx.on('mindeck-account/changed', changed)
+  expect(await f.state()).toMatchObject({ personalDeepSeek: true, release: null })
+
+  f.cloud.personalDeepSeek = false
+  f.cloud.sync.revisions.policies = 2
+  await f.sync()
+  expect((await f.state()).personalDeepSeek).toBe(false)
+  expect(changed).toHaveBeenCalled()
+  expect(f.revised.at(-1)).toEqual(['policies'])
+
+  f.cloud.client = { recommendedVersion: '1.8.0', notes: '修复了资源库搜索。', downloads: { windows: 'https://dl.example.com/m.exe', macos: null } }
+  f.cloud.sync.revisions.client = 2
+  await f.sync()
+  expect((await f.state()).release).toEqual({
+    recommendedVersion: '1.8.0', notes: '修复了资源库搜索。', downloadUrl: process.platform === 'win32' ? 'https://dl.example.com/m.exe' : null,
+  })
+})
+
+it('reports a changed department or role to every catalog and reads a decided quota request\'s quota', async () => {
+  const f = await syncFixture()
+  f.cloud.sync.me = { ...f.cloud.sync.me, accessRevision: 2 }
+  await f.sync()
+  expect(f.revised.at(-1)).toEqual(['access', 'employees', 'models', 'policies', 'skills'])
+
+  const quotaReads = () => f.cloud.requests.filter(request => request === 'GET /api/desktop/quota').length
+  const before = quotaReads()
+  f.cloud.sync.me = { ...f.cloud.sync.me, quotaRequest: { id: 'q1', status: 'approved', month: '2026-11-01', decidedAt: '2026-11-13T08:19:58.000Z' } }
+  await f.sync()
+  expect(f.revised.at(-1)).toEqual(['quota-request'])
+  expect(quotaReads()).toBe(before + 1)
+})
+
+it('syncs every topic when the member asks and shows the sync running', async () => {
+  const f = await syncFixture()
+  const frames: Array<MindeckAccountView['sync']> = []
+  const watching = new AbortController()
+  const watch = (async () => { for await (const frame of f.account().watch(watching.signal)) frames.push(frame.sync) })()
+  cleanups.push(async () => { watching.abort(); await watch })
+
+  // A scheduled sync already running is followed by the member's, which refreshes everything.
+  const polls = f.cloud.syncTags.length
+  f.account().requestSync('timer')
+  const view = await f.account().syncNow()
+  expect(f.cloud.syncTags).toHaveLength(polls + 2)
+  expect(view.sync).toMatchObject({ running: false, problem: null })
+  expect(f.revised.at(-1)).toEqual(['access', 'announcements', 'client', 'employees', 'inbox', 'models', 'policies', 'quota-request', 'skills', 'webSearch'])
+  await vi.waitFor(() => { expect(frames.some(frame => frame?.running === true)).toBe(true) })
+
+  // Prompts during a run are answered by it.
+  const before = f.cloud.syncTags.length
+  f.account().requestSync('timer')
+  await f.account().syncSoon()
+  await new Promise(resolve => setTimeout(resolve, 50))
+  expect(f.cloud.syncTags).toHaveLength(before + 1)
+})
+
+it('stays quiet while Mindeck Cloud is unreachable or failing and recovers on the next sync', async () => {
+  const f = await syncFixture()
+  f.cloud.syncStatus = 0
+  await f.sync()
+  expect((await f.state())).toMatchObject({ status: 'signed-in', sync: { problem: 'unreachable' } })
+
+  f.cloud.syncStatus = 500
+  await f.sync()
+  expect((await f.state()).sync?.problem).toBe('failed')
+
+  // A focus or network prompt syncs at once while the last sync failed.
+  f.cloud.syncStatus = 200
+  f.cloud.sync.revisions.skills = 4
+  const polls = f.cloud.syncTags.length
+  await f.account().syncSoon()
+  await vi.waitFor(async () => { expect((await f.state()).sync?.problem).toBeNull() })
+  expect(f.cloud.syncTags).toHaveLength(polls + 1)
+  expect(f.revised.at(-1)).toEqual(['skills'])
+
+  // Within the cool-down after a success, a prompt does not sync again.
+  await f.account().syncSoon()
+  await new Promise(resolve => setTimeout(resolve, 50))
+  expect(f.cloud.syncTags).toHaveLength(polls + 1)
+})
+
+it('ends the session when the sync endpoint rejects the token and starts over for the next sign-in', async () => {
+  const f = await syncFixture()
+  f.cloud.tokens.clear()
+  f.account().requestSync('timer')
+  await vi.waitFor(async () => { expect(await f.state()).toMatchObject({ status: 'signed-out', notice: 'session-expired', sync: null }) })
+  expect(f.account().syncAnswer()).toBeUndefined()
+  // A scheduled sync while signed out asks nothing.
+  const polls = f.cloud.syncTags.length
+  f.account().requestSync('timer')
+  await new Promise(resolve => setTimeout(resolve, 20))
+  expect(f.cloud.syncTags).toHaveLength(polls)
+
+  await signIn(f)
+  await vi.waitFor(() => { expect(f.revised.at(-1)).toEqual(['inbox', 'quota-request']) })
+  expect(f.cloud.syncTags.at(-1)).toBeNull()
+})
+
+it('reads the bootstrap again instead on a Mindeck Cloud without the sync endpoint', async () => {
+  const f = await fixture()
+  const revised: string[][] = []
+  f.ctx.on('mindeck-account/revised', (topics) => { revised.push([...topics].sort()) })
+  await signIn(f)
+  f.account().requestSync('timer')
+  await new Promise(resolve => setTimeout(resolve, 50))
+  expect(f.cloud.requests).not.toContain('GET /api/desktop/sync')
+  expect(revised).toEqual([])
+  expect((await f.state()).sync).toMatchObject({ supported: false, problem: null })
+
+  f.cloud.userName = '林晓（研发）'
+  const view = await f.account().syncNow()
+  expect(view.user?.name).toBe('林晓（研发）')
+  const syncedAt: unknown = expect.any(Number)
+  expect(view.sync).toMatchObject({ supported: false, syncedAt })
+  expect(revised).toHaveLength(1)
+  expect(revised[0]).toHaveLength(10)
+
+  await f.cloud.close()
+  expect((await f.account().syncNow()).sync).toMatchObject({ problem: 'unreachable' })
+})

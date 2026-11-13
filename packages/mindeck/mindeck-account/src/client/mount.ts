@@ -81,6 +81,7 @@ function registerUi(ctx: Context): void {
       // A failed refresh keeps the last quota; the periodic Host read tries again.
       void ctx.remote.mindeckAccount.refreshQuota().catch(() => undefined)
     },
+    async syncNow() { return outcome(await ctx.remote.mindeckAccount.syncNow()) },
     dismissReminder(key) {
       const { dismissed } = reminders.getSnapshot()
       if (!dismissed.includes(key)) reminders.set({ dismissed: [...dismissed, key] })
@@ -108,6 +109,20 @@ function registerUi(ctx: Context): void {
         frame.accept()
       }
     })().catch(() => { if (!grant.ended) state.set({ ...state.getSnapshot(), failed: true }) })
+  })
+  // Returning to the window, or to the network, catches up with company changes at once; the Host skips a sync
+  // when one just succeeded.
+  ctx.remoteAccess.whenAccess('mindeckAccount/syncSoon', () => {
+    const prompt = (): void => {
+      // A failed prompt changes nothing; the scheduled sync follows within a minute.
+      void ctx.remote.mindeckAccount.syncSoon().catch(() => undefined)
+    }
+    window.addEventListener('focus', prompt)
+    window.addEventListener('online', prompt)
+    return () => {
+      window.removeEventListener('focus', prompt)
+      window.removeEventListener('online', prompt)
+    }
   })
   ctx.remoteAccess.whenAccess('mindeckAccount/watch', () => ctx.slots.inject('shell.overlay', () => ctx.slots.register({
     name: 'shell.overlay', id: 'mindeck-account.sign-in', locale: NS, inject: () => operations,

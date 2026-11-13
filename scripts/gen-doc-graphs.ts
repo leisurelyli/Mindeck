@@ -503,8 +503,8 @@ const SERVICE_ROLES: ServiceRole[] = [
     pkg: 'mindeck-account',
     title: 'Mindeck Cloud account',
     mode: 'service',
-    consumers: ['mindeck-models', 'mindeck-skills', 'mindeck-files', 'mindeck-employees'],
-    note: 'Owns the device sign-in and the Mindeck Cloud session; company models, skills, the file library, and digital employees read the session token and its endpoints.',
+    consumers: ['mindeck-models', 'mindeck-skills', 'mindeck-files', 'mindeck-employees', 'mindeck-inbox'],
+    note: 'Owns the device sign-in, the Mindeck Cloud session, and the sync that reports changed company data; company models, skills, the file library, digital employees, and company messages read the session token and its endpoints.',
   },
   {
     key: 'mindeckFiles',
@@ -520,6 +520,13 @@ const SERVICE_ROLES: ServiceRole[] = [
     mode: 'service',
     consumers: ['mindeck-models'],
     note: 'Registers the general assistant and each digital employee as an agent preset, streams the employee cards to the digital-employee page, and names the employee of a live conversation for gateway requests.',
+  },
+  {
+    key: 'mindeckInbox',
+    pkg: 'mindeck-inbox',
+    title: 'Mindeck company messages',
+    mode: 'service',
+    note: 'Keeps the unread count from the account sync, reads the inbox while the company messages page is open, and reports read items to Mindeck Cloud.',
   },
   {
     key: 'mindeckSkills',

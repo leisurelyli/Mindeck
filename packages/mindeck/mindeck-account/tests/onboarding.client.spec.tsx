@@ -27,7 +27,7 @@ const attemptId = brandString<MindeckSignInAttemptId>('attempt-1')
 const cloudUrl = 'https://cloud.example.com'
 const firstRun: MindeckAccountView = {
   cloudUrl: null, welcomed: false, status: 'signed-out', user: null, companyName: null, notice: null, attempt: null, quota: null,
-  adminContact: null, personalDeepSeek: false,
+  adminContact: null, personalDeepSeek: false, sync: null, release: null,
 }
 const returning: MindeckAccountView = { ...firstRun, cloudUrl, welcomed: true }
 const member: MindeckAccountView = {

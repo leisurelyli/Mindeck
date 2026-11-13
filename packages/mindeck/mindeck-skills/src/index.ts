@@ -37,7 +37,10 @@ export const PROVIDER_NAME = 'mindeck'
 export interface Config {
   /** Cache directory; empty means `mindeck` under the DeepSeek Harness home (`$DSH_HOME` or `~/.dsh`). */
   cacheDir: string
-  /** Interval between skill refreshes while signed in, in milliseconds. */
+  /**
+   * Interval between full skill refreshes while signed in, in milliseconds. The account's sync refreshes the skills as
+   * soon as Mindeck Cloud reports a change, so this interval only bounds the delay on a Mindeck Cloud without sync.
+   */
   refreshIntervalMs: number
   /** Timeout of one Mindeck Cloud request in milliseconds. */
   requestTimeoutMs: number
@@ -74,7 +77,7 @@ export default class MindeckSkills extends TypertRemoteService {
     cacheDir: z.string().default('')
       .description('Cache directory; empty means `mindeck` under the DeepSeek Harness home.'),
     refreshIntervalMs: z.natural().min(60_000).default(600_000)
-      .description('Interval between skill refreshes while signed in, in milliseconds.'),
+      .description('Interval between full skill refreshes while signed in, in milliseconds; a sync refreshes sooner.'),
     requestTimeoutMs: z.natural().min(1000).default(30_000)
       .description('Timeout of one Mindeck Cloud request in milliseconds.'),
     maxSkillBytes: z.natural().min(1024).default(5 * 1024 * 1024)
@@ -108,6 +111,7 @@ export default class MindeckSkills extends TypertRemoteService {
       yield async () => { await provider?.dispose() }
     }, 'mindeck-skills: provider')
     ctx.on('mindeck-account/changed', () => { this.refresh() })
+    ctx.on('mindeck-account/revised', (topics) => { if (topics.has('skills')) this.refresh() })
     ctx.effect(() => {
       const timer = setInterval(() => { this.refresh() }, config.refreshIntervalMs)
       return () => { clearInterval(timer) }

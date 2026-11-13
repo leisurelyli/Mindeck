@@ -2568,7 +2568,7 @@ export interface Config {
 
 - `inject`: `credentials` · `typert`
 - `refs`: `Volatile` (`@deepseek-ai/cordis`)
-- `source`: [`packages/mindeck/mindeck-account/src/index.ts:51`](../packages/mindeck/mindeck-account/src/index.ts)
+- `source`: [`packages/mindeck/mindeck-account/src/index.ts:62`](../packages/mindeck/mindeck-account/src/index.ts)
 
 ```ts config-catalog
 /** Deployment options. */
@@ -2587,6 +2587,15 @@ export interface Config {
   requestTimeoutMs: number
   /** Interval in milliseconds between quota reads while signed in. */
   quotaRefreshMs: number
+  /** Interval in milliseconds between polls of the sync endpoint while signed in. */
+  syncIntervalMs: number
+  /** Interval in milliseconds between bootstrap reads on a Mindeck Cloud without the sync endpoint. */
+  fallbackRefreshMs: number
+  /**
+   * Milliseconds after a successful sync during which a sync prompted by the window regaining focus, the network
+   * returning, or a refused request is skipped.
+   */
+  syncCooldownMs: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-mindeck-account -->
@@ -2608,7 +2617,10 @@ export interface Config {
   generalPersona: string
   /** Cache directory; empty means `mindeck` under the DeepSeek Harness home (`$DSH_HOME` or `~/.dsh`). */
   cacheDir: string
-  /** Interval between listing refreshes while signed in, in milliseconds. */
+  /**
+   * Interval between full listing refreshes while signed in, in milliseconds. The account's sync refreshes the listing
+   * as soon as Mindeck Cloud reports a change, so this interval only bounds the delay on a Mindeck Cloud without sync.
+   */
   refreshIntervalMs: number
   /** First wait after a failed refresh, in milliseconds; it doubles after each failure up to `refreshIntervalMs`. */
   retryIntervalMs: number
@@ -2645,6 +2657,25 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-mindeck-files -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-mindeck-inbox -->
+<a id="deepseek-aidsh-mindeck-inbox"></a>
+
+## `@deepseek-ai/dsh-mindeck-inbox`
+
+- `inject`: `mindeckAccount` · `typert`
+- `source`: [`packages/mindeck/mindeck-inbox/src/index.ts:31`](../packages/mindeck/mindeck-inbox/src/index.ts)
+
+```ts config-catalog
+/** Deployment options. */
+export interface Config {
+  /** Items read per page, from 1 through 50. */
+  pageSize: number
+  /** Timeout of one Mindeck Cloud request in milliseconds. */
+  requestTimeoutMs: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-mindeck-inbox -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-mindeck-models -->
 <a id="deepseek-aidsh-mindeck-models"></a>
 
@@ -2656,7 +2687,10 @@ export interface Config {
 ```ts config-catalog
 /** Deployment options. */
 export interface Config {
-  /** Interval between catalog refreshes while signed in, in milliseconds. */
+  /**
+   * Interval between full catalog refreshes while signed in, in milliseconds. The account's sync refreshes the catalog
+   * as soon as Mindeck Cloud reports a change, so this interval only bounds the delay on a Mindeck Cloud without sync.
+   */
   refreshIntervalMs: number
   /** First wait after a failed catalog read, in milliseconds; it doubles after each failure up to `refreshIntervalMs`. */
   retryIntervalMs: number
@@ -2687,7 +2721,10 @@ export interface Config {
 export interface Config {
   /** Cache directory; empty means `mindeck` under the DeepSeek Harness home (`$DSH_HOME` or `~/.dsh`). */
   cacheDir: string
-  /** Interval between skill refreshes while signed in, in milliseconds. */
+  /**
+   * Interval between full skill refreshes while signed in, in milliseconds. The account's sync refreshes the skills as
+   * soon as Mindeck Cloud reports a change, so this interval only bounds the delay on a Mindeck Cloud without sync.
+   */
   refreshIntervalMs: number
   /** Timeout of one Mindeck Cloud request in milliseconds. */
   requestTimeoutMs: number

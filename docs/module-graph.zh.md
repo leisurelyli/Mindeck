@@ -375,6 +375,7 @@ flowchart TD
     pkg_mindeck_account["mindeck-account"]
     pkg_mindeck_employees["mindeck-employees"]
     pkg_mindeck_files["mindeck-files"]
+    pkg_mindeck_inbox["mindeck-inbox"]
     pkg_mindeck_models["mindeck-models"]
     pkg_mindeck_skills["mindeck-skills"]
   end
@@ -555,6 +556,8 @@ flowchart TD
   pkg_host_directory_picker_auto --> pkg_host_webserver
   pkg_host_frontend_static --> pkg_client_connection
   pkg_host_frontend_static --> pkg_host_webserver
+  pkg_mindeck_inbox --> pkg_mindeck_account
+  pkg_mindeck_inbox --> pkg_timeout
   pkg_persona --> pkg_system_prompt
   pkg_sandbox --> pkg_llm
   pkg_sandbox --> pkg_session
@@ -735,6 +738,7 @@ flowchart TD
   pkg_mindeck_models --> pkg_timeout
   pkg_mindeck_models --> pkg_web
   pkg_mindeck_skills --> pkg_home_paths
+  pkg_mindeck_skills --> pkg_mindeck_account
   pkg_mindeck_skills --> pkg_skill
   pkg_mindeck_skills --> pkg_skill_filesystem
   pkg_mindeck_skills --> pkg_timeout
@@ -1064,6 +1068,7 @@ flowchart TD
   pkg_mcp_resources --> pkg_system_prompt
   pkg_mcp_resources --> pkg_tools
   pkg_mindeck_files --> pkg_home_paths
+  pkg_mindeck_files --> pkg_mindeck_account
   pkg_mindeck_files --> pkg_tools
   pkg_agent_preset_registry --> pkg_agent
   pkg_agent_preset_registry --> pkg_scope
@@ -1187,10 +1192,8 @@ flowchart TD
   pkg_mcp_client --> pkg_system_prompt
   pkg_mcp_client --> pkg_timeout
   pkg_mcp_client --> pkg_tools
-  pkg_mindeck_employees --> pkg_agent
   pkg_mindeck_employees --> pkg_agent_preset_registry
   pkg_mindeck_employees --> pkg_home_paths
-  pkg_mindeck_employees --> pkg_session
   pkg_mindeck_employees --> pkg_skill
   pkg_mindeck_employees --> pkg_timeout
   pkg_agent_preset --> pkg_agent_preset_registry
@@ -1730,6 +1733,7 @@ flowchart TD
 | [`skill-badge`](../packages/experimental/skill-badge) | `experimental` | [`skill`](../packages/skill/skill) |
 | [`host-directory-picker-auto`](../packages/host/directory-picker-auto) | `host` | [`client-connection`](../packages/client/connection), [`client-ui-directory-picker-browse`](../packages/client/ui-directory-picker-browse), [`client-ui-directory-picker-native`](../packages/client/ui-directory-picker-native), [`host-directory-picker-browse`](../packages/host/directory-picker-browse), [`host-directory-picker-native`](../packages/host/directory-picker-native), [`host-webserver`](../packages/host/webserver) |
 | [`host-frontend-static`](../packages/host/frontend-static) | `host` | [`client-connection`](../packages/client/connection), [`host-webserver`](../packages/host/webserver) |
+| [`mindeck-inbox`](../packages/mindeck/mindeck-inbox) | `mindeck` | [`mindeck-account`](../packages/mindeck/mindeck-account), [`timeout`](../packages/util/timeout) |
 | [`persona`](../packages/preset/persona) | `preset` | [`system-prompt`](../packages/core/system-prompt) |
 | [`sandbox`](../packages/sandbox/sandbox) | `sandbox` | [`llm`](../packages/llm/llm), [`session`](../packages/core/session) |
 | [`sandbox-windows-acl`](../packages/sandbox/sandbox-windows-acl) | `sandbox` | [`skill`](../packages/skill/skill), [`subprocess`](../packages/subprocess/subprocess) |
@@ -1784,7 +1788,7 @@ flowchart TD
 | [`user-questions`](../packages/interaction/user-questions) | `interaction` | [`agent`](../packages/core/agent), [`llm`](../packages/llm/llm), [`scope`](../packages/core/scope), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`typert-protocol`](../packages/typert/protocol) |
 | [`jobs`](../packages/jobs/jobs) | `jobs` | [`agent`](../packages/core/agent), [`brand`](../packages/util/brand), [`session`](../packages/core/session), [`workspace`](../packages/workspace/workspace) |
 | [`mindeck-models`](../packages/mindeck/mindeck-models) | `mindeck` | [`home-paths`](../packages/util/home-paths), [`llm`](../packages/llm/llm), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`timeout`](../packages/util/timeout), [`web`](../packages/web/web) |
-| [`mindeck-skills`](../packages/mindeck/mindeck-skills) | `mindeck` | [`home-paths`](../packages/util/home-paths), [`skill`](../packages/skill/skill), [`skill-filesystem`](../packages/skill/skill-filesystem), [`timeout`](../packages/util/timeout) |
+| [`mindeck-skills`](../packages/mindeck/mindeck-skills) | `mindeck` | [`home-paths`](../packages/util/home-paths), [`mindeck-account`](../packages/mindeck/mindeck-account), [`skill`](../packages/skill/skill), [`skill-filesystem`](../packages/skill/skill-filesystem), [`timeout`](../packages/util/timeout) |
 | [`sandbox-policy`](../packages/sandbox/sandbox-policy) | `sandbox` | [`agent`](../packages/core/agent), [`sandbox`](../packages/sandbox/sandbox), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`system-prompt`](../packages/core/system-prompt) |
 | [`session-telemetry`](../packages/session/session-telemetry) | `session` | [`agent`](../packages/core/agent), [`session`](../packages/core/session) |
 | [`session-title`](../packages/session/session-title) | `session` | [`agent`](../packages/core/agent), [`brand`](../packages/util/brand), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection) |
@@ -1851,7 +1855,7 @@ flowchart TD
 | [`tool-jobs`](../packages/jobs/tool-jobs) | `jobs` | [`agent`](../packages/core/agent), [`jobs`](../packages/jobs/jobs), [`llm`](../packages/llm/llm), [`output-retention`](../packages/util/output-retention), [`system-prompt`](../packages/core/system-prompt), [`tools`](../packages/core/tools) |
 | [`tool-lsp`](../packages/lsp/tool-lsp) | `lsp` | [`llm`](../packages/llm/llm), [`lsp`](../packages/lsp/lsp), [`system-prompt`](../packages/core/system-prompt), [`timeout`](../packages/util/timeout), [`tools`](../packages/core/tools), [`working-directory`](../packages/session/working-directory) |
 | [`mcp-resources`](../packages/mcp/mcp-resources) | `mcp` | [`llm`](../packages/llm/llm), [`scope`](../packages/core/scope), [`system-prompt`](../packages/core/system-prompt), [`tools`](../packages/core/tools) |
-| [`mindeck-files`](../packages/mindeck/mindeck-files) | `mindeck` | [`home-paths`](../packages/util/home-paths), [`tools`](../packages/core/tools) |
+| [`mindeck-files`](../packages/mindeck/mindeck-files) | `mindeck` | [`home-paths`](../packages/util/home-paths), [`mindeck-account`](../packages/mindeck/mindeck-account), [`tools`](../packages/core/tools) |
 | [`agent-preset-registry`](../packages/preset/agent-preset-registry) | `preset` | [`agent`](../packages/core/agent), [`scope`](../packages/core/scope), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`settings`](../packages/settings/settings), [`system-prompt`](../packages/core/system-prompt), [`tools`](../packages/core/tools), [`typert-protocol`](../packages/typert/protocol) |
 | [`session-checkpoint-policy`](../packages/session/session-checkpoint-policy) | `session` | [`agent`](../packages/core/agent), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-persistence`](../packages/session/session-persistence), [`tools`](../packages/core/tools) |
 | [`session-title-first-prompt-llm`](../packages/session/session-title-first-prompt-llm) | `session` | [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-title`](../packages/session/session-title), [`session-title-llm`](../packages/session/session-title-llm) |
@@ -1874,7 +1878,7 @@ flowchart TD
 | [`tool-cordis`](../packages/extensions/tool-cordis) | `extensions` | [`agent`](../packages/core/agent), [`app-boot`](../packages/boot/app-boot), [`cordis-host-runner`](../packages/extensions/cordis-host-runner), [`tools`](../packages/core/tools) |
 | [`host-plugin-inventory`](../packages/host/plugin-inventory) | `host` | [`agent-preset-registry`](../packages/preset/agent-preset-registry), [`brand`](../packages/util/brand), [`typert-protocol`](../packages/typert/protocol) |
 | [`mcp-client`](../packages/mcp/mcp-client) | `mcp` | [`attachment`](../packages/attachment/attachment), [`credentials`](../packages/credentials/credentials), [`llm`](../packages/llm/llm), [`mcp-resources`](../packages/mcp/mcp-resources), [`scope`](../packages/core/scope), [`subprocess`](../packages/subprocess/subprocess), [`system-prompt`](../packages/core/system-prompt), [`timeout`](../packages/util/timeout), [`tools`](../packages/core/tools) |
-| [`mindeck-employees`](../packages/mindeck/mindeck-employees) | `mindeck` | [`agent`](../packages/core/agent), [`agent-preset-registry`](../packages/preset/agent-preset-registry), [`home-paths`](../packages/util/home-paths), [`session`](../packages/core/session), [`skill`](../packages/skill/skill), [`timeout`](../packages/util/timeout) |
+| [`mindeck-employees`](../packages/mindeck/mindeck-employees) | `mindeck` | [`agent-preset-registry`](../packages/preset/agent-preset-registry), [`home-paths`](../packages/util/home-paths), [`skill`](../packages/skill/skill), [`timeout`](../packages/util/timeout) |
 | [`agent-preset`](../packages/preset/agent-preset) | `preset` | [`agent-preset-registry`](../packages/preset/agent-preset-registry) |
 | [`session-telemetry-otel`](../packages/session/session-telemetry-otel) | `session` | [`anonymous-user-id`](../packages/identity/anonymous-user-id), [`command-feedback`](../packages/feedback/command-feedback), [`llm`](../packages/llm/llm), [`message-feedback`](../packages/feedback/message-feedback), [`otel`](../packages/telemetry/otel), [`session`](../packages/core/session), [`session-telemetry`](../packages/session/session-telemetry) |
 | [`tool-bash`](../packages/shell/tool-bash) | `shell` | [`agent`](../packages/core/agent), [`jobs`](../packages/jobs/jobs), [`llm`](../packages/llm/llm), [`sandbox`](../packages/sandbox/sandbox), [`sandbox-policy`](../packages/sandbox/sandbox-policy), [`shell`](../packages/shell/shell), [`shell-env`](../packages/shell/shell-env), [`system-prompt`](../packages/core/system-prompt), [`tools`](../packages/core/tools), [`user-approval`](../packages/interaction/user-approval), [`working-directory`](../packages/session/working-directory) |

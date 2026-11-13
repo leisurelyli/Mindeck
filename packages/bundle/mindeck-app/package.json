@@ -43,6 +43,7 @@
     "@deepseek-ai/dsh-mindeck-account": "workspace:*",
     "@deepseek-ai/dsh-mindeck-employees": "workspace:*",
     "@deepseek-ai/dsh-mindeck-files": "workspace:*",
+    "@deepseek-ai/dsh-mindeck-inbox": "workspace:*",
     "@deepseek-ai/dsh-mindeck-models": "workspace:*",
     "@deepseek-ai/dsh-mindeck-skills": "workspace:*"
   },
