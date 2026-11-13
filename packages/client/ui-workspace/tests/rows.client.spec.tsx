@@ -766,7 +766,7 @@ describe('workspace browser rows', () => {
       // Card body: full title + cwd + absolute creation time.
       expect(screen.getAllByText('Project')).toHaveLength(2)
       expect(screen.getByText('/projects/project')).toBeTruthy()
-      expect(screen.getByText(/^创建于 \d+年\d+月\d+日 /)).toBeTruthy()
+      expect(screen.getByText(/^创建于 \d+ 年 \d+ 月 \d+ 日 /)).toBeTruthy()
       await act(async () => { fireEvent.click(screen.getByRole('button', { name: '复制: /projects/project' })) })
       expect(writeText).toHaveBeenCalledWith('/projects/project')
       expect(screen.getByRole('status').textContent).toBe('已复制')
@@ -866,7 +866,7 @@ describe('workspace browser rows', () => {
       fireEvent.pointerEnter(screen.getByRole('treeitem').parentElement as HTMLElement)
       act(() => { vi.advanceTimersByTime(800) })
       expect(screen.getAllByText('Project')).toHaveLength(2)
-      expect(screen.getByText(/^创建于 \d+年\d+月\d+日 /)).toBeTruthy()
+      expect(screen.getByText(/^创建于 \d+ 年 \d+ 月 \d+ 日 /)).toBeTruthy()
       expect(screen.queryByRole('button', { name: /^复制:/ })).toBeNull()
     } finally {
       vi.useRealTimers()
@@ -1102,7 +1102,7 @@ describe('workspace browser rows', () => {
       act(() => { vi.advanceTimersByTime(800) })
       // Card body: full title + relative time + running status.
       expect(screen.getAllByText('Hovered')).toHaveLength(2)
-      expect(screen.getByText('1分钟前')).toBeTruthy()
+      expect(screen.getByText('1 分钟前')).toBeTruthy()
       expect(screen.getAllByText('进行中')).toHaveLength(2)
       fireEvent.pointerLeave(wrapper)
       // Menu open (disabled=true) suppresses the card for the same hover.
@@ -1110,7 +1110,7 @@ describe('workspace browser rows', () => {
         useContextMenuTarget={select => select({ kind: 'session', value: { sessionId: node.id, displayTitle: node.title } })} />)
       fireEvent.pointerEnter(wrapper)
       act(() => { vi.advanceTimersByTime(1000) })
-      expect(screen.queryByText('1分钟前')).toBeNull()
+      expect(screen.queryByText('1 分钟前')).toBeNull()
     } finally {
       vi.useRealTimers()
     }

@@ -651,7 +651,7 @@ describe('Task manager catalog', () => {
   })
 
   it('states the time remaining until the next run in each locale', () => {
-    // The row and the detail state a duration, not a date: zh reads `2小时后`
+    // The row and the detail state a duration, not a date: zh reads `2 小时后`
     // and en reads `in 2 hours`, and neither renders a clock time for it.
     const soon: Entry = {
       ...at, title: 'Two hours out', prompt: 'Two hours out',
@@ -659,7 +659,7 @@ describe('Task manager catalog', () => {
     }
     for (const dictionary of [en, zh]) {
       const h = mount({ records: [soon] }, dictionary)
-      const expected = dictionary === en ? 'in 2 hours' : '2小时后'
+      const expected = dictionary === en ? 'in 2 hours' : '2 小时后'
       const row = screen.getByRole('button', { name: 'Two hours out' })
       const summary = row.querySelector<HTMLElement>(`.${css.rowSummary!}`)?.textContent ?? ''
       expect(summary).toContain(expected)

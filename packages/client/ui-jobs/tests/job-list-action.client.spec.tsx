@@ -495,12 +495,12 @@ describe('JobListAction rows', () => {
     ])} />)
     openList()
     fireEvent.click(screen.getByRole('button', { name: zh['section.settledCount'].replace('{count}', '3') }))
-    expect(screen.getByText('5秒')).toBeDefined()
-    expect(screen.getByText('12秒')).toBeDefined()
-    expect(screen.getByText('1小时3分')).toBeDefined()
-    expect(screen.getByText('1分12秒')).toBeDefined()
+    expect(screen.getByText('5 秒')).toBeDefined()
+    expect(screen.getByText('12 秒')).toBeDefined()
+    expect(screen.getByText('1 小时 3 分')).toBeDefined()
+    expect(screen.getByText('1 分 12 秒')).toBeDefined()
     act(() => { vi.advanceTimersByTime(1_000) })
-    expect(screen.getByText('6秒')).toBeDefined()
+    expect(screen.getByText('6 秒')).toBeDefined()
   })
 
   it('lists rows with kind, label, and detail-or-status', () => {

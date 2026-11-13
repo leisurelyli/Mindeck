@@ -456,12 +456,12 @@ describe('ScheduleCatalogAction rows', () => {
     const tEn = makeTranslate(en)
     const tZh = makeTranslate(zh)
     const samples = [
-      [86_400, 'Every 1 day', '1天一次'],
-      [172_800, 'Every 2 days', '2天一次'],
-      [3_600, 'Every 1 hour', '1小时一次'],
-      [7_200, 'Every 2 hours', '2小时一次'],
-      [300, 'Every 5 minutes', '5分钟一次'],
-      [301, 'Every 301 seconds', '301秒一次'],
+      [86_400, 'Every 1 day', '1 天一次'],
+      [172_800, 'Every 2 days', '2 天一次'],
+      [3_600, 'Every 1 hour', '1 小时一次'],
+      [7_200, 'Every 2 hours', '2 小时一次'],
+      [300, 'Every 5 minutes', '5 分钟一次'],
+      [301, 'Every 301 seconds', '301 秒一次'],
     ] as const
     for (const [seconds, english, chinese] of samples) {
       const item = record(String(seconds), 'every', START + 1_000, { everySeconds: seconds })
@@ -576,7 +576,7 @@ describe('ScheduleCatalogAction rows', () => {
     fireEvent.click(screen.getByRole('button', { name: '2 automation tasks' }))
     expect(screen.getAllByRole('listitem')[0]!.textContent).toContain(expected)
     view.rerender(<ScheduleCatalogAction {...props([item, other], 'open', zh)} />)
-    expect(screen.getAllByRole('listitem')[0]!.textContent).toContain('1小时后')
+    expect(screen.getAllByRole('listitem')[0]!.textContent).toContain('1 小时后')
     expect(document.documentElement.lang).toBe('de-DE')
   })
 

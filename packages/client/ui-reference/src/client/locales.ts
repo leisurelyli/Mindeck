@@ -23,11 +23,11 @@ export const zh = {
   'fileOpen.close': '关闭',
   'fileOpen.retry': '重试',
   'time.now': '刚刚',
-  'time.minutes': '{n}分钟',
-  'time.hours': '{n}小时',
-  'time.days': '{n}天',
-  'time.months': '{n}个月',
-  'time.years': '{n}年',
+  'time.minutes': '{n} 分钟',
+  'time.hours': '{n} 小时',
+  'time.days': '{n} 天',
+  'time.months': '{n} 个月',
+  'time.years': '{n} 年',
 } satisfies Record<string, string>
 
 /** The reference namespace key union. */

@@ -913,7 +913,7 @@ describe('MessageItem arms', () => {
     expect(details?.open).toBe(false)
     expect(details?.dataset.active).toBe('true')
     expect(view.getByRole('status').textContent).toBe('正在重试模型请求（1/2） · 3s')
-    expect(view.getByText('重试延迟：').parentElement?.textContent).toBe('重试延迟：2500毫秒')
+    expect(view.getByText('重试延迟：').parentElement?.textContent).toBe('重试延迟：2500 毫秒')
     expect(view.getByText('失败原因：').parentElement?.textContent).toBe('失败原因：连接被重置')
 
     act(() => { vi.advanceTimersByTime(1_100) })
@@ -1022,11 +1022,11 @@ describe('formatMessageClock', () => {
   })
 
   it('prefixes month and day across days in the same year', () => {
-    expect(formatMessageClock(new Date(2026, 0, 1, 14, 24).getTime(), t, now)).toBe('1月1日 14:24')
+    expect(formatMessageClock(new Date(2026, 0, 1, 14, 24).getTime(), t, now)).toBe('1 月 1 日 14:24')
   })
 
   it('prefixes year, month, and day across years', () => {
-    expect(formatMessageClock(new Date(2025, 11, 31, 9, 5).getTime(), t, now)).toBe('2025年12月31日 09:05')
+    expect(formatMessageClock(new Date(2025, 11, 31, 9, 5).getTime(), t, now)).toBe('2025 年 12 月 31 日 09:05')
   })
 
   it('arms the next local midnight from an in-day instant', () => {
@@ -1060,7 +1060,7 @@ describe('useCalendarDay boundary refresh', () => {
     act(() => {
       vi.advanceTimersByTime(msUntilNextLocalMidnight(dayStart) + 1)
     })
-    expect(screen.getByText('7月29日 14:24')).toBeTruthy()
+    expect(screen.getByText('7 月 29 日 14:24')).toBeTruthy()
   })
 })
 

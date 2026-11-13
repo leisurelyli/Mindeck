@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { Fragment, memo } from 'react'
 import { IconChevronDownOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ChatNodeViewProps } from '../contract/slots.ts'
 import { turnProcessAlwaysOpen } from '../contract/turn-process.ts'
@@ -51,9 +51,10 @@ export const TurnProcessNodeView = memo(function TurnProcessNodeView({
       >
         <span className={css.label}>
           {label}
-          {duration?.map((part, index) => (
-            <span key={index} className={part.numeric ? css.durationNumber : undefined}>{part.text}</span>
-          ))}
+          {/* Unit text stays a bare text node, so its spacing also reaches the accessible name. */}
+          {duration?.map((part, index) => part.numeric
+            ? <span key={index} className={css.durationNumber}>{part.text}</span>
+            : <Fragment key={index}>{part.text}</Fragment>)}
         </span>
         {canCollapse && <IconChevronDownOutlineRegular className={css.chevron} />}
       </button>

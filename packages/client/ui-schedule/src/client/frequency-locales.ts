@@ -70,8 +70,8 @@ export const frequencyZh = {
   'unit.second.one': '秒',
   'unit.second.other': '秒',
   'relative.now': '现在到期',
-  'relative.future': '{value}{unit}后',
-  'relative.overdue': '已逾期 {value}{unit}',
+  'relative.future': '{value} {unit}后',
+  'relative.overdue': '已逾期 {value} {unit}',
 } as const
 
 /** English rule and duration copy, key-identical to the Chinese source. */

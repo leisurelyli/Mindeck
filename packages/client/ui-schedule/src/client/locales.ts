@@ -22,7 +22,7 @@ export const zh = {
   'list.aria': '已开启的自动化任务',
   'list.nextRun': '下次运行',
   'frequency.once': '单次',
-  'frequency.every': '{value}{unit}一次',
+  'frequency.every': '{value} {unit}一次',
   ...frequencyZh,
   'mark.aria': '{count} 个自动化任务',
   'hover.more': '另有 {count} 个任务',
