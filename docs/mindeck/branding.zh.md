@@ -47,7 +47,7 @@ Mindeck 启动器通过 `DSH_LOCALE_PARAMETERS` 公开 `productName` 和 `produc
 
 Web 产品文案使用公开的语言参数。原生菜单、对话框和安装器提示使用同一产品描述中的名称。DeepSeek 账号、模型和充值说明保留服务商名称。上游署名、许可证、包名与兼容标识保留原名。
 
-品牌插件的 assets 中保存四张 Mindeck 工作区截图：中英文各含明暗主题。它通过 root 作用域的 single slot `desktop.onboarding.illustration` 向欢迎与额度步骤提供截图。slot 为空时，包括 provider 卸载后，共享账号 UI 使用上游原始插图。
+品牌插件的 assets 中保存四张 Mindeck 工作区截图：中英文各含明暗主题。每张都是已登录工作区在 1280 × 640 CSS 像素下的样子，即新开桌面端窗口的宽度：左侧栏有数字员工、技能和资源库页面，列出几个对话，主区域是新对话标题。工作区作为一个带投影的窗口画在透明的 1331 × 900 画布的 (320, 80) 处，这正是账号 UI 定位的画框，因此在常见窗口宽度下欢迎页显示侧栏，宽度约 1900 像素起才露出标题。工作区外观明显变化时，应从运行中的应用重新截取。插件通过 root 作用域的 single slot `desktop.onboarding.illustration` 向欢迎与额度步骤提供截图，并通过 `desktop.onboarding.page.illustration` 向 Mindeck 登录所用的共享首次引导页主视觉提供截图。slot 为空时，包括 provider 卸载后，共享账号 UI 使用上游原始插图。
 
 <a id="dev-note"></a>
 
