@@ -2611,13 +2611,17 @@ export interface Config {
 ## `@deepseek-ai/dsh-mindeck-models`
 
 - `inject`: `llm` · `mindeckAccount`
-- `source`: [`packages/mindeck/mindeck-models/src/index.ts:31`](../packages/mindeck/mindeck-models/src/index.ts)
+- `source`: [`packages/mindeck/mindeck-models/src/index.ts:36`](../packages/mindeck/mindeck-models/src/index.ts)
 
 ```ts config-catalog
 /** Deployment options. */
 export interface Config {
   /** Interval between catalog refreshes while signed in, in milliseconds. */
   refreshIntervalMs: number
+  /** First wait after a failed catalog read, in milliseconds; it doubles after each failure up to `refreshIntervalMs`. */
+  retryIntervalMs: number
+  /** Directory of the last catalog kept for the next start; empty means `mindeck` under the DeepSeek Harness home. */
+  cacheDir: string
   /** Timeout of one catalog request in milliseconds. */
   requestTimeoutMs: number
   /** Context window assumed for a model whose catalog entry has none. */

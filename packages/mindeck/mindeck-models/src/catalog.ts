@@ -12,15 +12,11 @@ export const ROUTES: Readonly<Record<ModelApi, string>> = {
   'openai-responses': 'mindeck-openai-responses',
 }
 
-const API_LABELS: Readonly<Record<ModelApi, string>> = {
-  'anthropic-messages': 'Anthropic',
-  'openai-completions': 'OpenAI',
-  'openai-responses': 'OpenAI Responses',
-}
-
 const modelSchema = z.object({
   id: z.string().min(1),
   displayName: z.string().min(1),
+  description: z.string().nullable().optional(),
+  recommended: z.boolean().optional(),
   api: z.enum(['anthropic-messages', 'openai-completions', 'openai-responses']),
   baseUrl: z.url(),
   contextWindow: z.number().int().positive().nullable(),
@@ -32,6 +28,10 @@ const modelSchema = z.object({
 export interface CatalogModel {
   readonly id: string
   readonly displayName: string
+  /** What the company says the model is good for; null when it says nothing. */
+  readonly description: string | null
+  /** Whether the company recommends the model; recommended models come first in the catalog. */
+  readonly recommended: boolean
   readonly api: ModelApi
   /** Gateway base URL in the client SDK's convention. */
   readonly baseUrl: string
@@ -62,9 +62,9 @@ export function parseCatalog(body: unknown): ParsedCatalog {
   list.data.models.forEach((entry, index) => {
     const parsed = modelSchema.safeParse(entry)
     if (!parsed.success) { skipped.push(index); return }
-    const { inputModalities, ...model } = parsed.data
+    const { inputModalities, description, recommended, ...model } = parsed.data
     const input = inputModalities.includes('image') ? ['text', 'image'] as const : ['text'] as const
-    models.push({ ...model, input })
+    models.push({ ...model, description: description ?? null, recommended: recommended ?? false, input })
   })
   return { models, skipped }
 }
@@ -76,10 +76,11 @@ export interface ModelDefaults {
 }
 
 /**
- * Group catalog models into one pi-ai profile per client API. A route's endpoint is its first model's
- * gateway URL; a later model with another URL for the same API is left out and reported.
+ * Group catalog models into one pi-ai profile per client API, each named after the company: members choose
+ * models, not protocols. A route's endpoint is its first model's gateway URL; a later model with another URL
+ * for the same API is left out and reported.
  * @param models - the member's models in catalog order.
- * @param companyName - name shown for the routes.
+ * @param companyName - name shown for every route.
  * @param defaults - sizes for models the catalog does not size.
  * @returns profiles keyed by route, and the ids of models left out.
  */
@@ -101,7 +102,7 @@ export function routeProfiles(
     const first = group[0]
     if (first === undefined) continue
     profiles[ROUTES[api]] = {
-      displayName: groups.size === 1 ? companyName : `${companyName} · ${API_LABELS[api]}`,
+      displayName: companyName,
       api,
       baseURL: first.baseUrl,
       defaultContextWindow: defaults.contextWindow,

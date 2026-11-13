@@ -2,7 +2,7 @@
 import { LlmAdapter, QUOTA_EXCEEDED_CODE } from '@deepseek-ai/dsh-llm'
 import type { ImageAttachmentRef, ImageRequestTarget } from '@deepseek-ai/dsh-attachment'
 import type {
-  GenerateOptions, LlmFailure, LlmImageRequestPricing, LlmModelInfo, LlmProviderInfo, LlmResolvedModelInfo,
+  GenerateOptions, LlmFailure, LlmImageRequestPricing, LlmModelBadge, LlmModelInfo, LlmProviderInfo, LlmResolvedModelInfo,
   PreparedAdapterCall, ResolvedRetryPolicy, StreamChunk,
 } from '@deepseek-ai/dsh-llm'
 
@@ -18,7 +18,16 @@ export const ACCOUNT_UNAVAILABLE_CODE = 'ACCOUNT_UNAVAILABLE'
 /** Failure code of a model request made while no Mindeck account is signed in. */
 export const SIGN_IN_REQUIRED_CODE = 'MINDECK_SIGN_IN_REQUIRED'
 
-/** What the gateway adapter does after a refused request. */
+/** What the company says about one catalog model. */
+export interface ModelNotes {
+  readonly description: string | null
+  readonly recommended: boolean
+}
+
+/** Mark of a model the company recommends, beside its name in model pickers. */
+export const RECOMMENDED_BADGE = { text: { en: 'Recommended', zh: '推荐' }, tone: 'info' } as const satisfies LlmModelBadge
+
+/** What the gateway adapter does after a refused request, and what it adds to model listings. */
 export interface GatewayHooks {
   /** Read the token a request is about to use; undefined while signed out. */
   readonly token: () => Promise<string | undefined>
@@ -26,6 +35,8 @@ export interface GatewayHooks {
   readonly sessionEnded: (token: string) => void
   /** Mindeck Cloud no longer offers the requested model to this member (HTTP 404). */
   readonly modelMissing: () => void
+  /** The company's notes on a catalog model, by model id; undefined for a model the catalog does not list. */
+  readonly notes: (model: string) => ModelNotes | undefined
 }
 
 /**
@@ -101,7 +112,22 @@ export class GatewayAdapter extends LlmAdapter {
     return this.inner.imageRequestTarget(provider, model, image)
   }
 
-  override listModels(provider: string): Promise<readonly LlmModelInfo[]> { return this.inner.listModels(provider) }
+  /**
+   * List the route's models with the company's description and a recommendation badge.
+   * @param provider - route id.
+   * @returns the inner listing, annotated.
+   */
+  override async listModels(provider: string): Promise<readonly LlmModelInfo[]> {
+    return (await this.inner.listModels(provider)).map((model) => {
+      const notes = this.hooks.notes(model.id)
+      if (notes === undefined) return model
+      return {
+        ...model,
+        ...notes.description === null ? {} : { description: notes.description },
+        ...notes.recommended ? { badge: RECOMMENDED_BADGE } : {},
+      }
+    })
+  }
   override resolveModel(provider: string, model: string, signal?: AbortSignal): Promise<LlmResolvedModelInfo> {
     return this.inner.resolveModel(provider, model, signal)
   }

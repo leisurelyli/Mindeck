@@ -15,6 +15,7 @@
     { "path": "../../llm/llm" },
     { "path": "../../llm/llm-pi-ai" },
     { "path": "../mindeck-account/tsconfig.host.json" },
+    { "path": "../../util/home-paths" },
     { "path": "../../util/timeout" },
     { "path": "../../util/values" }
   ]

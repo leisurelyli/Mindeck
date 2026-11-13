@@ -1,6 +1,9 @@
 /** Company models follow the Mindeck session and call the gateway with its token. */
 import { once } from 'node:events'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { createServer } from 'node:http'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import LlmRuntime, { QUOTA_EXCEEDED_CODE } from '@deepseek-ai/dsh-llm'
 import type { MindeckSession } from '@deepseek-ai/dsh-mindeck-account'
@@ -9,10 +12,16 @@ import { assemble } from '../../../llm/llm-pi-ai/tests/assemble.ts'
 import { anthropicTextEvents, closeMockServers, mockServer } from '../../../llm/llm-pi-ai/tests/mock-server.ts'
 import * as MindeckModels from '../src/index.ts'
 
-const config: MindeckModels.Config = {
-  refreshIntervalMs: 600_000, requestTimeoutMs: 15_000, defaultContextWindow: 128_000, defaultMaxTokens: 8192,
-}
 const cleanups: Array<() => Promise<void>> = []
+/** Options with a fresh cache directory removed after the test. */
+function options(overrides: Partial<MindeckModels.Config> = {}): MindeckModels.Config {
+  const cacheDir = mkdtempSync(join(tmpdir(), 'mindeck-models-'))
+  cleanups.push(async () => { rmSync(cacheDir, { recursive: true, force: true }) })
+  return {
+    refreshIntervalMs: 600_000, retryIntervalMs: 15_000, cacheDir, requestTimeoutMs: 15_000,
+    defaultContextWindow: 128_000, defaultMaxTokens: 8192, ...overrides,
+  }
+}
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup()
   await closeMockServers()
@@ -88,10 +97,11 @@ async function fixture(gatewayUrl: string) {
 it('registers one route per client API while signed in and withdraws them after sign-out', async () => {
   const f = await fixture('http://127.0.0.1:9/gateway/anthropic')
   f.catalog.state.models = [f.model('deepseek-chat'), f.model('deepseek-reasoner'), f.model('gpt-4.1', 'openai-completions')]
-  await f.ctx.plugin(MindeckModels, config)
+  await f.ctx.plugin(MindeckModels, options())
   await vi.waitFor(() => { expect(f.providers()).toEqual(['mindeck-anthropic', 'mindeck-openai']) })
   expect(f.catalog.state.tokens[0]).toBe('Bearer desktop-token-1')
-  expect(f.ctx.llm.listProviders().find(provider => provider.id === 'mindeck-anthropic')?.name).toBe('星河科技 · Anthropic')
+  expect(f.ctx.llm.listProviders().filter(provider => provider.id.startsWith('mindeck-')).map(provider => provider.name))
+    .toEqual(['星河科技', '星河科技'])
   expect((await f.ctx.llm.listModels('mindeck-anthropic')).map(model => model.id)).toEqual(['deepseek-chat', 'deepseek-reasoner'])
   await vi.waitFor(() => { expect(f.selection()).toEqual({ provider: 'mindeck-anthropic', model: 'deepseek-chat' }) })
 
@@ -110,10 +120,48 @@ it('registers one route per client API while signed in and withdraws them after 
   await vi.waitFor(() => { expect(f.providers()).toEqual([]) })
 })
 
+it('marks recommended models and lists the company\'s description', async () => {
+  const f = await fixture('http://127.0.0.1:9/gateway/anthropic')
+  f.catalog.state.models = [{ ...f.model('deepseek-chat'), description: '日常写作', recommended: true }, f.model('deepseek-reasoner')]
+  await f.ctx.plugin(MindeckModels, options())
+  await vi.waitFor(() => { expect(f.providers()).toEqual(['mindeck-anthropic']) })
+  const [chat, reasoner] = await f.ctx.llm.listModels('mindeck-anthropic')
+  expect(chat).toMatchObject({ id: 'deepseek-chat', description: '日常写作', badge: MindeckModels.RECOMMENDED_BADGE })
+  expect(reasoner).not.toHaveProperty('badge')
+  expect(reasoner).not.toHaveProperty('description')
+})
+
+it('serves the member\'s saved catalog while Mindeck Cloud is unreachable and reads again soon after a failure', async () => {
+  const f = await fixture('http://127.0.0.1:9/gateway/anthropic')
+  const config = options({ retryIntervalMs: 1000 })
+  f.catalog.state.models = [f.model('deepseek-chat')]
+  const first = await f.ctx.plugin(MindeckModels, config)
+  await vi.waitFor(() => { expect(f.providers()).toEqual(['mindeck-anthropic']) })
+  await vi.waitFor(() => {
+    const saved = JSON.parse(readFileSync(join(config.cacheDir, 'models-catalog.json'), 'utf8')) as { userId: string; models: { id: string }[] }
+    expect(saved).toMatchObject({ userId: 'u1', models: [{ id: 'deepseek-chat' }] })
+  })
+  await first.dispose()
+  expect(f.providers()).toEqual([])
+
+  // The next start finds Mindeck Cloud failing: the saved models stay selectable, and the read is retried.
+  f.catalog.state.status = 503
+  f.catalog.state.requests = 0
+  await f.ctx.plugin(MindeckModels, config)
+  await vi.waitFor(() => { expect(f.providers()).toEqual(['mindeck-anthropic']) })
+  expect((await f.ctx.llm.listModels('mindeck-anthropic')).map(model => model.id)).toEqual(['deepseek-chat'])
+  f.catalog.state.status = 200
+  f.catalog.state.models = [f.model('deepseek-reasoner')]
+  await vi.waitFor(async () => {
+    expect((await f.ctx.llm.listModels('mindeck-anthropic')).map(model => model.id)).toEqual(['deepseek-reasoner'])
+  }, { timeout: 5000 })
+  expect(f.catalog.state.requests).toBeGreaterThanOrEqual(2)
+})
+
 it('ends the session when Mindeck Cloud refuses the catalog request', async () => {
   const f = await fixture('http://127.0.0.1:9/gateway/anthropic')
   f.catalog.state.status = 401
-  await f.ctx.plugin(MindeckModels, config)
+  await f.ctx.plugin(MindeckModels, options())
   await vi.waitFor(() => { expect(f.account.rejectToken).toHaveBeenCalledWith('desktop-token-1') })
   expect(f.providers()).toEqual([])
 })
@@ -126,7 +174,7 @@ it('sends the session token to the gateway and reports quota, sign-out, and sess
   ])
   const f = await fixture(`${gateway.url}/gateway/anthropic`)
   f.catalog.state.models = [f.model('deepseek-chat')]
-  await f.ctx.plugin(MindeckModels, config)
+  await f.ctx.plugin(MindeckModels, options())
   await vi.waitFor(() => { expect(f.providers()).toEqual(['mindeck-anthropic']) })
   const request = { provider: 'mindeck-anthropic', model: 'deepseek-chat', messages: [{ role: 'user' as const, content: [{ type: 'text' as const, text: 'hi' }] }] }
 

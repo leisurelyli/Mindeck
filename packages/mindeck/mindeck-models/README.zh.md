@@ -27,7 +27,7 @@ kind: "package-reference"
 
 在 Host 上于 [Mindeck 账号](../mindeck-account/README.zh.md)和 LLM 服务之后挂载本插件，Mindeck 应用组合包已完成这一步。登录后模型按公司名称分组出现；默认模型指向本机无法使用的模型时，会改为第一个公司模型。
 
-每次登录或退出后、每隔 `refreshIntervalMs`（默认十分钟），以及网关报告模型已不存在后，都会重新读取目录。刷新失败时保留当前模型。`defaultContextWindow` 和 `defaultMaxTokens` 为目录未给出尺寸的模型提供尺寸；`requestTimeoutMs` 限制每次目录请求的时长。
+每次登录或退出后、每隔 `refreshIntervalMs`（默认十分钟），以及网关报告模型已不存在后，都会重新读取目录。读取失败时保留当前模型，并在 `retryIntervalMs`（默认 15 秒）后重试，此后每失败一次等待时间加倍，最长为 `refreshIntervalMs`。每次读到的目录保存到 `cacheDir` 下的 `models-catalog.json`（为空时使用 DeepSeek Harness 主目录下的 `mindeck`）；启动时，在云端应答之前先提供该成员在同一 Mindeck Cloud 下保存的目录。公司推荐的模型排在前面，并在模型选择器中带**推荐**徽标；公司对模型的说明随模型列表提供。`defaultContextWindow` 和 `defaultMaxTokens` 为目录未给出尺寸的模型提供尺寸；`requestTimeoutMs` 限制每次目录请求的时长。
 
 网关拒绝时保留 Mindeck Cloud 自己的消息。401 结束桌面会话并弹出登录对话框。402 表示成员或部门的月度额度已用完，不会重试。403 表示账号当前不能使用模型，例如账号已停用或尚未修改初始密码，对话中显示 Cloud 给出的原因。404 表示管理员移除了该模型或成员对它的使用权限，随后会重新读取目录。会话结束后才开始的请求不会发出，并以“已退出 Mindeck 公司账号，请登录后重试。”失败。
 
@@ -39,7 +39,7 @@ kind: "package-reference"
 <details>
 <summary>维护者细节 — 点击展开</summary>
 
-插件读取会话 bootstrap 中的 `GET {endpoints.models}`，按客户端接口把模型分成三条 pi-ai 路由：`mindeck-anthropic`（`anthropic-messages`）、`mindeck-openai`（`openai-completions`）和 `mindeck-openai-responses`（`openai-responses`）。路由只在有模型时存在，其端点取第一个模型的网关地址。适配器来自 [llm-pi-ai](../../llm/llm-pi-ai/README.zh.md) 的 `createPiAiAdapter`，因此请求头、图片附件和回放与普通 pi-ai 路由一致；凭据是每次请求时读取的当前会话令牌。目录未变时不改动任何注册。模型有变化的路由会发出 `llm/models-updated`。
+插件读取会话 bootstrap 中的 `GET {endpoints.models}`，按客户端接口把模型分成三条 pi-ai 路由：`mindeck-anthropic`（`anthropic-messages`）、`mindeck-openai`（`openai-completions`）和 `mindeck-openai-responses`（`openai-responses`）。每条路由都显示公司名称，因此模型选择器把这些模型列在同一个标题下，而不是按协议分组。路由只在有模型时存在，其端点取第一个模型的网关地址。网关适配器在路由的模型列表中补上每个模型的说明，并给推荐模型加上 `RECOMMENDED_BADGE`。适配器来自 [llm-pi-ai](../../llm/llm-pi-ai/README.zh.md) 的 `createPiAiAdapter`，因此请求头、图片附件和回放与普通 pi-ai 路由一致；凭据是每次请求时读取的当前会话令牌。目录未变时不改动任何注册。模型有变化的路由会发出 `llm/models-updated`。
 
 `GatewayAdapter` 委托给 pi-ai 适配器并改写错误结束块。它从 SDK 的失败文本中读出 HTTP 状态和网关的 `error.message`：401 映射为 `ACCOUNT_TOKEN_INVALID` 并把令牌报告给 `mindeckAccount.rejectToken`，402 映射为 `QUOTA`，403 映射为 `ACCOUNT_UNAVAILABLE`，404 映射为 `UNKNOWN_MODEL`，其他错误码保持不变。没有会话的请求以 `MINDECK_SIGN_IN_REQUIRED` 失败。对话界面对未翻译的错误码直接显示消息，因此这些 Mindeck 错误码带中文说明，不再显示 DeepSeek 账号与 API 密钥的文案。
 

@@ -35,6 +35,7 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
+    "@deepseek-ai/dsh-home-paths": "workspace:*",
     "@deepseek-ai/dsh-llm": "workspace:*",
     "@deepseek-ai/dsh-llm-pi-ai": "workspace:*",
     "@deepseek-ai/dsh-timeout": "workspace:*"
@@ -43,6 +44,7 @@
     "@deepseek-ai/cordis": "workspace:~",
     "@deepseek-ai/dsh-agent-default-model": "workspace:*",
     "@deepseek-ai/dsh-attachment": "workspace:*",
+    "@deepseek-ai/dsh-home-paths": "workspace:*",
     "@deepseek-ai/dsh-llm": "workspace:*",
     "@deepseek-ai/dsh-llm-pi-ai": "workspace:*",
     "@deepseek-ai/dsh-mindeck-account": "workspace:*",
