@@ -12,6 +12,10 @@ export interface FakeCloud {
   readonly requests: string[]
   /** Device reports received through `PUT /api/desktop/device`. */
   readonly devices: unknown[]
+  /** Pending sign-in reports received through `PUT /api/desktop/device-request`. */
+  readonly deviceRequests: unknown[]
+  /** Status that answers pending sign-in reports; 404 imitates a Cloud without the endpoint. */
+  deviceRequestStatus: number
   /** Tokens that still authenticate. */
   readonly tokens: Set<string>
   /** Polls whose connection is closed without an answer, before any other outcome. */
@@ -85,6 +89,10 @@ export async function startFakeCloud(): Promise<FakeCloud> {
       } else if (path === '/api/desktop/bootstrap' && request.method === 'GET') {
         if (!signedIn) signInRequired()
         else reply(response, 200, bootstrap(cloud.url, cloud.userName))
+      } else if (path === '/api/desktop/device-request' && request.method === 'PUT') {
+        if (cloud.deviceRequestStatus === 204) cloud.deviceRequests.push(payload)
+        response.writeHead(cloud.deviceRequestStatus)
+        response.end()
       } else if (path === '/api/desktop/device' && request.method === 'PUT') {
         if (!signedIn) { signInRequired(); return }
         cloud.devices.push(payload)
@@ -104,7 +112,7 @@ export async function startFakeCloud(): Promise<FakeCloud> {
   if (address === null || typeof address === 'string') throw new Error('Expected a loopback listener')
   const cloud: FakeCloud = {
     url: `http://127.0.0.1:${address.port}`,
-    requests: [], devices: [], tokens: new Set(), droppedPolls: 0, pendingPolls: 0, outcome: 'issue', userName: '林晓',
+    requests: [], devices: [], deviceRequests: [], deviceRequestStatus: 204, tokens: new Set(), droppedPolls: 0, pendingPolls: 0, outcome: 'issue', userName: '林晓',
     polled: count => polls >= count ? Promise.resolve() : new Promise((resolve) => { waiters.push({ count, resolve }) }),
     close: async () => {
       if (!server.listening) return

@@ -18,7 +18,7 @@ import { deadline } from '@deepseek-ai/dsh-timeout'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import {
   type DeviceInfo, type MindeckBootstrap, MindeckCloudError, normalizeCloudUrl, pollDeviceToken, probeCloud,
-  readBootstrap, reportDevice, requestDeviceCode, signOutDevice,
+  readBootstrap, reportDevice, reportDeviceRequest, requestDeviceCode, signOutDevice,
 } from './cloud.ts'
 import type { MindeckAccountErrorCode, MindeckAccountView, MindeckSignInAttempt, MindeckSignInAttemptId } from './types.ts'
 
@@ -343,6 +343,17 @@ export default class MindeckAccount extends TypertRemoteService {
     try {
       const code = await this.request(signal, request => requestDeviceCode(cloudUrl, request))
       const expiresAt = Date.now() + code.expiresInMs
+      const device: DeviceInfo = { name: hostname(), platform: process.platform, appVersion }
+      // Before the code is shown, so the approval page that opens next can name this computer.
+      try {
+        if (!await this.request(signal, request => reportDeviceRequest(cloudUrl, code.deviceCode, device, request))) {
+          this.ctx.logger.debug('mindeck-account: Mindeck Cloud did not store the sign-in device details')
+        }
+      } catch (error) {
+        signal.throwIfAborted()
+        // The details only help the member recognize the request; sign-in continues without them.
+        this.ctx.logger.warn('mindeck-account: could not report the sign-in device details', error)
+      }
       this.update(attempt, { phase: 'waiting', userCode: code.userCode, verificationUrl: code.verificationUrl, expiresAt })
       let interval = code.intervalMs
       while (issued === undefined) {
@@ -367,7 +378,6 @@ export default class MindeckAccount extends TypertRemoteService {
       }
       const token = issued
       this.update(attempt, { phase: 'registering' })
-      const device: DeviceInfo = { name: hostname(), platform: process.platform, appVersion }
       if (await this.request(signal, request => reportDevice(cloudUrl, token, device, request)) === 'sign-in-required') {
         throw new MindeckCloudError('protocol', 'the new session was rejected')
       }

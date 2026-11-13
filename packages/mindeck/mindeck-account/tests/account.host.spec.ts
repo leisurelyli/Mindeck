@@ -95,6 +95,7 @@ it('signs in with a device code, reports the device, and stores the session with
   expect(JSON.stringify(view)).not.toContain(token)
   expect(f.cloud.requests.filter(request => request === 'POST /api/auth/device/code')).toHaveLength(1)
   expect(f.cloud.devices).toEqual([{ name: hostname(), platform: process.platform, appVersion: '1.2.3' }])
+  expect(f.cloud.deviceRequests).toEqual([{ deviceCode: 'device-code-1', name: hostname(), platform: process.platform, appVersion: '1.2.3' }])
   expect(await f.ctx.credentials.readRecord(MINDECK_ACCOUNT_KEY)).toMatchObject({ kind: 'grant', payload: { version: 1, token } })
   expect(changed).toHaveBeenCalled()
   await vi.waitFor(() => { expect(frames.at(-1)?.status).toBe('signed-in') })
@@ -107,6 +108,14 @@ it('signs in with a device code, reports the device, and stores the session with
   expect(await f.ctx.credentials.readRecord(MINDECK_ACCOUNT_KEY)).toBeUndefined()
   expect(await f.account().session()).toBeUndefined()
   await vi.waitFor(() => { expect(f.cloud.tokens.has(token)).toBe(false) })
+})
+
+it('signs in without device details when Mindeck Cloud cannot store them', async () => {
+  const f = await fixture()
+  f.cloud.deviceRequestStatus = 404
+  await signIn(f)
+  expect(f.cloud.requests).toContain('PUT /api/desktop/device-request')
+  expect(f.cloud.deviceRequests).toEqual([])
 })
 
 it('keeps waiting through a lost connection while polling and reports that it is reconnecting', async () => {

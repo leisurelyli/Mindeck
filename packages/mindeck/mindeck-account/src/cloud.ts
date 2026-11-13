@@ -205,6 +205,27 @@ async function desktopFailure(response: Response): Promise<'sign-in-required'> {
 }
 
 /**
+ * Tell Mindeck Cloud which computer holds a pending code, so its confirmation page can show it. The
+ * device code is the only credential.
+ * @param cloudUrl - normalized Mindeck Cloud origin.
+ * @param deviceCode - secret device code from {@link requestDeviceCode}.
+ * @param device - what to report.
+ * @param signal - cancellation and timeout.
+ * @returns whether Mindeck Cloud stored the report; a Cloud without this endpoint answers 404.
+ */
+export async function reportDeviceRequest(
+  cloudUrl: string, deviceCode: string, device: DeviceInfo, signal: AbortSignal,
+): Promise<boolean> {
+  const response = await send(`${cloudUrl}/api/desktop/device-request`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ deviceCode, name: device.name, platform: device.platform, appVersion: device.appVersion }),
+  }, signal)
+  await response.body?.cancel()
+  return response.ok
+}
+
+/**
  * Report the desktop's name, platform, and version for the device list.
  * @param cloudUrl - normalized Mindeck Cloud origin.
  * @param token - desktop session token.

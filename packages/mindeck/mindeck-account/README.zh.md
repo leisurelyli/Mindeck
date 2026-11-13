@@ -43,7 +43,7 @@ kind: "package-reference"
 <details>
 <summary>维护者细节 — 点击展开</summary>
 
-Host 服务继承 `TypertRemoteService`，Remote 命名空间为 `mindeckAccount`。它同一时间最多持有一个登录尝试；`startSignIn` 会加入正在进行的尝试，`cancelSignIn` 中止尝试并等待其结束。一次尝试会请求设备码，按 Mindeck Cloud 返回的间隔轮询令牌端点（每收到一次 `slow_down` 延长五秒；某次轮询没有收到响应时，尝试的 `retrying` 标记置为真，并继续轮询到代码过期），上报设备，读取 `/api/desktop/bootstrap`，再把 `{ version: 1, cloudUrl, token, bootstrap }` 保存为 `mindeck-account/default` 授权记录。若令牌签发后尝试失败，Host 会在 Mindeck Cloud 上结束该令牌，不留下孤立会话。未通过校验的已存记录视为未登录。
+Host 服务继承 `TypertRemoteService`，Remote 命名空间为 `mindeckAccount`。它同一时间最多持有一个登录尝试；`startSignIn` 会加入正在进行的尝试，`cancelSignIn` 中止尝试并等待其结束。一次尝试会请求设备码，向 `PUT /api/desktop/device-request` 上报电脑名称、平台和应用版本，供云端确认页面显示（上报失败只会让页面缺少这些信息），按 Mindeck Cloud 返回的间隔轮询令牌端点（每收到一次 `slow_down` 延长五秒；某次轮询没有收到响应时，尝试的 `retrying` 标记置为真，并继续轮询到代码过期），上报设备，读取 `/api/desktop/bootstrap`，再把 `{ version: 1, cloudUrl, token, bootstrap }` 保存为 `mindeck-account/default` 授权记录。若令牌签发后尝试失败，Host 会在 Mindeck Cloud 上结束该令牌，不留下孤立会话。未通过校验的已存记录视为未登录。
 
 启动时 Host 会重新读取 bootstrap：401 结束会话，变化的信息替换缓存，云端不可达时保留会话以便离线使用。`rejectToken` 只在会话仍持有被拒绝的令牌时才删除会话，因此迟到的拒绝不会结束较新的登录。
 
