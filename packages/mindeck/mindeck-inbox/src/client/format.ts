@@ -5,7 +5,8 @@ import type { MindeckInboxKey } from './locales.ts'
 /** Translate of the page's namespace. */
 type Translate = (key: MindeckInboxKey, params?: Record<string, string>) => string
 
-const VERSION = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/
+// The versions Mindeck Cloud orders: an optional leading `v`, a prerelease of non-empty identifiers, and build metadata.
+const VERSION = /^[Vv]?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z.-]*)?$/
 
 /**
  * Compare two prerelease identifier lists as Semantic Versioning orders them.
@@ -32,7 +33,8 @@ function comparePrerelease(left: readonly string[], right: readonly string[]): n
  * Tell whether the running desktop is older than the version the company recommends, by Semantic Versioning order.
  * @param current - version of this build, such as `0.2.2-rc.1`; empty in builds without release metadata.
  * @param recommended - the recommended version, such as `1.8.0`.
- * @returns whether `current` sorts before `recommended`; false when either is not a semantic version.
+ * @returns whether `current` sorts before `recommended`; false when either is missing or not a semantic version, as
+ *   Mindeck Cloud counts a desktop behind.
  */
 export function isOlderVersion(current: string, recommended: string): boolean {
   const a = VERSION.exec(current.trim())

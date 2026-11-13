@@ -101,6 +101,7 @@ export default class MindeckInbox extends TypertRemoteService {
     ctx.effect(() => () => { this.lifetime.abort() }, 'mindeck-inbox: Cloud requests')
     ctx.on('mindeck-account/changed', () => { this.track(this.follow()) })
     ctx.on('mindeck-account/revised', (topics) => { this.track(this.revised(topics)) })
+    ctx.on('mindeck-account/synced', () => { this.track(this.reachable()) })
     this.track(this.follow())
   }
 
@@ -221,13 +222,19 @@ export default class MindeckInbox extends TypertRemoteService {
     if (current === undefined || current.token !== this.owner || this.stopped()) return
     if (answer !== undefined) this.cloudUnread = answer.me.inbox.unread
     this.publishSummary()
-    // Mindeck Cloud answered, so read reports that did not reach it go now.
-    if (this.unreportedAll !== undefined || this.unreported.size > 0) await this.report()
     const inbox = answer?.me.inbox
     const moved = inbox === undefined || this.seen === undefined
       || inbox.unread !== this.seen.unread || inbox.latestAt !== this.seen.latestAt
     if (inbox !== undefined) this.seen = { ...inbox }
     if (this.viewers > 0 && (moved || topics.has('announcements'))) await this.reload()
+  }
+
+  /** Mindeck Cloud answered a sync: read reports that did not reach it go now, and an open page that failed reads again. */
+  private async reachable(): Promise<void> {
+    const current = await this.inboxSession()
+    if (current === undefined || current.token !== this.owner || this.stopped()) return
+    if (this.unreportedAll !== undefined || this.unreported.size > 0) await this.report()
+    if (this.viewers > 0 && this.page.failure !== null && this.reloading === undefined) await this.reload()
   }
 
   /** Run one Mindeck Cloud request with the configured timeout, fused with the plugin lifetime. */

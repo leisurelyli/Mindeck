@@ -90,8 +90,9 @@ function InboxRow({ item, expanded, onToggle, now, t }: {
         </span>
         <span className={css.itemText}>
           <span className={css.itemHead}>
-            <span className={css.itemTitle}>{item.title}</span>
+            {/* As on the web console, the tag leads the title. */}
             {item.level === 'important' && <Tag tone="warning" className={css.importantTag}>{t('important')}</Tag>}
+            <span className={css.itemTitle}>{item.title}</span>
             {unread && <span className={css.srOnly}>{t('unread')}</span>}
             <span className={css.itemMeta}>{t(FAMILY_LABELS[family])} · {formatItemTime(item.createdAt, now, t)}</span>
           </span>

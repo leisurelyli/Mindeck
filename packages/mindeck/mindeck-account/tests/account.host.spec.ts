@@ -302,6 +302,9 @@ async function syncFixture() {
   f.cloud.syncEnabled = true
   const revised: string[][] = []
   f.ctx.on('mindeck-account/revised', (topics) => { revised.push([...topics].sort()) })
+  // Every answer emits `synced`, after the topics it changed.
+  const synced = { count: 0, afterRevised: true }
+  f.ctx.on('mindeck-account/synced', () => { synced.count++; synced.afterRevised &&= revised.length > 0 })
   await signIn(f)
   // The first answer of a session changes only the member's own state; the catalogs load with the session.
   await vi.waitFor(() => { expect(revised).toEqual([['inbox', 'quota-request']]) })
@@ -313,7 +316,7 @@ async function syncFixture() {
     await vi.waitFor(async () => { expect((await f.state()).sync?.running).toBe(false) })
     await new Promise(resolve => setTimeout(resolve, 20))
   }
-  return { ...f, revised, sync }
+  return { ...f, revised, synced, sync }
 }
 
 it('polls the sync endpoint with the last ETag and reports only the topics that changed', async () => {
@@ -323,9 +326,12 @@ it('polls the sync endpoint with the last ETag and reports only the topics that 
   const syncedAt: unknown = expect.any(Number)
   expect((await f.state()).sync).toMatchObject({ supported: true, running: false, problem: null, syncedAt })
 
+  const answered = f.synced.count
   await f.sync()
   expect(f.cloud.syncTags[1]).toMatch(/^"[\w-]{32}"$/)
   expect(f.revised).toHaveLength(1)
+  // An unchanged answer names no topic but still tells that Mindeck Cloud answered.
+  expect(f.synced).toEqual({ count: answered + 1, afterRevised: true })
 
   f.cloud.sync.revisions.models = 2
   f.cloud.sync.revisions.employees = 5
@@ -404,6 +410,7 @@ it('syncs every topic when the member asks and shows the sync running', async ()
 
 it('stays quiet while Mindeck Cloud is unreachable or failing and recovers on the next sync', async () => {
   const f = await syncFixture()
+  const answered = f.synced.count
   f.cloud.syncStatus = 0
   await f.sync()
   expect((await f.state())).toMatchObject({ status: 'signed-in', sync: { problem: 'unreachable' } })
@@ -411,6 +418,7 @@ it('stays quiet while Mindeck Cloud is unreachable or failing and recovers on th
   f.cloud.syncStatus = 500
   await f.sync()
   expect((await f.state()).sync?.problem).toBe('failed')
+  expect(f.synced.count).toBe(answered)
 
   // A focus or network prompt syncs at once while the last sync failed.
   f.cloud.syncStatus = 200

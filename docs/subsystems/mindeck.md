@@ -19,7 +19,7 @@ The [Mindeck package group](../../packages/mindeck/README.md) connects Mindeck D
 
 `ctx.mindeckAccount.session()` returns the signed-in member's Cloud URL, access token, and bootstrap data, or `undefined` when signed out. Consumers read it for each Cloud request and call `rejectToken(token)` when Cloud rejects that token; the service ends the stored session only while it still holds that token, so a newer sign-in survives a late rejection. `mindeck-account/changed` announces every sign-in, sign-out, and rejected token, and consumers refresh from `session()` instead of reading the event payload.
 
-While signed in to a Mindeck Cloud with a sync endpoint, the account polls it every minute and emits `mindeck-account/revised` with the [topics](../../packages/mindeck/mindeck-account/README.md#use-this-package) whose data changed; each consumer reads again what its topics cover and keeps its own ten-minute refresh as a fallback, which is all a Mindeck Cloud without the endpoint gets. Consumers do not run their own sync timers; `requestSync()` asks the account for a sync, and `syncAnswer()` returns the latest answer.
+While signed in to a Mindeck Cloud with a sync endpoint, the account polls it every minute and emits `mindeck-account/revised` with the [topics](../../packages/mindeck/mindeck-account/README.md#use-this-package) whose data changed; each consumer reads again what its topics cover and keeps its own ten-minute refresh as a fallback, which is all a Mindeck Cloud without the endpoint gets. Consumers do not run their own sync timers; `requestSync()` asks the account for a sync, `syncAnswer()` returns the latest answer, and `mindeck-account/synced` follows every answer, so requests that failed offline can be retried.
 
 ## Sign-in and the Account page
 
@@ -65,7 +65,7 @@ Mindeck Cloud account service and its Remote namespace.
  * Sync soon after the window regained focus or the network came back, unless a sync succeeded within the
  * configured cool-down.
  */
-@Remote async syncSoon(): Promise<void>
+@Remote syncSoon(): Promise<void>
 
 /**
  * Ask for a sync from another Host plugin, such as after Mindeck Cloud refused a request in a way a company change
@@ -342,6 +342,23 @@ A sync with Mindeck Cloud found company or member data that changed, or the memb
  * @mode emit
  */
 'mindeck-account/revised'(topics: ReadonlySet<MindeckSyncTopic>): void
+```
+
+Source: [`packages/mindeck/mindeck-account/src/index.ts`](../../packages/mindeck/mindeck-account/src/index.ts)
+
+<a id="mindeck-accountsynced--emit"></a>
+
+#### `mindeck-account/synced` — emit
+
+Mindeck Cloud answered a sync, whether or not anything changed, after any `mindeck-account/revised` of the same answer. Plugins with requests that failed for lack of a connection, such as unconfirmed read reports, retry them.
+
+```ts cordis-catalog
+/**
+ * Mindeck Cloud answered a sync, whether or not anything changed, after any `mindeck-account/revised` of the same
+ * answer. Plugins with requests that failed for lack of a connection, such as unconfirmed read reports, retry them.
+ * @mode emit
+ */
+'mindeck-account/synced'(): void
 ```
 
 Source: [`packages/mindeck/mindeck-account/src/index.ts`](../../packages/mindeck/mindeck-account/src/index.ts)

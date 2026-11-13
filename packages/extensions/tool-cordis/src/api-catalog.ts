@@ -2140,7 +2140,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'state after the sync; its `sync.problem` tells whether Mindeck Cloud answered.',
       },
       {
-        signature: '@Remote async syncSoon(): Promise<void>',
+        signature: '@Remote syncSoon(): Promise<void>',
         description: 'Sync soon after the window regained focus or the network came back, unless a sync succeeded within the configured cool-down.',
         parameters: [],
       },
@@ -5345,6 +5345,14 @@ export const EVENT_API: readonly EventApiEntry[] = [
     summary: 'A sync with Mindeck Cloud found company or member data that changed, or the member asked to sync, which names every topic.',
     description: 'A sync with Mindeck Cloud found company or member data that changed, or the member asked to sync, which names every topic. Each plugin reads again what its topics cover; the account has already stored a changed bootstrap.',
     parameters: [{ name: 'topics', description: 'what changed.' }],
+  },
+  {
+    name: 'mindeck-account/synced',
+    mode: 'emit',
+    signature: '\'mindeck-account/synced\'(): void',
+    summary: 'Mindeck Cloud answered a sync, whether or not anything changed, after any `mindeck-account/revised` of the same answer.',
+    description: 'Mindeck Cloud answered a sync, whether or not anything changed, after any `mindeck-account/revised` of the same answer. Plugins with requests that failed for lack of a connection, such as unconfirmed read reports, retry them.',
+    parameters: [],
   },
   {
     name: 'permission-presets/catalog-changed',

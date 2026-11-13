@@ -55,6 +55,12 @@ declare module '@deepseek-ai/cordis' {
      * @mode emit
      */
     'mindeck-account/revised'(topics: ReadonlySet<MindeckSyncTopic>): void
+    /**
+     * Mindeck Cloud answered a sync, whether or not anything changed, after any `mindeck-account/revised` of the same
+     * answer. Plugins with requests that failed for lack of a connection, such as unconfirmed read reports, retry them.
+     * @mode emit
+     */
+    'mindeck-account/synced'(): void
   }
 }
 
@@ -227,6 +233,7 @@ export default class MindeckAccount extends TypertRemoteService {
       readBootstrap: () => this.revalidate(),
       readQuota: () => this.readQuota(this.lifetime.signal),
       revised: (topics) => { this.ctx.emit('mindeck-account/revised', topics) },
+      synced: () => { this.ctx.emit('mindeck-account/synced') },
       changed: () => { this.changed() },
       warn: (message, error) => { this.ctx.logger.warn(message, error) },
     }, { intervalMs: config.syncIntervalMs, fallbackIntervalMs: config.fallbackRefreshMs, cooldownMs: config.syncCooldownMs })

@@ -2566,7 +2566,7 @@ export interface Config {
 
 - `inject`: `credentials` · `typert`
 - `refs`: `Volatile` (`@deepseek-ai/cordis`)
-- `source`: [`packages/mindeck/mindeck-account/src/index.ts:62`](../packages/mindeck/mindeck-account/src/index.ts)
+- `source`: [`packages/mindeck/mindeck-account/src/index.ts:68`](../packages/mindeck/mindeck-account/src/index.ts)
 
 ```ts config-catalog
 /** Deployment options. */

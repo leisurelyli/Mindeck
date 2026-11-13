@@ -19,7 +19,7 @@
 
 `ctx.mindeckAccount.session()` 返回已登录成员的 Cloud 地址、访问令牌和启动数据，未登录时返回 `undefined`。使用方在每次 Cloud 请求时读取它，Cloud 拒绝令牌时调用 `rejectToken(token)`；只有当保存的会话仍持有该令牌时服务才结束会话，因此较晚到达的拒绝不会影响更新的登录。`mindeck-account/changed` 通告每次登录、退出和令牌被拒，使用方据此重新读取 `session()`，而不是读取事件载荷。
 
-登录到带同步端点的 Mindeck Cloud 期间，账号每分钟轮询一次该端点，并发出 `mindeck-account/revised`，带上数据发生变化的[主题](../../packages/mindeck/mindeck-account/README.zh.md#use-this-package)；各使用方重新读取自己主题涵盖的内容，并保留各自 10 分钟一次的兜底刷新，没有同步端点的 Mindeck Cloud 只有这种刷新。使用方不自己启动同步定时器；`requestSync()` 请账号同步一次，`syncAnswer()` 返回最近一次应答。
+登录到带同步端点的 Mindeck Cloud 期间，账号每分钟轮询一次该端点，并发出 `mindeck-account/revised`，带上数据发生变化的[主题](../../packages/mindeck/mindeck-account/README.zh.md#use-this-package)；各使用方重新读取自己主题涵盖的内容，并保留各自 10 分钟一次的兜底刷新，没有同步端点的 Mindeck Cloud 只有这种刷新。使用方不自己启动同步定时器；`requestSync()` 请账号同步一次，`syncAnswer()` 返回最近一次应答，每次应答之后都会发出 `mindeck-account/synced`，断网时失败的请求可以据此重试。
 
 ## 登录与账号页
 
@@ -65,7 +65,7 @@ Mindeck Cloud account service and its Remote namespace.
  * Sync soon after the window regained focus or the network came back, unless a sync succeeded within the
  * configured cool-down.
  */
-@Remote async syncSoon(): Promise<void>
+@Remote syncSoon(): Promise<void>
 
 /**
  * Ask for a sync from another Host plugin, such as after Mindeck Cloud refused a request in a way a company change
@@ -342,6 +342,23 @@ A sync with Mindeck Cloud found company or member data that changed, or the memb
  * @mode emit
  */
 'mindeck-account/revised'(topics: ReadonlySet<MindeckSyncTopic>): void
+```
+
+Source: [`packages/mindeck/mindeck-account/src/index.ts`](../../packages/mindeck/mindeck-account/src/index.ts)
+
+<a id="mindeck-accountsynced--emit"></a>
+
+#### `mindeck-account/synced` — emit
+
+Mindeck Cloud answered a sync, whether or not anything changed, after any `mindeck-account/revised` of the same answer. Plugins with requests that failed for lack of a connection, such as unconfirmed read reports, retry them.
+
+```ts cordis-catalog
+/**
+ * Mindeck Cloud answered a sync, whether or not anything changed, after any `mindeck-account/revised` of the same
+ * answer. Plugins with requests that failed for lack of a connection, such as unconfirmed read reports, retry them.
+ * @mode emit
+ */
+'mindeck-account/synced'(): void
 ```
 
 Source: [`packages/mindeck/mindeck-account/src/index.ts`](../../packages/mindeck/mindeck-account/src/index.ts)

@@ -55,14 +55,17 @@ async function fixture(options: { inbox?: boolean } = {}) {
       me: { accessRevision: 1, inbox: { unread: 0, latestAt: null, ...answer?.me.inbox, ...me }, quotaRequest: null },
     }
     ctx.emit('mindeck-account/revised', new Set(topics))
+    ctx.emit('mindeck-account/synced')
   }
+  /** Report an unchanged sync answer, as after a 304. */
+  const synced = () => { ctx.emit('mindeck-account/synced') }
   const change = (token: string | undefined) => {
     current = token === undefined ? undefined : session(token)
     answer = undefined
     ctx.emit('mindeck-account/changed')
   }
   const config: Config = { pageSize: 2, requestTimeoutMs: 5000 }
-  return { ctx, inbox, account, sync, change, config }
+  return { ctx, inbox, account, sync, synced, change, config }
 }
 
 /** Follow one of the plugin's streams and keep its latest frame. */
@@ -186,8 +189,9 @@ it('shows read items at once and sends unconfirmed read marks again after the ne
   expect(summary.latest()?.unread).toBe(1)
   expect(f.inbox.reads).toEqual([])
 
+  // The connection comes back without any change on Mindeck Cloud, so the sync answer is unchanged.
   f.inbox.status = 200
-  f.sync({ unread: 2 })
+  f.synced()
   await vi.waitFor(() => { expect(f.inbox.reads).toEqual([{ items: [{ type: 'notification', id: 'n0' }] }]) })
   await vi.waitFor(() => { expect(summary.latest()?.unread).toBe(1) })
 
@@ -213,9 +217,10 @@ it('keeps the shown items and names the failure while Mindeck Cloud is unreachab
   const requestId: unknown = expect.stringMatching(/^req-/)
   expect(page.latest()?.failure).toEqual({ reason: 'failed', requestId })
 
+  // The next sync answer shows that Mindeck Cloud is back, so the open page reads again.
   f.inbox.status = 200
-  await f.ctx.mindeckInbox.reload()
-  expect(page.latest()?.failure).toBeNull()
+  f.synced()
+  await vi.waitFor(() => { expect(page.latest()?.failure).toBeNull() })
 
   f.inbox.status = 503
   await f.ctx.mindeckInbox.loadMore()

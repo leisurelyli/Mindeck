@@ -70,6 +70,8 @@ export interface SyncLoopHost {
   readonly readQuota: () => Promise<void>
   /** Report topics whose data changed. */
   readonly revised: (topics: ReadonlySet<MindeckSyncTopic>) => void
+  /** Mindeck Cloud answered, after any {@link SyncLoopHost.revised} of the same answer. */
+  readonly synced: () => void
   /** The sync view changed. */
   readonly changed: () => void
   /** Log a failure that the loop recovers from at its next run. */
@@ -191,6 +193,7 @@ export class SyncLoop {
     if (read !== 'ok') { this.setView({ problem: read }); return }
     this.succeeded()
     if (reason === 'manual') this.host.revised(new Set(ALL_SYNC_TOPICS))
+    this.host.synced()
   }
 
   private async poll(token: string, url: string, manual: boolean): Promise<void> {
@@ -220,6 +223,7 @@ export class SyncLoop {
     if (topics.has('policies') || topics.has('client') || topics.has('access')) await this.host.readBootstrap()
     if (topics.has('quota-request') && (manual || !first)) await this.host.readQuota()
     if (topics.size > 0) this.host.revised(topics)
+    this.host.synced()
   }
 
   private succeeded(): void {

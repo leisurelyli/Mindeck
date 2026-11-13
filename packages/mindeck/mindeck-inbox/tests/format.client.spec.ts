@@ -19,6 +19,10 @@ it('orders versions as Semantic Versioning does, prereleases before their releas
   expect(isOlderVersion('1.8.0-rc.1', '1.8.0-rc.1')).toBe(false)
   expect(isOlderVersion('', '1.8.0')).toBe(false)
   expect(isOlderVersion('1.8', '1.8.0')).toBe(false)
+  expect(isOlderVersion('v1.7.9', '1.8.0')).toBe(true)
+  expect(isOlderVersion('1.7.9+', '1.8.0')).toBe(true)
+  expect(isOlderVersion('1.7.9-rc..1', '1.8.0')).toBe(false)
+  expect(isOlderVersion('1.7.9', '')).toBe(false)
 })
 
 it('turns web addresses in a body into links and keeps sentence punctuation as text', () => {

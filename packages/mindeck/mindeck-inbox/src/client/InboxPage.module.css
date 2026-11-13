@@ -64,6 +64,8 @@
   text-align: start;
   cursor: pointer;
 }
+/* An opened row's body takes the place of the preview, right under the title. */
+.itemButton[aria-expanded='true'] { padding-bottom: 0; }
 .itemButton:focus-visible { outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: -2px; }
 @media (hover: hover) {
   .itemButton:hover { background: var(--dsw-alias-interactive-bg-hover); }
