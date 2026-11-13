@@ -47,6 +47,15 @@ Mindeck Cloud account service and its Remote namespace.
 @Remote async refreshQuota(signal: AbortSignal): Promise<MindeckAccountView>
 
 /**
+ * Send a written report to the company's Mindeck Cloud.
+ * @param text - what the member wrote; blank or longer than 2000 characters is refused.
+ * @param signal - caller cancellation.
+ * @throws RemoteError `mindeck-account/invalid-feedback` for blank or overlong text, `mindeck-account/signed-out`
+ * without a usable session, or `mindeck-account/unreachable` when Mindeck Cloud does not take it.
+ */
+@Remote async sendFeedback(text: string, signal: AbortSignal): Promise<void>
+
+/**
  * Stream account state.
  * @param signal - stream lifetime; ending it never cancels a sign-in.
  * @returns the current state, then every change.

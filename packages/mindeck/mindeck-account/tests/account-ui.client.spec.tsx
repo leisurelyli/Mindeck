@@ -37,12 +37,13 @@ function fixture(view: MindeckAccountView | undefined, failed = false) {
     cancelSignIn: vi.fn(async (_id: MindeckSignInAttemptId) => {}),
     signOut: vi.fn(async (): Promise<OperationOutcome> => ok),
     refreshQuota: vi.fn(() => {}),
+    sendFeedback: vi.fn(async (_text: string): Promise<OperationOutcome> => ok),
     dismissReminder: vi.fn((key: string) => { reminders.set({ dismissed: [...reminders.getSnapshot().dismissed, key] }) }),
   }
   // Global standard hooks are unused by these components; the renderer supplies them in production.
   const props = {
     t: makeTranslate(en), useAccount: bindSnapshotSelector(account), useReminders: bindSnapshotSelector(reminders),
-    close: () => {}, wide: true, openSettings: () => {}, ...operations,
+    close: () => {}, wide: true, openSettings: () => {}, appVersion: '0.3.0', ...operations,
   } as SignInGateProps & AccountSectionProps & Omit<QuotaNoticeProps, 'matched'> & QuotaDockProps & AccountMenuProps
   const set = (next: MindeckAccountView) => { act(() => { account.set({ view: next, failed: false }) }) }
   return { props, operations, set }
@@ -241,4 +242,48 @@ it('shows this month\'s quota in the account menu and refreshes it when the menu
   fireEvent.click(screen.getByRole('button', { name: en.menu }))
   expect(await screen.findByText('This month: ¥3.00, no limit')).toBeTruthy()
   expect(screen.queryByText(/Department:/)).toBeNull()
+})
+
+it('opens help in the browser, sends feedback with retry after a failure, and shows the version and Cloud in About', async () => {
+  const open = vi.spyOn(window, 'open').mockReturnValue(null)
+  const f = fixture(signedIn)
+  render(<AccountMenu {...f.props} />)
+  const choose = async (label: string) => {
+    fireEvent.click(screen.getByRole('button', { name: en.menu }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: label }))
+  }
+  await choose(en.help)
+  expect(open).toHaveBeenCalledWith('https://cloud.example.com/help', '_blank', 'noopener,noreferrer')
+
+  await choose(en.feedback)
+  const dialog = await screen.findByRole('dialog', { name: en.feedbackTitle })
+  const send = within(dialog).getByRole('button', { name: en.feedbackSend })
+  expect((send as HTMLButtonElement).disabled).toBe(true)
+  fireEvent.change(within(dialog).getByRole('textbox', { name: en.feedbackLabel }), { target: { value: '图表颜色看不清' } })
+  f.operations.sendFeedback.mockResolvedValueOnce({ ok: false, reason: 'feedbackUnreachable' })
+  fireEvent.click(send)
+  expect((await within(dialog).findByRole('alert')).textContent).toBe(en.feedbackUnreachable)
+  expect(within(dialog).getByRole('textbox', { name: en.feedbackLabel })).toHaveProperty('value', '图表颜色看不清')
+  fireEvent.click(within(dialog).getByRole('button', { name: en.feedbackSend }))
+  expect((await within(dialog).findByRole('status')).textContent).toBe(en.feedbackSent)
+  expect(f.operations.sendFeedback).toHaveBeenLastCalledWith('图表颜色看不清')
+  fireEvent.click(within(dialog).getByRole('button', { name: en.feedbackDone }))
+  await vi.waitFor(() => { expect(screen.queryByRole('dialog')).toBeNull() })
+
+  await choose(en.about)
+  const about = await screen.findByRole('dialog', { name: en.aboutTitle })
+  expect(about.textContent).toContain('Version 0.3.0')
+  expect(about.textContent).toContain('星河科技')
+  fireEvent.click(within(about).getByRole('button', { name: en.aboutPrivacy }))
+  expect(open).toHaveBeenLastCalledWith('https://cloud.example.com/privacy', '_blank', 'noopener,noreferrer')
+  open.mockRestore()
+})
+
+it('offers only About while signed out without a Cloud address', async () => {
+  const f = fixture(signedOut)
+  render(<AccountMenu {...f.props} />)
+  fireEvent.click(screen.getByRole('button', { name: en.menu }))
+  expect(await screen.findByRole('menuitem', { name: en.about })).toBeTruthy()
+  expect(screen.queryByRole('menuitem', { name: en.help })).toBeNull()
+  expect(screen.queryByRole('menuitem', { name: en.feedback })).toBeNull()
 })

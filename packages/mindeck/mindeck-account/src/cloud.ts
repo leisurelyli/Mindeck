@@ -1,6 +1,6 @@
 /** Mindeck Cloud HTTP endpoints used by desktop sign-in; every response is validated before use. */
 import { z } from 'zod'
-import type { MindeckAccountErrorCode, MindeckQuota } from './types.ts'
+import type { MindeckAccountErrorCode, MindeckFeedback, MindeckQuota } from './types.ts'
 
 /** OAuth client id Mindeck Cloud accepts on its device authorization endpoints. */
 export const DESKTOP_CLIENT_ID = 'mindeck-desktop'
@@ -242,6 +242,29 @@ export async function reportDevice(
     body: JSON.stringify({ name: device.name, platform: device.platform, appVersion: device.appVersion }),
   }), signal)
   return response.ok ? 'ok' : await desktopFailure(response)
+}
+
+/**
+ * Send one piece of feedback to Mindeck Cloud: a written report, or the category and note of an answer the
+ * member rated down. An answer with `withdrawn` removes what was sent for the same `ref`.
+ * @param cloudUrl - normalized Mindeck Cloud origin.
+ * @param token - desktop session token.
+ * @param feedback - what to send.
+ * @param signal - cancellation and timeout.
+ * @returns `sign-in-required` when the token is no longer valid.
+ * @throws MindeckCloudError `account-unavailable` or `protocol` when Mindeck Cloud refuses it.
+ */
+export async function sendFeedback(
+  cloudUrl: string, token: string, feedback: MindeckFeedback, signal: AbortSignal,
+): Promise<'ok' | 'sign-in-required'> {
+  const response = await send(`${cloudUrl}/api/desktop/feedback`, bearer(token, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(feedback),
+  }), signal)
+  if (!response.ok) return await desktopFailure(response)
+  await response.body?.cancel()
+  return 'ok'
 }
 
 const quotaUsageSchema = z.object({ used: z.number(), limit: z.number().nullable() })

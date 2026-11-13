@@ -5,7 +5,7 @@ import TypertRegistry from '@deepseek-ai/dsh-typert-registry'
 import { afterEach, expect, it, vi } from 'vitest'
 import { MemoryCredentials } from '../../../credentials/credentials/tests/memory.ts'
 import { liveConfig } from '../../../settings/settings/tests/live-config.ts'
-import MindeckAccount, { MINDECK_ACCOUNT_KEY, type MindeckAccountView } from '../src/index.ts'
+import MindeckAccount, { feedbackOf, MINDECK_ACCOUNT_KEY, type MindeckAccountView } from '../src/index.ts'
 import { startFakeCloud } from './fake-cloud.ts'
 
 const cleanups: Array<() => Promise<void>> = []
@@ -208,4 +208,48 @@ it('revalidates the stored session when the plugin starts', async () => {
   expect(revived.tokens.has(token)).toBe(false)
   await f.live.replace({ cloudUrl: revived.url, requestTimeoutMs: 5003 })
   await vi.waitFor(async () => { expect(await f.state()).toMatchObject({ status: 'signed-out', notice: 'session-expired' }) })
+})
+
+it('sends written feedback, forwards answers rated down and taken back, and explains a refusal', async () => {
+  const f = await fixture()
+  const signal = new AbortController().signal
+  await expect(f.account().sendFeedback('图表颜色看不清', signal)).rejects.toMatchObject({ code: 'mindeck-account/signed-out' })
+  await signIn(f)
+  await expect(f.account().sendFeedback('   ', signal)).rejects.toMatchObject({ code: 'mindeck-account/invalid-feedback' })
+  await expect(f.account().sendFeedback('x'.repeat(2001), signal)).rejects.toMatchObject({ code: 'mindeck-account/invalid-feedback' })
+  await f.account().sendFeedback('  图表颜色看不清  ', signal)
+  expect(f.cloud.feedback).toEqual([{ kind: 'report', text: '图表颜色看不清' }])
+
+  const put = (rating: 'positive' | 'negative', extra: Record<string, unknown> = {}) => ({
+    seq: 9, time: 1, type: 'feedback/message-put',
+    data: { sessionId: 's1', item: { messageId: 'm1', rating, version: 'v', createdAt: 1, updatedAt: 1, ...extra } },
+  })
+  f.ctx.emit('session/event', {} as never, put('negative', { category: 'task-result', note: '漏了风险' }) as never)
+  f.ctx.emit('session/event', {} as never, { seq: 10, time: 2, type: 'feedback/message-delete', data: { sessionId: 's1', messageId: 'm1' } } as never)
+  await vi.waitFor(() => { expect(f.cloud.feedback).toHaveLength(3) })
+  expect(f.cloud.feedback.slice(1)).toEqual([
+    { kind: 'answer', ref: 's1/m1', category: 'task-result', text: '漏了风险' },
+    { kind: 'answer', ref: 's1/m1', withdrawn: true },
+  ])
+  await f.ctx.parallel('feedback/committed', { events: [put('negative')] } as never)
+  await vi.waitFor(() => { expect(f.cloud.feedback.at(-1)).toEqual({ kind: 'answer', ref: 's1/m1' }) })
+
+  f.cloud.feedbackStatus = 400
+  await expect(f.account().sendFeedback('再试一次', signal)).rejects.toMatchObject({ code: 'mindeck-account/unreachable' })
+  f.cloud.tokens.clear()
+  await expect(f.account().sendFeedback('再试一次', signal)).rejects.toMatchObject({ code: 'mindeck-account/signed-out' })
+  expect((await f.state()).status).toBe('signed-out')
+})
+
+it('sends down-rated answers and /feedback remarks, and keeps up-ratings on this computer apart from taking back', () => {
+  const put = (rating: 'positive' | 'negative', extra: Record<string, unknown> = {}) => ({
+    seq: 1, time: 1, type: 'feedback/message-put',
+    data: { sessionId: 's1', item: { messageId: 'm1', rating, version: 'v', createdAt: 1, updatedAt: 1, ...extra } },
+  }) as never
+  expect(feedbackOf(put('negative', { note: '太长' }))).toEqual({ kind: 'answer', ref: 's1/m1', text: '太长' })
+  expect(feedbackOf(put('positive', { note: '很好' }))).toEqual({ kind: 'answer', ref: 's1/m1', withdrawn: true })
+  expect(feedbackOf({ seq: 2, time: 2, type: 'feedback/record', data: { text: '希望支持语音', category: 'other' } } as never))
+    .toEqual({ kind: 'report', text: '希望支持语音', category: 'other' })
+  expect(feedbackOf({ seq: 2, time: 2, type: 'feedback/record', data: {} } as never)).toBeUndefined()
+  expect(feedbackOf({ seq: 3, time: 3, type: 'user/message', data: {} } as never)).toBeUndefined()
 })

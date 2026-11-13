@@ -51,6 +51,15 @@
 .dialogTitle { margin: 0; font-size: 16px; line-height: 24px; font-weight: 500; color: var(--dsw-alias-label-primary); }
 .dialogText { margin: 0 0 8px; padding: 0 24px; font-size: 14px; line-height: 22px; color: var(--dsw-alias-label-primary); }
 .dialogActions { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 24px 0; }
+.dialogNote { color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 20px; }
+.dialogBody { padding: 4px 24px 8px; }
+.textarea { display: block; width: 100%; min-height: 116px; max-height: 280px; box-sizing: border-box; padding: 10px 12px; border: 0.5px solid var(--dsw-alias-border-l4); border-radius: var(--dsw-radius-lg); background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary); font: inherit; font-size: 14px; line-height: 22px; field-sizing: content; resize: none; }
+.textarea::placeholder { color: var(--dsw-alias-label-caption); }
+.textarea:focus-visible { outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: -1px; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0 0 12px; padding: 0 24px; font-size: 14px; line-height: 22px; }
+.facts dt { color: var(--dsw-alias-label-secondary); }
+.facts dd { min-width: 0; margin: 0; overflow-wrap: anywhere; color: var(--dsw-alias-label-primary); }
+.mono { font-family: var(--ds-font-family-code); font-size: 13px; }
 .close { box-sizing: border-box; display: inline-flex; flex: none; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 6px; border: 0; border-radius: var(--dsw-radius-sm); background: transparent; color: var(--dsw-alias-label-primary); cursor: pointer; }
 
 /* Sidebar launcher. */

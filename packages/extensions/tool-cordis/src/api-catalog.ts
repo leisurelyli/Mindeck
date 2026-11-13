@@ -2140,6 +2140,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'state with the latest quota.',
       },
       {
+        signature: '@Remote async sendFeedback(text: string, signal: AbortSignal): Promise<void>',
+        description: 'Send a written report to the company\'s Mindeck Cloud.',
+        parameters: [{ name: 'text', description: 'what the member wrote; blank or longer than 2000 characters is refused.' }, { name: 'signal', description: 'caller cancellation.' }],
+        throws: ['RemoteError `mindeck-account/invalid-feedback` for blank or overlong text, `mindeck-account/signed-out` without a usable session, or `mindeck-account/unreachable` when Mindeck Cloud does not take it.'],
+      },
+      {
         signature: '@Remote({ mode: \'stream\' }) async *watch(signal: AbortSignal): AsyncIterable<MindeckAccountView>',
         description: 'Stream account state.',
         parameters: [{ name: 'signal', description: 'stream lifetime; ending it never cancels a sign-in.' }],

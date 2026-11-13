@@ -13,15 +13,18 @@ import z from '@deepseek-ai/schemastery'
 import { z as zod } from 'zod'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import { credentialKey } from '@deepseek-ai/dsh-credentials'
+import type {} from '@deepseek-ai/dsh-command-feedback/types'
+import type {} from '@deepseek-ai/dsh-message-feedback'
+import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-settings'
 import { deadline } from '@deepseek-ai/dsh-timeout'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import {
   type DeviceInfo, type MindeckBootstrap, MindeckCloudError, normalizeCloudUrl, pollDeviceToken, probeCloud,
-  readBootstrap, readQuota, reportDevice, reportDeviceRequest, requestDeviceCode, signOutDevice,
+  readBootstrap, readQuota, reportDevice, reportDeviceRequest, requestDeviceCode, sendFeedback, signOutDevice,
 } from './cloud.ts'
 import type {
-  MindeckAccountErrorCode, MindeckAccountView, MindeckQuota, MindeckSignInAttempt, MindeckSignInAttemptId,
+  MindeckAccountErrorCode, MindeckAccountView, MindeckFeedback, MindeckQuota, MindeckSignInAttempt, MindeckSignInAttemptId,
 } from './types.ts'
 
 export type * from './types.ts'
@@ -96,6 +99,35 @@ interface Attempt {
 
 const TERMINAL_PHASES = new Set<MindeckSignInAttempt['phase']>(['succeeded', 'cancelled', 'failed'])
 
+/**
+ * Feedback the company receives for one Session log event: an answer rated down (or taken back), or a
+ * `/feedback` remark. Positive ratings stay on this computer.
+ * @param event - appended Session log event.
+ * @returns the feedback to send, or undefined for any other event.
+ */
+export function feedbackOf(event: SessionEvent): MindeckFeedback | undefined {
+  switch (event.type) {
+    case 'feedback/message-put': {
+      const { sessionId, item } = event.data
+      const ref = `${sessionId}/${item.messageId}`
+      if (item.rating !== 'negative') return { kind: 'answer', ref, withdrawn: true }
+      return {
+        kind: 'answer', ref,
+        ...item.category === undefined ? {} : { category: item.category }, ...item.note === undefined ? {} : { text: item.note },
+      }
+    }
+    case 'feedback/message-delete':
+      return { kind: 'answer', ref: `${event.data.sessionId}/${event.data.messageId}`, withdrawn: true }
+    case 'feedback/record': {
+      const { text, category } = event.data
+      if (text === undefined && category === undefined) return undefined
+      return { kind: 'report', ...text === undefined ? {} : { text }, ...category === undefined ? {} : { category } }
+    }
+    default:
+      return undefined
+  }
+}
+
 /** Mindeck Cloud account service and its Remote namespace. */
 export default class MindeckAccount extends TypertRemoteService {
   static inject = ['credentials', 'typert']
@@ -132,6 +164,12 @@ export default class MindeckAccount extends TypertRemoteService {
     // Validate the stored session; an unreachable Cloud keeps it for offline use.
     this.track(this.revalidate())
     this.track(this.pollQuota())
+    // Answers rated down and `/feedback` remarks also reach the company, in live and closed conversations alike.
+    ctx.on('session/event', (_session, event) => { this.forwardFeedback(event) })
+    ctx.on('feedback/committed', (inspection) => {
+      const last = inspection.events.at(-1)
+      if (last !== undefined) this.forwardFeedback(last)
+    })
   }
 
   /**
@@ -163,6 +201,20 @@ export default class MindeckAccount extends TypertRemoteService {
   async refreshQuota(signal: AbortSignal): Promise<MindeckAccountView> {
     await this.readQuota(signal)
     return await this.getState()
+  }
+
+  /**
+   * Send a written report to the company's Mindeck Cloud.
+   * @param text - what the member wrote; blank or longer than 2000 characters is refused.
+   * @param signal - caller cancellation.
+   * @throws RemoteError `mindeck-account/invalid-feedback` for blank or overlong text, `mindeck-account/signed-out`
+   * without a usable session, or `mindeck-account/unreachable` when Mindeck Cloud does not take it.
+   */
+  @Remote
+  async sendFeedback(text: string, signal: AbortSignal): Promise<void> {
+    const trimmed = text.trim()
+    if (trimmed === '' || trimmed.length > 2000) throw new RemoteError('mindeck-account/invalid-feedback', 'feedback must have 1 to 2000 characters', {})
+    await this.deliverFeedback({ kind: 'report', text: trimmed }, signal)
   }
 
   /**
@@ -451,6 +503,30 @@ export default class MindeckAccount extends TypertRemoteService {
       this.ctx.logger.warn(`mindeck-account: sign-in failed (${errorCode})`, error)
       this.update(attempt, { phase: 'failed', errorCode })
     }
+  }
+
+  /** Send feedback with the stored session; the RemoteError says why it was not taken. */
+  private async deliverFeedback(feedback: MindeckFeedback, signal: AbortSignal): Promise<void> {
+    let stored: StoredSession | undefined
+    try { stored = await this.load() }
+    catch (error) { throw new RemoteError('mindeck-account/storage', 'the stored session could not be read', {}, { cause: error }) }
+    if (stored === undefined) throw new RemoteError('mindeck-account/signed-out', 'sign in to send feedback', {})
+    let outcome: 'ok' | 'sign-in-required'
+    try { outcome = await this.request(signal, request => sendFeedback(stored.cloudUrl, stored.token, feedback, request)) }
+    catch (error) { throw new RemoteError('mindeck-account/unreachable', 'Mindeck Cloud did not take the feedback', {}, { cause: error }) }
+    if (outcome === 'sign-in-required') {
+      await this.rejectToken(stored.token)
+      throw new RemoteError('mindeck-account/signed-out', 'the session ended; sign in to send feedback', {})
+    }
+  }
+
+  /** Send an answer rating or a `/feedback` remark from a Session log event; other events and failures are ignored. */
+  private forwardFeedback(event: SessionEvent): void {
+    const feedback = feedbackOf(event)
+    if (feedback === undefined) return
+    this.track(this.deliverFeedback(feedback, this.lifetime.signal).catch((error: unknown) => {
+      if (!this.lifetime.signal.aborted) this.ctx.logger.info('mindeck-account: feedback did not reach Mindeck Cloud', error)
+    }))
   }
 
   /** Run one Cloud request with the configured timeout, fused with `signal`. */

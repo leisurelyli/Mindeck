@@ -36,6 +36,9 @@ function failureReason(error: RemoteFailure): MindeckAccountKey {
     case 'mindeck-account/signed-in': return 'cloudLocked'
     case 'mindeck-account/storage': return 'storage'
     case 'mindeck-account/settings': return 'settingsFailed'
+    case 'mindeck-account/signed-out': return 'feedbackSignedOut'
+    case 'mindeck-account/unreachable': return 'feedbackUnreachable'
+    case 'mindeck-account/invalid-feedback': return 'feedbackInvalid'
     default: return 'failed'
   }
 }
@@ -60,6 +63,8 @@ function registerUi(ctx: Context): void {
       if (!result.ok) throw result.error
     },
     async signOut() { return outcome(await ctx.remote.mindeckAccount.signOut()) },
+    async sendFeedback(text) { return outcome(await ctx.remote.mindeckAccount.sendFeedback(text)) },
+    appVersion,
     refreshQuota() {
       // A failed refresh keeps the last quota; the periodic Host read tries again.
       void ctx.remote.mindeckAccount.refreshQuota().catch(() => undefined)

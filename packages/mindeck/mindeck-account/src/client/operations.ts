@@ -35,6 +35,10 @@ export interface MindeckAccountInjected {
   cancelSignIn: (id: MindeckSignInAttemptId) => Promise<void>
   /** @returns whether the local session was removed. */
   signOut: () => Promise<OperationOutcome>
+  /** @param text - what the member wrote. @returns whether Mindeck Cloud took the feedback. */
+  sendFeedback: (text: string) => Promise<OperationOutcome>
+  /** Version of this Mindeck build; empty in builds without release metadata. */
+  appVersion: string
   /** Ask the Host to read the quota now; the account state carries the result. */
   refreshQuota: () => void
   /** @param key - reminder to hide until its level or month changes. */

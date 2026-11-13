@@ -27,6 +27,10 @@ export interface FakeCloud {
   userName: string
   /** Body of `GET /api/desktop/quota`; `sign-in-required` answers 401. */
   quota: unknown
+  /** Bodies received through `POST /api/desktop/feedback`. */
+  readonly feedback: unknown[]
+  /** Status that answers feedback; 200 stores it. */
+  feedbackStatus: number
   /** Wait until the token endpoint has been polled `count` times in total. */
   polled: (count: number) => Promise<void>
   close: () => Promise<void>
@@ -102,6 +106,10 @@ export async function startFakeCloud(): Promise<FakeCloud> {
         if (!signedIn) { signInRequired(); return }
         cloud.devices.push(payload)
         reply(response, 200, { ok: true })
+      } else if (path === '/api/desktop/feedback' && request.method === 'POST') {
+        if (!signedIn) { signInRequired(); return }
+        if (cloud.feedbackStatus === 200) cloud.feedback.push(payload)
+        reply(response, cloud.feedbackStatus, cloud.feedbackStatus === 200 ? { ok: true } : { error: { code: 'INVALID_REQUEST', message: '反馈内容格式不正确。' } })
       } else if (path === '/api/desktop/sign-out' && request.method === 'POST') {
         if (!signedIn) { signInRequired(); return }
         cloud.tokens.delete(token)
@@ -117,7 +125,7 @@ export async function startFakeCloud(): Promise<FakeCloud> {
   if (address === null || typeof address === 'string') throw new Error('Expected a loopback listener')
   const cloud: FakeCloud = {
     url: `http://127.0.0.1:${address.port}`,
-    requests: [], devices: [], deviceRequests: [], deviceRequestStatus: 204, tokens: new Set(), droppedPolls: 0, pendingPolls: 0, outcome: 'issue', userName: '林晓',
+    requests: [], devices: [], deviceRequests: [], deviceRequestStatus: 204, feedback: [], feedbackStatus: 200, tokens: new Set(), droppedPolls: 0, pendingPolls: 0, outcome: 'issue', userName: '林晓',
     quota: {
       monthStartDate: '2026-11-01', resetDate: '2026-12-01', timezone: 'Asia/Shanghai',
       user: { limit: 50, used: 12.5, source: 'default' }, department: { limit: null, used: 30, source: 'none' },

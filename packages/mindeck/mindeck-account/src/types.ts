@@ -70,6 +70,25 @@ export interface MindeckAccountView {
   readonly quota: MindeckQuota | null
 }
 
+/** One piece of feedback for the company's Mindeck Cloud. */
+export type MindeckFeedback =
+  | {
+    /** Written by the member in the feedback dialog or with `/feedback`. */
+    readonly kind: 'report'
+    readonly text?: string
+    readonly category?: string
+  }
+  | {
+    /** An answer the member rated down. */
+    readonly kind: 'answer'
+    /** Stable identity of the rated answer; a later rating of the same answer replaces this one. */
+    readonly ref: string
+    readonly category?: string
+    readonly text?: string
+    /** The member took the rating back or rated the answer up. */
+    readonly withdrawn?: true
+  }
+
 declare module '@deepseek-ai/dsh-typert-protocol' {
   interface RemoteErrorDetailsMap {
     /** The address is not usable as a Mindeck Cloud. */
@@ -82,5 +101,11 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'mindeck-account/storage': Record<string, never>
     /** The Cloud address could not be written to the profile settings. */
     'mindeck-account/settings': Record<string, never>
+    /** The operation needs a signed-in member. */
+    'mindeck-account/signed-out': Record<string, never>
+    /** Mindeck Cloud did not take the request. */
+    'mindeck-account/unreachable': Record<string, never>
+    /** The feedback is empty or longer than 2000 characters. */
+    'mindeck-account/invalid-feedback': Record<string, never>
   }
 }

@@ -12,6 +12,9 @@
     { "path": "../../../vendor/loader" },
     { "path": "../../util/brand" },
     { "path": "../../credentials/credentials" },
+    { "path": "../../core/session" },
+    { "path": "../../feedback/command-feedback" },
+    { "path": "../../feedback/message-feedback" },
     { "path": "../../settings/settings" },
     { "path": "../../util/timeout" },
     { "path": "../../typert/protocol" }
