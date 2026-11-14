@@ -1,4 +1,9 @@
-/** Loopback OpenCloud subset: `/graph/v1.0/me/drives` and WebDAV PROPFIND, GET, PUT, MKCOL, and search REPORT. */
+/**
+ * Loopback OpenCloud subset: `/graph/v1.0/me/drives` and WebDAV PROPFIND, GET, PUT, MKCOL, and search REPORT. The
+ * REPORT reads the KQL patterns the desktop writes: `name:"*q*"`, the text alternatives `content:"q"` and an `AND` group
+ * of `content:` parts, and a leading `scope:<id> AND`; a text match carries `oc:highlights` with `<mark>` escaped as
+ * OpenCloud sends it.
+ */
 import { once } from 'node:events'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 
@@ -7,6 +12,31 @@ interface Node {
   readonly kind: 'file' | 'folder'
   content?: Uint8Array
   modified: Date
+  /** Resource id, reported as `oc:fileid`. */
+  readonly id: string
+}
+
+/** The terms of one search pattern. */
+interface ParsedPattern {
+  readonly scope?: string
+  readonly name: string
+  /** Text phrase, when the pattern searches text. */
+  readonly content?: string
+  /** Parts that all match text. */
+  readonly parts: readonly string[]
+}
+
+/**
+ * @param pattern - KQL pattern as the desktop writes it.
+ * @returns its terms.
+ */
+function parsePattern(pattern: string): ParsedPattern {
+  const scope = /^scope:(\S+) AND /u.exec(pattern)?.[1]
+  const name = /name:"\*(.*?)\*"/u.exec(pattern)?.[1] ?? ''
+  const content = / OR content:"([^"]*)"/u.exec(pattern)?.[1]
+  const group = / OR \((content:"[^"]*"(?: AND content:"[^"]*")*)\)/u.exec(pattern)?.[1]
+  const parts = group === undefined ? [] : [...group.matchAll(/content:"([^"]*)"/gu)].map(match => match[1] ?? '')
+  return { ...scope === undefined ? {} : { scope }, name, ...content === undefined ? {} : { content }, parts }
 }
 
 /** One drive of the fake server. */
@@ -35,21 +65,29 @@ function escape(value: string): string {
  * @returns the server URL, its state, and a closer.
  */
 export async function fakeOpenCloud(drives: readonly FakeDrive[]) {
+  let ids = 0
+  const nextId = (driveId: string) => { ids += 1; return `${driveId}$item!${ids}` }
   const state = {
     tokens: new Set<string>(['oc-token-1']),
     requests: [] as string[],
-    nodes: new Map<string, Map<string, Node>>(drives.map(drive => [drive.id, new Map([['', { kind: 'folder', modified: new Date(0) }]])])),
+    /** Every search pattern, in order. */
+    patterns: [] as string[],
+    nodes: new Map<string, Map<string, Node>>(drives.map(drive => [drive.id, new Map<string, Node>([['', { kind: 'folder', modified: new Date(0), id: nextId(drive.id) }]])])),
   }
   const href = (driveId: string, path: string, folder: boolean) =>
     `/dav/spaces/${encodeURIComponent(driveId)}/${path.split('/').filter(Boolean).map(encodeURIComponent).join('/')}${folder && path !== '' ? '/' : ''}`
-  const response = (driveId: string, path: string, node: Node, writable: boolean) => {
+  const response = (driveId: string, path: string, node: Node, writable: boolean, highlights?: string) => {
     const size = node.kind === 'file' ? `<d:getcontentlength>${node.content?.byteLength ?? 0}</d:getcontentlength>` : ''
     const type = node.kind === 'folder' ? '<d:resourcetype><d:collection/></d:resourcetype>' : '<d:resourcetype/>'
     const permissions = node.kind === 'folder' ? (writable ? 'RDNVCK' : 'S') : (writable ? 'RDNVW' : 'S')
+    const marked = highlights === undefined ? '' : `<oc:highlights>${escape(highlights)}</oc:highlights>`
     return `<d:response><d:href>${escape(href(driveId, path, node.kind === 'folder'))}</d:href><d:propstat><d:prop>${size}`
       + `<d:getlastmodified>${node.modified.toUTCString()}</d:getlastmodified>${type}<oc:permissions>${permissions}</oc:permissions>`
-      + '</d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>'
+      + `<oc:fileid>${escape(node.id)}</oc:fileid>${marked}</d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`
   }
+  /** The highlight of a text match: the file's text with each occurrence of the matched terms marked. */
+  const highlight = (text: string, terms: readonly string[]) =>
+    terms.reduce((current, term) => current.split(term).join(`<mark>${term}</mark>`), text)
   const multistatus = (parts: string[]) =>
     `<d:multistatus xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">${parts.join('')}</d:multistatus>`
   const handle = async (request: IncomingMessage, reply: ServerResponse) => {
@@ -65,12 +103,26 @@ export async function fakeOpenCloud(drives: readonly FakeDrive[]) {
       return
     }
     if (url.pathname === '/dav/spaces/' && request.method === 'REPORT') {
-      const pattern = /<oc:pattern>name:"\*(.*)\*"<\/oc:pattern>/.exec(new TextDecoder().decode(await body(request)))?.[1] ?? ''
+      const escaped = /<oc:pattern>(.*)<\/oc:pattern>/su.exec(new TextDecoder().decode(await body(request)))?.[1] ?? ''
+      const pattern = escaped.replace(/&lt;/gu, '<').replace(/&gt;/gu, '>').replace(/&amp;/gu, '&')
+      state.patterns.push(pattern)
+      const query = parsePattern(pattern)
       const parts: string[] = []
       for (const drive of drives) {
-        for (const [path, node] of state.nodes.get(drive.id) ?? []) {
+        const nodes = state.nodes.get(drive.id) ?? new Map<string, Node>()
+        const scope = query.scope === undefined ? undefined : [...nodes].find(([, node]) => node.id === query.scope)?.[0]
+        if (query.scope !== undefined && scope === undefined) continue
+        for (const [path, node] of nodes) {
+          if (path === '' || (scope !== undefined && scope !== '' && !path.startsWith(`${scope}/`))) continue
           const name = path.slice(path.lastIndexOf('/') + 1)
-          if (path !== '' && name.includes(pattern)) parts.push(response(drive.id, path, node, drive.writable))
+          const text = node.content === undefined ? '' : new TextDecoder().decode(node.content)
+          const byPhrase = query.content !== undefined && query.content !== '' && text.includes(query.content)
+          const byParts = query.parts.length > 0 && query.parts.every(part => text.includes(part))
+          if (byPhrase || byParts) {
+            parts.push(response(drive.id, path, node, drive.writable, highlight(text, byPhrase ? [query.content ?? ''] : query.parts)))
+          } else if (name.includes(query.name)) {
+            parts.push(response(drive.id, path, node, drive.writable, ''))
+          }
         }
       }
       reply.writeHead(207, { 'content-type': 'application/xml' }).end(multistatus(parts))
@@ -108,7 +160,7 @@ export async function fakeOpenCloud(drives: readonly FakeDrive[]) {
         // Like OpenCloud, PUT replaces an existing file even when the request carries `If-None-Match: *`.
         const used = [...nodes.values()].reduce((sum, item) => sum + (item.content?.byteLength ?? 0), 0) - (node?.content?.byteLength ?? 0)
         if (drive.total !== undefined && used + content.byteLength > drive.total) { reply.writeHead(507).end(); return }
-        nodes.set(path, { kind: 'file', content, modified: new Date() })
+        nodes.set(path, { kind: 'file', content, modified: new Date(), id: node?.id ?? nextId(drive.id) })
         reply.writeHead(node === undefined ? 201 : 204).end()
         return
       }
@@ -116,7 +168,7 @@ export async function fakeOpenCloud(drives: readonly FakeDrive[]) {
         if (!drive.writable) { reply.writeHead(403).end(); return }
         if (node !== undefined) { reply.writeHead(405).end(); return }
         if (nodes.get(parent)?.kind !== 'folder') { reply.writeHead(409).end(); return }
-        nodes.set(path, { kind: 'folder', modified: new Date() })
+        nodes.set(path, { kind: 'folder', modified: new Date(), id: nextId(drive.id) })
         reply.writeHead(201).end()
         return
       }
@@ -136,14 +188,20 @@ export async function fakeOpenCloud(drives: readonly FakeDrive[]) {
     const parts = path.split('/')
     for (let index = 1; index < parts.length; index += 1) {
       const folder = parts.slice(0, index).join('/')
-      if (!nodes.has(folder)) nodes.set(folder, { kind: 'folder', modified: new Date(0) })
+      if (!nodes.has(folder)) nodes.set(folder, { kind: 'folder', modified: new Date(0), id: nextId(driveId) })
     }
-    nodes.set(path, { kind: 'file', content: new TextEncoder().encode(content), modified: new Date(Date.UTC(2026, 10, 1)) })
+    nodes.set(path, { kind: 'file', content: new TextEncoder().encode(content), modified: new Date(Date.UTC(2026, 10, 1)), id: nextId(driveId) })
+  }
+  /** The resource id of an item. */
+  const idOf = (driveId: string, path: string) => {
+    const node = state.nodes.get(driveId)?.get(path)
+    if (node === undefined) throw new Error(`no item ${driveId}/${path}`)
+    return node.id
   }
   const close = async () => {
     const closed = new Promise<void>((resolve) => { server.close(() => { resolve() }) })
     server.closeAllConnections()
     await closed
   }
-  return { url: `http://127.0.0.1:${address.port}`, state, put, close }
+  return { url: `http://127.0.0.1:${address.port}`, state, put, idOf, close }
 }

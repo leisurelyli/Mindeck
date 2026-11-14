@@ -14080,6 +14080,9 @@ importers:
       '@deepseek-ai/dsh-mindeck-account':
         specifier: workspace:*
         version: link:../mindeck-account
+      '@deepseek-ai/dsh-mindeck-employees':
+        specifier: workspace:*
+        version: link:../mindeck-employees
       '@deepseek-ai/dsh-session':
         specifier: workspace:*
         version: link:../../core/session

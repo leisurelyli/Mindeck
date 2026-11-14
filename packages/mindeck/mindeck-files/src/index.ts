@@ -9,18 +9,23 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { followChanges } from '@deepseek-ai/dsh-mindeck-account'
+import type {} from '@deepseek-ai/dsh-mindeck-employees'
 import type {} from '@deepseek-ai/dsh-tools'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { FilesAccess } from './access.ts'
 import { LibraryService } from './library-service.ts'
-import { LibraryError, OpenCloudClient, type LibraryFailureCode } from './opencloud.ts'
+import { LibraryError, OpenCloudClient, searchPhrase, type LibraryFailureCode } from './opencloud.ts'
 import { registerLibraryTools } from './tools.ts'
-import type { LibraryAvailability, LibraryEntryView, LibrarySpaceView } from './types.ts'
+import type { LibraryAvailability, LibraryEntryView, LibrarySearchScope, LibrarySearchView, LibrarySpaceView } from './types.ts'
 
-export { localName } from './tools.ts'
+export { localName, passageText } from './tools.ts'
+export { phraseParts, searchPattern, searchPhrase } from './opencloud.ts'
+export { passageOf } from './library-service.ts'
 export { LIBRARY_REFERENCE_PREFIX } from './reference.ts'
 export { PERSONAL_SPACE, SHARED_SPACE } from './library.ts'
-export type { LibraryAvailability, LibraryEntryView, LibrarySpaceView } from './types.ts'
+export type {
+  LibraryAvailability, LibraryEntryView, LibraryPassagePart, LibrarySearchScope, LibrarySearchView, LibrarySpaceView,
+} from './types.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -83,9 +88,11 @@ export default class MindeckFiles extends TypertRemoteService {
   private readonly access: FilesAccess
   private readonly library: LibraryService
   private availability: LibraryAvailability = 'signed-out'
+  /** Whether the library indexes document text, as the signed-in session's bootstrap reports. */
+  private fullText = false
   private readonly listeners = new Set<() => void>()
   private readonly lifetime = new AbortController()
-  private readonly registerTools: () => () => void
+  private readonly registerTools: (fullText: boolean) => () => void
   private unregisterTools: (() => void) | undefined
   private refreshes = 0
 
@@ -99,8 +106,9 @@ export default class MindeckFiles extends TypertRemoteService {
       { maxDownloadBytes: config.maxDownloadBytes, maxUploadBytes: config.maxUploadBytes },
     )
     const downloadDir = resolveDownloadDir(config)
-    this.registerTools = () => registerLibraryTools(ctx, {
-      library: () => this.library, downloadDir, maxSearchResults: config.maxSearchResults,
+    this.registerTools = fullText => registerLibraryTools(ctx, {
+      library: () => this.library, downloadDir, maxSearchResults: config.maxSearchResults, fullText,
+      conversationFolders: sessionId => ctx.get('mindeckEmployees')?.foldersForSession(sessionId),
     })
     ctx.effect(() => () => {
       this.lifetime.abort()
@@ -122,14 +130,18 @@ export default class MindeckFiles extends TypertRemoteService {
     const session = await this.ctx.mindeckAccount.session()
     // A later refresh read a newer session; this result is stale.
     if (this.lifetime.signal.aborted || sequence !== this.refreshes) return
-    const next: LibraryAvailability = session === undefined ? 'signed-out'
-      : session.bootstrap.endpoints.files == null ? 'not-configured' : 'ready'
-    if (next === this.availability) return
+    const files = session?.bootstrap.endpoints.files
+    const next: LibraryAvailability = session === undefined ? 'signed-out' : files == null ? 'not-configured' : 'ready'
+    const fullText = files?.fullText === true
+    if (next === this.availability && fullText === this.fullText) return
+    const changed = next !== this.availability
     this.availability = next
-    // The tools exist only while the library is usable, so the model never sees tools that cannot work.
-    if (next === 'ready') this.unregisterTools ??= this.registerTools()
-    else { this.unregisterTools?.(); this.unregisterTools = undefined }
-    for (const listener of this.listeners) listener()
+    this.fullText = fullText
+    // The tools exist only while the library is usable, so the model never sees tools that cannot work; their
+    // descriptions say whether a search reaches document text.
+    this.unregisterTools?.()
+    this.unregisterTools = next === 'ready' ? this.registerTools(fullText) : undefined
+    if (changed) for (const listener of this.listeners) listener()
   }
 
   private async run<T>(operation: () => Promise<T>): Promise<T> {
@@ -186,16 +198,20 @@ export default class MindeckFiles extends TypertRemoteService {
   }
 
   /**
-   * Search file and folder names across the member's spaces; a blank query returns no entries.
-   * @param query - text contained in names.
+   * Search the member's spaces; a query without searchable text returns no entries.
+   * @param query - search text.
+   * @param scope - `names` for file and folder names; `text` also for document text where the library indexes it.
    * @param signal - caller cancellation.
-   * @returns matching files and folders, at most `maxSearchResults`.
+   * @returns matching files and folders, at most `maxSearchResults`, a text match with its passage, and whether the
+   *   search looked at document text.
    */
   @Remote
-  async search(query: string, signal: AbortSignal): Promise<LibraryEntryView[]> {
+  async search(query: string, scope: LibrarySearchScope, signal: AbortSignal): Promise<LibrarySearchView> {
     return await this.run(async () => {
-      const text = query.trim()
-      return text === '' ? [] : (await this.library.search(text, this.options.maxSearchResults, signal)).map(entry => ({ ...entry }))
+      const text = scope === 'text' && this.fullText
+      if (searchPhrase(query) === '') return { entries: [], text }
+      const entries = await this.library.search(query, { limit: this.options.maxSearchResults, fullText: text }, signal)
+      return { entries: entries.map(entry => ({ ...entry })), text }
     })
   }
   /**

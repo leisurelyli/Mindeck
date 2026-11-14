@@ -16,6 +16,13 @@ export interface LibrarySpaceView {
   readonly total?: number
 }
 
+/** One run of a search passage: text the search matched, or text around it. */
+export interface LibraryPassagePart {
+  readonly text: string
+  /** Whether the search matched this text. */
+  readonly match: boolean
+}
+
 /** One file or folder as the panel shows it. */
 export interface LibraryEntryView {
   readonly path: string
@@ -27,6 +34,18 @@ export interface LibraryEntryView {
   readonly writable: boolean
   /** Page that opens the item in the OpenCloud web app. */
   readonly webUrl?: string
+  /** Search results matched by document text: the passage around the match. */
+  readonly passage?: readonly LibraryPassagePart[]
+}
+
+/** What a library search looks at: names only, or names and, where the library indexes it, document text. */
+export type LibrarySearchScope = 'names' | 'text'
+
+/** Results of one library search. */
+export interface LibrarySearchView {
+  readonly entries: readonly LibraryEntryView[]
+  /** Whether the search also looked at document text; false when the library indexes names only. */
+  readonly text: boolean
 }
 
 declare module '@deepseek-ai/dsh-typert-protocol' {

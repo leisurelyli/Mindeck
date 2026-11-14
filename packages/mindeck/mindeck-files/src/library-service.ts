@@ -1,6 +1,7 @@
 /** File-library operations on library paths, shared by the agent tools and the panel Remote. */
 import { libraryPath, locate, nameSpaces, type LibrarySpace } from './library.ts'
-import { LibraryError, type OpenCloudClient, type OpenCloudItem } from './opencloud.ts'
+import { LibraryError, searchPattern, type OpenCloudClient, type OpenCloudItem, type SearchScope } from './opencloud.ts'
+import type { LibraryPassagePart } from './types.ts'
 
 /** One file or folder addressed by its library path. */
 export interface LibraryEntry {
@@ -15,6 +16,8 @@ export interface LibraryEntry {
   readonly writable: boolean
   /** Page that opens the item in the OpenCloud web app. */
   readonly webUrl?: string
+  /** Search results matched by document text: the passage around the match, matching runs marked. */
+  readonly passage?: readonly LibraryPassagePart[]
 }
 
 /** Byte limits for transfers between the workspace and the library. */
@@ -23,6 +26,48 @@ export interface TransferLimits {
   readonly maxDownloadBytes: number
   /** Largest file an upload sends. */
   readonly maxUploadBytes: number
+}
+
+/** Most characters of a passage before its first match. */
+const PASSAGE_LEAD = 40
+/** Most characters of a passage. */
+const PASSAGE_LENGTH = 160
+
+/**
+ * Read an OpenCloud highlight into a passage: white space runs become one space, adjacent matches join, and the text
+ * is shortened to {@link PASSAGE_LEAD} characters before the first match and {@link PASSAGE_LENGTH} in all, with `…`
+ * where it was cut.
+ * @param highlights - `oc:highlights` text, each matching run inside `<mark>` and `</mark>`.
+ * @returns the passage, or undefined when it marks no match.
+ */
+export function passageOf(highlights: string): LibraryPassagePart[] | undefined {
+  const parts: Array<{ text: string; match: boolean }> = []
+  let match = false
+  for (const piece of highlights.split(/(<\/?mark>)/u)) {
+    if (piece === '<mark>' || piece === '</mark>') { match = piece === '<mark>'; continue }
+    const text = piece.replace(/\s+/gu, ' ')
+    if (text === '') continue
+    const last = parts.at(-1)
+    if (last?.match === match) last.text += text
+    else parts.push({ text, match })
+  }
+  const first = parts.findIndex(part => part.match)
+  if (first === -1) return undefined
+  const lead = parts.slice(0, first).map(part => part.text).join('').trimStart()
+  const kept: Array<{ text: string; match: boolean }> = []
+  if (lead !== '') kept.push({ text: lead.length > PASSAGE_LEAD ? `…${lead.slice(-PASSAGE_LEAD).trimStart()}` : lead, match: false })
+  let length = kept[0]?.text.length ?? 0
+  for (const part of parts.slice(first)) {
+    const room = PASSAGE_LENGTH - length
+    if (room <= 0) { kept.push({ text: '…', match: false }); break }
+    const text = part.text.length > room ? `${part.text.slice(0, room)}…` : part.text
+    kept.push({ text, match: part.match })
+    length += text.length
+    if (text !== part.text) break
+  }
+  const last = kept.at(-1)
+  if (last !== undefined && !last.match) last.text = last.text.trimEnd()
+  return kept.filter(part => part.text !== '')
 }
 
 function entry(space: LibrarySpace, item: OpenCloudItem): LibraryEntry {
@@ -38,6 +83,12 @@ function entry(space: LibrarySpace, item: OpenCloudItem): LibraryEntry {
     writable,
     ...item.fileId === undefined || origin === undefined ? {} : { webUrl: `${origin}/f/${encodeURIComponent(item.fileId)}` },
   }
+}
+
+/** Options of one library search. */
+export interface LibrarySearch extends SearchScope {
+  /** Most results. */
+  readonly limit: number
 }
 
 /** Library-path operations over one member's OpenCloud drives. */
@@ -102,22 +153,41 @@ export class LibraryService {
   }
 
   /**
-   * Search file and folder names across the member's spaces.
-   * @param query - text contained in file or folder names.
-   * @param limit - most results.
+   * Search the member's spaces, or one folder of them, by name and, with full text, by document text.
+   * @param query - search text.
+   * @param options - result limit, full text, and the folder's resource id.
    * @param signal - cancellation.
-   * @returns matches in spaces the member can open.
+   * @returns matches in spaces the member can open, in relevance order; a text match carries its passage.
    */
-  async search(query: string, limit: number, signal: AbortSignal): Promise<LibraryEntry[]> {
+  async search(query: string, options: LibrarySearch, signal: AbortSignal): Promise<LibraryEntry[]> {
+    const pattern = searchPattern(query, options)
     const spaces = await this.spaces(signal)
     const byDrive = new Map(spaces.map(space => [space.driveId, space]))
     const matches: LibraryEntry[] = []
-    for (const item of await this.client.search(query, limit, signal)) {
+    for (const item of await this.client.search(pattern, options.limit, signal)) {
       const space = byDrive.get(item.driveId)
       // A result in a drive the member cannot list (such as the source drive of a share) has no library path.
-      if (space !== undefined && item.path !== '') matches.push(entry(space, item))
+      if (space === undefined || item.path === '') continue
+      const passage = item.highlights === undefined ? undefined : passageOf(item.highlights)
+      matches.push({ ...entry(space, item), ...passage === undefined ? {} : { passage } })
     }
     return matches
+  }
+
+  /**
+   * Read the resource id of a folder, which a search uses to stay inside it.
+   * @param path - library path of a space or folder.
+   * @param signal - cancellation.
+   * @returns the folder's resource id and its library path.
+   * @throws LibraryError `not-found` for a file or a missing path; `denied` when the member may not open it.
+   */
+  async folder(path: string, signal: AbortSignal): Promise<{ id: string; path: string }> {
+    const { space, inner } = locate(path, await this.spaces(signal))
+    const [self] = await this.client.propfind(space.driveId, inner, 0, signal)
+    const where = libraryPath(space.name, inner)
+    if (self?.kind !== 'folder') throw new LibraryError('not-found', `${where} is a file, not a folder`)
+    if (self.fileId === undefined) throw new LibraryError('protocol', `the file library did not report the id of ${where}`)
+    return { id: self.fileId, path: where }
   }
 
   /**

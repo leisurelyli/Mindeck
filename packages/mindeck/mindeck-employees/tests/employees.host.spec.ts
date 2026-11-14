@@ -222,7 +222,6 @@ it('registers the general assistant and each employee on the base preset\'s rows
 /** A company model route listing the given models. */
 class CatalogAdapter extends LlmAdapter {
   constructor(private readonly models: readonly LlmModelInfo[]) { super() }
-  // oxlint-disable-next-line require-yield -- no request reaches this route in these tests.
   async * stream(): AsyncIterable<StreamChunk> { throw new Error('no requests in this test') }
   override async listModels(provider: string): Promise<LlmModelInfo[]> {
     return this.models.filter(model => model.provider === provider)

@@ -39,6 +39,12 @@
     },
     {
       "path": "../mindeck-account/tsconfig.host.json"
+    },
+    {
+      "path": "../../core/session"
+    },
+    {
+      "path": "../mindeck-employees/tsconfig.host.json"
     }
   ]
 }

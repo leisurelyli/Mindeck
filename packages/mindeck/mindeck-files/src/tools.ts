@@ -3,12 +3,14 @@ import { mkdir, utimes, writeFile } from 'node:fs/promises'
 import { basename, dirname, resolve, sep } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-fs'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-working-directory'
 import { defineTool, type ToolExecution } from '@deepseek-ai/dsh-tools'
 import { splitLibraryPath } from './library.ts'
 import { libraryPathOf } from './reference.ts'
 import type { LibraryEntry, LibraryService } from './library-service.ts'
 import { LibraryError } from './opencloud.ts'
+import type { LibraryPassagePart } from './types.ts'
 
 
 const entrySchema = {
@@ -75,6 +77,18 @@ export function localName(segment: string): string {
   return RESERVED_NAME.test(cleaned) ? `_${cleaned}` : cleaned
 }
 
+/** A folder that a conversation's digital employee consults. */
+export interface ConversationFolder {
+  /** OpenCloud resource id. */
+  readonly itemId: string
+  /** Name the company gave the material. */
+  readonly label: string
+  /** Library path the conversation's instructions name the folder by. */
+  readonly path: string
+  /** Whether the member may open it, as Mindeck Cloud judges it. */
+  readonly accessible: boolean
+}
+
 /** Deployment inputs of the tools. */
 export interface LibraryToolOptions {
   /** Library operations for the signed-in member. */
@@ -83,6 +97,28 @@ export interface LibraryToolOptions {
   readonly downloadDir: string
   /** Most search results returned to the model. */
   readonly maxSearchResults: number
+  /** Whether the library indexes document text, so a search also matches it. */
+  readonly fullText: boolean
+  /** The folders a conversation's digital employee consults; undefined for a conversation without one. */
+  readonly conversationFolders: (sessionId: SessionId) => readonly ConversationFolder[] | undefined
+}
+
+/**
+ * Write a passage for the model, each matching run in `**`.
+ * @param passage - passage parts.
+ * @returns one line of text.
+ */
+export function passageText(passage: readonly LibraryPassagePart[]): string {
+  return passage.map(part => part.match ? `**${part.text}**` : part.text).join('')
+}
+
+/**
+ * Compare library paths as the model writes them: with or without the reference prefix and a final `/`.
+ * @param path - library path or reference.
+ * @returns the path with one leading `/` and none at the end.
+ */
+function folderKey(path: string): string {
+  return `/${libraryPathOf(path.trim()).split('/').filter(part => part !== '').join('/')}`
 }
 
 /**
@@ -121,28 +157,73 @@ export function registerLibraryTools(ctx: Context, options: LibraryToolOptions):
     },
   })))
 
+  /** The folder a search stays in: a folder of the conversation's employee by its path or name, or any library folder. */
+  const searchFolder = async (requested: string, exec: ToolExecution): Promise<{ id: string; path: string }> => {
+    const key = folderKey(requested)
+    const listed = exec.agent === undefined ? undefined : options.conversationFolders(exec.agent.session.id)
+    const known = listed?.find(folder => folderKey(folder.path) === key || folder.label === requested.trim())
+    if (known === undefined) return await options.library().folder(key, exec.signal)
+    if (!known.accessible) {
+      throw new LibraryError('denied', `the member cannot open "${known.label}" (${known.path}): the company has not `
+        + 'given their department access to this folder, so its files cannot be searched or read for them. Tell the '
+        + 'member, and that a company administrator can give them access.')
+    }
+    return { id: known.itemId, path: known.path }
+  }
   disposers.push(ctx.tools.register(defineTool({
     name: 'library_search',
-    description: 'Find files and folders in the company file library whose names contain the given text, across every space the member can open.',
+    description: options.fullText
+      ? 'Find files in the company file library by a phrase in their name or text, in every space the member can open or in one folder. A file found by its text comes with the passage that matched.'
+      : 'Find files and folders in the company file library whose names contain the given text, in every space the member can open or in one folder. The library searches names only: the text inside documents cannot be searched.',
     parameters: {
-      query: { type: 'string', required: true, description: 'Text contained in the file or folder name.' },
+      query: {
+        type: 'string', required: true,
+        description: options.fullText
+          ? 'A short phrase from the question, such as two to six Chinese characters. Chinese matches character by character, so a whole sentence finds less.'
+          : 'Text contained in the file or folder name.',
+      },
+      folder: { type: 'string', description: 'Library path of a folder to search, subfolders included. Omit to search every space.' },
     },
     output: {
       schema: {
         type: 'object', additionalProperties: false,
-        properties: { query: { type: 'string', required: true }, entries: { type: 'array', required: true, items: entrySchema } },
+        properties: {
+          query: { type: 'string', required: true },
+          folder: { type: 'string' },
+          entries: {
+            type: 'array', required: true,
+            items: { ...entrySchema, properties: { ...entrySchema.properties, passage: { type: 'string' } } },
+          },
+        },
       },
-      render: (_args, result) => [{
-        type: 'text',
-        text: result.entries.length === 0 ? `No names contain "${result.query}".` : formatEntries(result.entries),
-      }],
+      render: (_args, result) => {
+        const place = result.folder === undefined ? '' : ` in ${result.folder}`
+        if (result.entries.length === 0) {
+          return [{
+            type: 'text',
+            text: options.fullText
+              ? `Nothing${place} matches "${result.query}". Search again with another phrase from the question.`
+              : `No names${place} contain "${result.query}".`,
+          }]
+        }
+        return [{
+          type: 'text',
+          text: result.entries.map(entry => `${formatEntries([entry])}${entry.passage === undefined ? '' : `\n  ${entry.passage}`}`).join('\n'),
+        }]
+      },
     },
     isConcurrencySafe: () => true,
     async execute(args, exec) {
       const query = args.query.trim()
       if (query === '') throw new LibraryError('not-found', 'the search text is empty')
-      const entries = await options.library().search(query, options.maxSearchResults, exec.signal)
-      return { query, entries: entries.map(value) }
+      const folder = args.folder === undefined || args.folder.trim() === '' ? undefined : await searchFolder(args.folder, exec)
+      const entries = await options.library().search(query, {
+        limit: options.maxSearchResults, fullText: options.fullText, ...folder === undefined ? {} : { folder: folder.id },
+      }, exec.signal)
+      return {
+        query, ...folder === undefined ? {} : { folder: folder.path },
+        entries: entries.map(entry => ({ ...value(entry), ...entry.passage === undefined ? {} : { passage: passageText(entry.passage) } })),
+      }
     },
   })))
 

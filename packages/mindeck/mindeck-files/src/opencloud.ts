@@ -64,6 +64,8 @@ export interface OpenCloudItem {
   readonly permissions?: string
   /** OpenCloud resource id; `{url}/f/{fileId}` opens the item in the web app. */
   readonly fileId?: string
+  /** Search results only: a passage of the matching text with each matching run in `<mark>` tags; absent for a name match. */
+  readonly highlights?: string
 }
 
 const driveSchema = z.object({
@@ -137,6 +139,7 @@ export function parseMultistatus(xml: string, driveId = ''): OpenCloudItem[] {
     const contentType = text(props.getcontenttype)
     const permissions = text(props.permissions)
     const fileId = text(props.fileid)
+    const highlights = text(props.highlights)
     items.push({
       driveId: id, path, kind: folder ? 'folder' : 'file',
       ...Number.isFinite(size) ? { size } : {},
@@ -144,9 +147,78 @@ export function parseMultistatus(xml: string, driveId = ''): OpenCloudItem[] {
       ...contentType === undefined ? {} : { contentType },
       ...permissions === undefined ? {} : { permissions },
       ...fileId === undefined ? {} : { fileId },
+      ...highlights === undefined ? {} : { highlights },
     })
   }
   return items
+}
+
+/** Runs of CJK unified ideographs, which OpenCloud indexes one character at a time. */
+const CJK_RUN = /[\u4e00-\u9fff]+/gu
+
+/** An OpenCloud resource id as KQL `scope:` accepts it unquoted, such as `storage-users-1$space-id!item-id`. */
+const RESOURCE_ID = /^[\w$!.:@+=-]{1,300}$/u
+
+/**
+ * Normalize search text for a KQL phrase: quotes and backslashes, which would end the phrase, become spaces, and runs
+ * of white space become one space.
+ * @param query - text as the member or the model wrote it.
+ * @returns the phrase text without its quotes; empty when nothing searchable is left.
+ */
+export function searchPhrase(query: string): string {
+  return query.replace(/["\\]/gu, ' ').replace(/\s+/gu, ' ').trim()
+}
+
+/**
+ * Split a phrase into the parts that OpenCloud's character-by-character Chinese index finds in any order: each Chinese
+ * run of three or more characters as consecutive pairs, the last pair overlapping when the run is odd; shorter Chinese
+ * runs and other words whole.
+ * @param phrase - normalized phrase.
+ * @returns the parts, other words before the Chinese pairs of each word.
+ */
+export function phraseParts(phrase: string): string[] {
+  const parts: string[] = []
+  for (const word of phrase.split(' ')) {
+    parts.push(...word.replace(CJK_RUN, ' ').split(' ').filter(part => part !== ''))
+    for (const run of word.match(CJK_RUN) ?? []) {
+      const characters = Array.from(run)
+      if (characters.length <= 2) { parts.push(run); continue }
+      for (let index = 0; index + 1 < characters.length; index += 2) parts.push(characters.slice(index, index + 2).join(''))
+      if (characters.length % 2 === 1) parts.push(characters.slice(-2).join(''))
+    }
+  }
+  return parts
+}
+
+/** What one search covers. */
+export interface SearchScope {
+  /** Whether the library indexes document text; false searches names only. */
+  readonly fullText: boolean
+  /** Resource id of the folder to search, subfolders included; omitted searches every drive. */
+  readonly folder?: string
+}
+
+/**
+ * Write the KQL pattern of one search. Names match anywhere (`name:"*q*"`); with full text the phrase also matches
+ * document text, either as written or with all of its {@link phraseParts} present. A folder adds `scope:<id>`,
+ * unquoted because OpenCloud matches nothing for a quoted id.
+ * @param query - search text.
+ * @param scope - full text and folder.
+ * @returns the pattern for `oc:pattern`.
+ * @throws LibraryError `not-found` when nothing searchable is left of the text; `protocol` for a folder id KQL cannot carry.
+ */
+export function searchPattern(query: string, scope: SearchScope): string {
+  const phrase = searchPhrase(query)
+  if (phrase === '') throw new LibraryError('not-found', 'the search text is empty')
+  let match = `name:"*${phrase}*"`
+  if (scope.fullText) {
+    const parts = phraseParts(phrase)
+    const split = parts.length > 1 ? ` OR (${parts.map(part => `content:"${part}"`).join(' AND ')})` : ''
+    match = `(${match} OR content:"${phrase}"${split})`
+  }
+  if (scope.folder === undefined) return match
+  if (!RESOURCE_ID.test(scope.folder)) throw new LibraryError('protocol', `"${scope.folder}" is not a file library folder id`)
+  return `scope:${scope.folder} AND ${match}`
 }
 
 /** Graph and WebDAV operations for one member; every call retries once with a renewed token after HTTP 401. */
@@ -303,17 +375,17 @@ export class OpenCloudClient {
   }
 
   /**
-   * Search file and folder names in every drive the member can open.
-   * @param query - text contained in the name.
+   * Search the drives the member can open; OpenCloud leaves out what the member may not read.
+   * @param pattern - KQL pattern from {@link searchPattern}.
    * @param limit - most results.
    * @param signal - cancellation.
-   * @returns matching items, in OpenCloud's relevance order.
+   * @returns matching items with their highlights, in OpenCloud's relevance order.
    */
-  async search(query: string, limit: number, signal: AbortSignal): Promise<OpenCloudItem[]> {
-    const pattern = `name:"*${query.replace(/["\\]/g, ' ').trim()}*"`
+  async search(pattern: string, limit: number, signal: AbortSignal): Promise<OpenCloudItem[]> {
     const escaped = pattern.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     const body = '<?xml version="1.0"?><oc:search-files xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns"><d:prop>'
-      + '<d:getcontentlength/><d:getlastmodified/><d:resourcetype/><d:getcontenttype/><oc:size/><oc:permissions/><oc:fileid/></d:prop>'
+      + '<d:getcontentlength/><d:getlastmodified/><d:resourcetype/><d:getcontenttype/><oc:size/><oc:permissions/><oc:fileid/>'
+      + '<oc:highlights/></d:prop>'
       + `<oc:search><oc:pattern>${escaped}</oc:pattern><oc:limit>${limit}</oc:limit></oc:search></oc:search-files>`
     const response = await this.send('/dav/spaces/', { method: 'REPORT', headers: { 'content-type': 'application/xml' }, body }, signal)
     if (response.status !== 207) throw OpenCloudClient.failure(response, 'search')
