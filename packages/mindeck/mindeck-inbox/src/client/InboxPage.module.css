@@ -210,6 +210,17 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* A newer recommended version: a dot without a number, so it never reads as an unread count. */
+.versionDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 5px;
+  border-radius: 50%;
+  corner-shape: round;
+  background: var(--dsw-alias-brand-primary-new-colorprimary-new-color);
+}
+
 .srOnly {
   position: absolute;
   width: 1px;

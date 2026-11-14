@@ -11,6 +11,8 @@ export const en = {
   title: 'Company messages',
   intro: 'Announcements from your company, and notices about your own requests such as quota requests and feedback.',
   unreadBadge: '{count} unread',
+  unreadVersionBadge: '{count} unread, new version available',
+  versionBadge: 'New version available',
   markAllRead: 'Mark all as read',
   loading: 'Loading messages',
   emptyTitle: 'No messages yet',
@@ -40,7 +42,8 @@ export const en = {
   versionTitle: 'Mindeck {version} is available',
   versionCurrent: 'Your company recommends this version. You have {current}.',
   versionDownload: 'Download {version}',
-  versionNoDownload: 'Ask your company administrator for the installer.',
+  versionNoDownload: 'Ask an administrator for the installer for this computer: {contact}.',
+  versionNoDownloadFallback: 'Ask the administrator who set up your account for the installer for this computer.',
 }
 
 /** Key domain of the dictionary. */
@@ -52,6 +55,8 @@ export const zh: Record<MindeckInboxKey, string> = {
   title: '企业消息',
   intro: '企业发布的公告，以及提额申请、反馈处理等与你有关的通知。',
   unreadBadge: '{count} 条未读',
+  unreadVersionBadge: '{count} 条未读，有新版本',
+  versionBadge: '有新版本',
   markAllRead: '全部标为已读',
   loading: '正在加载消息',
   emptyTitle: '暂时没有消息',
@@ -81,7 +86,8 @@ export const zh: Record<MindeckInboxKey, string> = {
   versionTitle: 'Mindeck {version} 已发布',
   versionCurrent: '企业推荐使用这个版本，你现在用的是 {current}。',
   versionDownload: '下载 {version}',
-  versionNoDownload: '安装包请向企业管理员索取',
+  versionNoDownload: '这台电脑的安装包请联系管理员索取：{contact}。',
+  versionNoDownloadFallback: '这台电脑的安装包请联系给你开通账号的管理员索取。',
 }
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {

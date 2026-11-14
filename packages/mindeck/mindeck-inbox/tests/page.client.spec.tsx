@@ -30,7 +30,7 @@ const APPROVED: MindeckInboxItem = {
 
 function fixture(options: { summary?: MindeckInboxSummary; page?: MindeckInboxPage; appVersion?: string } = {}) {
   const summary = createSnapshotStore<MindeckInboxSummarySnapshot>({
-    summary: options.summary ?? { available: true, unread: 1, release: null },
+    summary: options.summary ?? { available: true, unread: 1, release: null, adminContact: null },
   })
   const page = createSnapshotStore<MindeckInboxPageSnapshot>({ page: options.page, failed: false })
   const stop = vi.fn()
@@ -150,7 +150,8 @@ it('keeps the loaded items under a compact notice when a refresh fails', () => {
 it('offers the recommended version only to an older build, with the installer for this computer when there is one', () => {
   const open = vi.spyOn(window, 'open').mockReturnValue(null)
   const release = { recommendedVersion: '1.8.0', notes: '修复了资源库搜索。', downloadUrl: 'https://dl.example.com/mindeck.dmg' }
-  const f = fixture({ summary: { available: true, unread: 0, release }, page: { items: [], more: false, loading: null, failure: null } })
+  const summary = { available: true, unread: 0, release, adminContact: '企业微信 @小李' }
+  const f = fixture({ summary, page: { items: [], more: false, loading: null, failure: null } })
   const view = render(<InboxPage {...f.props} />)
   const card = view.getByRole('region', { name: 'Mindeck 1.8.0 已发布' })
   expect(within(card).getByText('企业推荐使用这个版本，你现在用的是 0.2.2-rc.1。')).toBeTruthy()
@@ -158,27 +159,64 @@ it('offers the recommended version only to an older build, with the installer fo
   fireEvent.click(within(card).getByRole('button', { name: '下载 1.8.0' }))
   expect(open).toHaveBeenCalledWith(release.downloadUrl, '_blank', 'noopener,noreferrer')
 
-  f.setSummary({ available: true, unread: 0, release: { ...release, notes: null, downloadUrl: null } })
-  expect(within(view.getByRole('region', { name: 'Mindeck 1.8.0 已发布' })).getByText(zh.versionNoDownload)).toBeTruthy()
-  f.setSummary({ available: true, unread: 0, release: { ...release, recommendedVersion: '0.2.2-rc.1' } })
+  // Without an installer for this computer, the card names whom to ask, as About Mindeck does.
+  f.setSummary({ ...summary, release: { ...release, notes: null, downloadUrl: null } })
+  const noInstaller = view.getByRole('region', { name: 'Mindeck 1.8.0 已发布' })
+  expect(within(noInstaller).getByText('这台电脑的安装包请联系管理员索取：企业微信 @小李。')).toBeTruthy()
+  expect(within(noInstaller).queryByRole('button')).toBeNull()
+  f.setSummary({ ...summary, adminContact: null, release: { ...release, notes: null, downloadUrl: null } })
+  expect(within(view.getByRole('region', { name: 'Mindeck 1.8.0 已发布' })).getByText(zh.versionNoDownloadFallback)).toBeTruthy()
+  f.setSummary({ ...summary, release: { ...release, recommendedVersion: '0.2.2-rc.1' } })
   expect(view.queryByRole('region', { name: /已发布/ })).toBeNull()
-  f.setSummary({ available: true, unread: 0, release: { ...release, recommendedVersion: null } })
+  f.setSummary({ ...summary, release: { ...release, recommendedVersion: null } })
   expect(view.queryByRole('region', { name: /已发布/ })).toBeNull()
   cleanup()
 
   // A build without release metadata never shows it.
-  render(<InboxPage {...fixture({ summary: { available: true, unread: 0, release }, appVersion: '' }).props} />)
+  render(<InboxPage {...fixture({ summary, appVersion: '' }).props} />)
   expect(document.querySelector('section section')).toBeNull()
   open.mockRestore()
 })
 
 it('counts unread items in the sidebar badge and speaks the count with its unit', () => {
-  const summary = createSnapshotStore<MindeckInboxSummarySnapshot>({ summary: { available: true, unread: 0, release: null } })
-  const props = { t: makeTranslate(en), useSummary: bindSnapshotSelector(summary), wide: true, active: false } as UnreadBadgeProps
+  const summary = createSnapshotStore<MindeckInboxSummarySnapshot>({
+    summary: { available: true, unread: 0, release: null, adminContact: null },
+  })
+  const props = {
+    t: makeTranslate(en), useSummary: bindSnapshotSelector(summary), appVersion: '1.7.0', wide: true, active: false,
+  } as UnreadBadgeProps
   const view = render(<span data-testid="badge"><UnreadBadge {...props} /></span>)
   expect(view.getByTestId('badge').textContent).toBe('')
-  act(() => { summary.set({ summary: { available: true, unread: 3, release: null } }) })
+  act(() => { summary.set({ summary: { available: true, unread: 3, release: null, adminContact: null } }) })
   expect(view.getByTestId('badge').textContent).toBe('33 unread')
-  act(() => { summary.set({ summary: { available: true, unread: 120, release: null } }) })
+  act(() => { summary.set({ summary: { available: true, unread: 120, release: null, adminContact: null } }) })
   expect(view.getByTestId('badge').textContent).toBe('99+120 unread')
+})
+
+it('marks a newer recommended version with a dot that counts nothing, and names it beside an unread count', () => {
+  const release = (recommendedVersion: string | null) => ({ recommendedVersion, notes: null, downloadUrl: null })
+  const summary = createSnapshotStore<MindeckInboxSummarySnapshot>({
+    summary: { available: true, unread: 0, release: release('1.8.0'), adminContact: null },
+  })
+  const props = {
+    t: makeTranslate(en), useSummary: bindSnapshotSelector(summary), appVersion: '1.7.0', wide: true, active: false,
+  } as UnreadBadgeProps
+  const view = render(<span data-testid="badge"><UnreadBadge {...props} /></span>)
+  const badge = view.getByTestId('badge')
+  expect(badge.textContent).toBe(en.versionBadge)
+  expect(badge.querySelector('[aria-hidden="true"]')?.textContent).toBe('')
+
+  act(() => { summary.set({ summary: { available: true, unread: 2, release: release('1.8.0'), adminContact: null } }) })
+  expect(badge.textContent).toBe('22 unread, new version available')
+  // The recommended version or an older one is no update.
+  act(() => { summary.set({ summary: { available: true, unread: 0, release: release('1.7.0'), adminContact: null } }) })
+  expect(badge.textContent).toBe('')
+  act(() => { summary.set({ summary: { available: true, unread: 0, release: release(null), adminContact: null } }) })
+  expect(badge.textContent).toBe('')
+  cleanup()
+
+  // A build without release metadata never shows the dot.
+  const unversioned = render(<span data-testid="badge"><UnreadBadge {...props} appVersion="" /></span>)
+  act(() => { summary.set({ summary: { available: true, unread: 0, release: release('1.8.0'), adminContact: null } }) })
+  expect(unversioned.getByTestId('badge').textContent).toBe('')
 })

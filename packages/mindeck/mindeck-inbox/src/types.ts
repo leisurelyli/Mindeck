@@ -43,6 +43,8 @@ export interface MindeckInboxSummary {
   readonly unread: number
   /** The company's recommended desktop version; null without one. */
   readonly release: MindeckClientRelease | null
+  /** How members reach an administrator, for an installer the company offers no address for; null when unset. */
+  readonly adminContact: string | null
 }
 
 /** Why the inbox could not be read: `unreachable` without a response, such as offline; `failed` for an error response. */

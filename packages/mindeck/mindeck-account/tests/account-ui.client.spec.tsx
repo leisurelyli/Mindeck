@@ -369,6 +369,18 @@ it('names the recommended version in About and opens the company installer for t
   open.mockRestore()
 })
 
+it('names the administrator to ask in About when the company offers no installer for this computer, as the update card does', async () => {
+  const f = fixture({ ...signedIn, adminContact: '企业微信找周敏', release: { recommendedVersion: '1.8.0', notes: null, downloadUrl: null } })
+  render(<AccountMenu {...f.props} />)
+  fireEvent.click(screen.getByRole('button', { name: en.menu }))
+  fireEvent.click(await screen.findByRole('menuitem', { name: en.about }))
+  const about = await screen.findByRole('dialog', { name: en.aboutTitle })
+  expect(within(about).getByText('Ask an administrator for the installer for this computer: 企业微信找周敏.')).toBeTruthy()
+  expect(within(about).queryByRole('button', { name: en.aboutDownloads })).toBeNull()
+  f.set({ ...signedIn, adminContact: null, release: { recommendedVersion: '1.8.0', notes: null, downloadUrl: null } })
+  expect(within(about).getByText(en.aboutNoInstallerFallback)).toBeTruthy()
+})
+
 it('shows when company data was last synced and syncs on request without a dialog, offline included', async () => {
   const sync = { supported: true, running: false, syncedAt: new Date(2026, 10, 13, 14, 3).getTime(), problem: null } as const
   const f = fixture({ ...signedIn, sync })
@@ -413,8 +425,10 @@ it('offers only About while signed out without a Cloud address', async () => {
 })
 
 it('offers to attach a rated-down answer\'s round, unticked on every opening, and says where other feedback goes', () => {
-  const choose = vi.fn()
-  const props = { t: makeTranslate(en), choose, submitting: false } as Omit<FeedbackOptionsProps, 'target'>
+  const choose = vi.fn<(attach: boolean) => void>()
+  // Session runtime hooks are unused by the rows; the renderer supplies them in production.
+  const face: Pick<FeedbackOptionsProps, 'choose' | 'submitting'> = { choose, submitting: false }
+  const props = { t: makeTranslate(en), ...face } as Omit<FeedbackOptionsProps, 'target'>
   const negative = { kind: 'message' as const, messageId: 'm1' as never, rating: 'negative' as const }
   const view = render(<FeedbackOptions {...props} target={negative} />)
   const box = view.getByRole('checkbox', { name: en.feedbackAttachExcerpt }) as HTMLInputElement

@@ -38,7 +38,9 @@ async function fixture(options: { inbox?: boolean } = {}) {
   let answer: MindeckSyncAnswer | undefined
   const account = {
     session: vi.fn(async () => current),
-    getState: vi.fn(async () => ({ release: current === undefined ? null : RELEASE }) as MindeckAccountView),
+    getState: vi.fn(async () => ({
+      release: current === undefined ? null : RELEASE, adminContact: current === undefined ? null : '企业微信 @小李',
+    }) as MindeckAccountView),
     syncAnswer: vi.fn(() => answer),
     rejectToken: vi.fn(async (token: string) => {
       if (current?.token !== token) return
@@ -86,18 +88,18 @@ async function openPage(f: Awaited<ReturnType<typeof fixture>>) {
   return { summary, page }
 }
 
-it('shows the unread count of the sync answer and the recommended version while signed in', async () => {
+it('shows the unread count of the sync answer, the recommended version, and the administrator contact while signed in', async () => {
   const f = await fixture()
   await f.ctx.plugin(MindeckInbox, f.config)
   const summary = follow<MindeckInboxSummary>(signal => f.ctx.mindeckInbox.watch(signal))
-  await vi.waitFor(() => { expect(summary.latest()).toEqual({ available: true, unread: 0, release: RELEASE }) })
+  await vi.waitFor(() => { expect(summary.latest()).toEqual({ available: true, unread: 0, release: RELEASE, adminContact: '企业微信 @小李' }) })
   f.sync({ unread: 3, latestAt: '2026-11-13T08:20:00.000Z' })
   await vi.waitFor(() => { expect(summary.latest()?.unread).toBe(3) })
   // Without the page open, nothing reads the items.
   expect(f.inbox.requests).toEqual([])
 
   f.change(undefined)
-  await vi.waitFor(() => { expect(summary.latest()).toEqual({ available: false, unread: 0, release: null }) })
+  await vi.waitFor(() => { expect(summary.latest()).toEqual({ available: false, unread: 0, release: null, adminContact: null }) })
 })
 
 it('has no company messages on a Mindeck Cloud without an inbox', async () => {

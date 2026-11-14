@@ -19,6 +19,8 @@ export interface MindeckInboxPageSnapshot {
 /** Observables of the sidebar row's badge. */
 export interface MindeckInboxBadgeInjected {
   hooks: { summary: HostObservable<MindeckInboxSummarySnapshot> }
+  /** Version of this Mindeck build, compared with the recommended one; empty in builds without release metadata. */
+  appVersion: string
 }
 
 /** Observables and operations of the company messages page. */

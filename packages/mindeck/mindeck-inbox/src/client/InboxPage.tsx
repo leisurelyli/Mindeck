@@ -114,16 +114,19 @@ function InboxRow({ item, expanded, onToggle, now, t }: {
 }
 
 /**
+ * Without an installer for this computer, the card names the administrator to ask, as About Mindeck does.
  * @param props.release - the company's recommendation, with the installer for this computer.
  * @param props.version - the recommended version.
  * @param props.appVersion - version of this build.
+ * @param props.adminContact - how members reach an administrator; null when the company set none.
  * @param props.t - page copy.
  * @returns the card that offers the recommended version.
  */
-function ReleaseCard({ release, version, appVersion, t }: {
+function ReleaseCard({ release, version, appVersion, adminContact, t }: {
   release: MindeckClientRelease
   version: string
   appVersion: string
+  adminContact: string | null
   t: Translate
 }) {
   const titleId = useId()
@@ -135,7 +138,9 @@ function ReleaseCard({ release, version, appVersion, t }: {
         <h2 id={titleId} className={css.releaseTitle}>{t('versionTitle', { version })}</h2>
         <p className={css.releaseMeta}>{t('versionCurrent', { current: appVersion })}</p>
         {notes !== null && notes.trim() !== '' && <p className={css.releaseNotes}>{notes}</p>}
-        {downloadUrl === null && <p className={css.releaseMeta}>{t('versionNoDownload')}</p>}
+        {downloadUrl === null && <p className={css.releaseMeta}>
+          {adminContact === null ? t('versionNoDownloadFallback') : t('versionNoDownload', { contact: adminContact })}
+        </p>}
       </div>
       {downloadUrl !== null && (
         <Button variant="primary" size="sm" className={css.releaseAction} onClick={() => { openExternal(downloadUrl) }}>
@@ -264,7 +269,8 @@ export function InboxPage({ t, useSummary, usePage, follow, reload, loadMore, ma
       </header>
       <div className={css.scroll}>
         <div className={`${css.column} ${css.body}`}>
-          {showRelease && <ReleaseCard release={release} version={version} appVersion={appVersion} t={t} />}
+          {showRelease && <ReleaseCard release={release} version={version} appVersion={appVersion}
+            adminContact={summary?.adminContact ?? null} t={t} />}
           {body}
         </div>
       </div>

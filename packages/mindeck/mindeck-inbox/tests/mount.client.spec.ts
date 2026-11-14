@@ -84,7 +84,7 @@ it('shows the row, its badge, and the page while the member has an inbox, and wi
   try {
     const dispose = await mountInbox(f.ctx, contribution)
     expect(f.ctx.slots.entries('sidebar.panellist')).toEqual([])
-    f.summaries.push({ available: true, unread: 2, release: null })
+    f.summaries.push({ available: true, unread: 2, release: null, adminContact: null })
     await vi.waitFor(() => { expect(f.ctx.slots.entries('sidebar.panellist').map(entry => entry.options)).toMatchObject([{ id: INBOX_PANEL_ID, order: -5 }]) })
     expect(f.ctx.slots.entries('sidebar.panellist.badge').map(entry => entry.options.id)).toEqual([INBOX_PANEL_ID])
     const badge = badgeFace(f.ctx.slots.entries('sidebar.panellist.badge')[0])
@@ -92,6 +92,8 @@ it('shows the row, its badge, and the page while the member has an inbox, and wi
     expect(f.ctx.locale.bind('mindeckInbox')('title')).toBe('Company messages')
 
     const page = pageFace(f.ctx.slots.entries('main')[0])
+    // The badge compares the recommended version with the same build version as the page.
+    expect(badge.appVersion).toBe(page.appVersion)
     expect(f.opened).not.toHaveBeenCalled()
     const stop = page.follow()
     f.pages.push(PAGE)
@@ -105,12 +107,12 @@ it('shows the row, its badge, and the page while the member has an inbox, and wi
     expect(f.remote.markRead).toHaveBeenCalledWith({ all: true })
     stop()
 
-    f.summaries.push({ available: false, unread: 0, release: null })
+    f.summaries.push({ available: false, unread: 0, release: null, adminContact: null })
     await vi.waitFor(() => { expect(f.ctx.slots.entries('sidebar.panellist')).toEqual([]) })
     expect(f.ctx.slots.entries('sidebar.panellist.badge')).toEqual([])
     expect(f.ctx.slots.entries('main')).toEqual([])
 
-    f.summaries.push({ available: true, unread: 0, release: null })
+    f.summaries.push({ available: true, unread: 0, release: null, adminContact: null })
     await vi.waitFor(() => { expect(f.ctx.slots.entries('main')).toHaveLength(1) })
     await dispose()
     expect(f.ctx.slots.entries('sidebar.panellist')).toEqual([])

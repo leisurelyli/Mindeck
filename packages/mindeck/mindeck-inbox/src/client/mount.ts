@@ -81,7 +81,7 @@ function registerUi(ctx: Context): void {
     markRead(target) { report(ctx.remote.mindeckInbox.markRead(target)) },
     appVersion,
   }
-  const badge: MindeckInboxBadgeInjected = { hooks: { summary } }
+  const badge: MindeckInboxBadgeInjected = { hooks: { summary }, appVersion }
   // The row, its badge, and the page exist while the member's Mindeck Cloud has an inbox; the row follows the
   // company rows (digital employees -30, skills -20, file library -10), before Plugins (0).
   const registerPage = (): (() => void) => {

@@ -5,8 +5,9 @@ import type { MindeckAccountKey } from './locales.ts'
 import css from './Account.module.css'
 
 /**
- * The download action opens the company's installer for this computer when it has one, otherwise the Mindeck Cloud
- * home page, which lists the installers.
+ * The download action opens the company's installer for this computer when it has one, and the Mindeck Cloud home page
+ * on a Mindeck Cloud that does not report installers. When the company recommends versions but offers no installer
+ * for this computer, the dialog names the administrator to ask instead, as the company messages page does.
  * @param props - build version, the account's company, Cloud address, administrator contact, and recommended version,
  *   dialog close, and localized copy.
  * @returns the about dialog.
@@ -20,7 +21,7 @@ export function AboutDialog({ appVersion, companyName, cloudUrl, adminContact, r
   /** The company's recommended version; null without one. */
   release: MindeckClientRelease | null
   close: () => void
-  t: (key: MindeckAccountKey) => string
+  t: (key: MindeckAccountKey, params?: Record<string, string>) => string
 }) {
   const open = (path: string): void => { if (cloudUrl !== null) window.open(`${cloudUrl}${path}`, '_blank', 'noopener,noreferrer') }
   const recommended = release?.recommendedVersion ?? null
@@ -41,13 +42,18 @@ export function AboutDialog({ appVersion, companyName, cloudUrl, adminContact, r
       {adminContact !== null && <><dt>{t('aboutContact')}</dt><dd>{adminContact}</dd></>}
     </dl>
     <p className={`${css.dialogText} ${css.dialogNote}`}>{t('aboutPrivacyNote')}</p>
+    {release !== null && installer === null && (
+      <p className={`${css.dialogText} ${css.dialogNote}`}>
+        {adminContact === null ? t('aboutNoInstallerFallback') : t('aboutNoInstaller', { contact: adminContact })}
+      </p>
+    )}
     <div className={css.dialogActions}>
       {cloudUrl !== null && <>
         <Button variant="outline" onClick={() => { open('/privacy') }}>{t('aboutPrivacy')}</Button>
-        <Button variant="outline" onClick={() => {
+        {(release === null || installer !== null) && <Button variant="outline" onClick={() => {
           if (installer === null) open('/')
           else window.open(installer, '_blank', 'noopener,noreferrer')
-        }}>{t('aboutDownloads')}</Button>
+        }}>{t('aboutDownloads')}</Button>}
       </>}
       <Button variant="primary" onClick={close}>{t('close')}</Button>
     </div>

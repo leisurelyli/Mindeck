@@ -39,7 +39,7 @@ export interface Config {
 const CLOUD_PAGE_MAX = 50
 const CLOUD_READ_MAX = 100
 
-const SIGNED_OUT: MindeckInboxSummary = { available: false, unread: 0, release: null }
+const SIGNED_OUT: MindeckInboxSummary = { available: false, unread: 0, release: null, adminContact: null }
 const EMPTY_PAGE: MindeckInboxPage = { items: null, more: false, loading: null, failure: null }
 
 /** @param item - an inbox item or its reference. @returns the key unique across both item types. */
@@ -209,7 +209,7 @@ export default class MindeckInbox extends TypertRemoteService {
     }
     const answer = this.ctx.mindeckAccount.syncAnswer()
     if (answer !== undefined) this.cloudUnread = answer.me.inbox.unread
-    this.summary = { available: current !== undefined, unread: 0, release: state.release }
+    this.summary = { available: current !== undefined, unread: 0, release: state.release, adminContact: state.adminContact }
     this.publishSummary(true)
     if (current !== undefined && this.viewers > 0 && this.page.items === null && this.reloading === undefined) await this.reload()
   }
