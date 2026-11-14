@@ -1,0 +1,21 @@
+# Mindeck company-model composition: a loopback Mindeck Cloud whose model catalog sets the company's thinking levels
+# and request switches, its gateway forwarding to DeepSeek, the account the fixture keeps signed in, and mindeck-models
+# serving the catalog. The default model names the company model, which starts at the company's level.
+- id: llm-deepseek
+  name: '@deepseek-ai/dsh-llm-deepseek-api-key'
+  disabled: true
+
+- id: plugin-package-inventory-deepseek
+  disabled: true
+
+- id: agent-default-model
+  name: '@deepseek-ai/dsh-agent-default-model'
+  config:
+    provider: mindeck-openai
+    model: deepseek-v4-flash
+
+- insert:
+    - id: mindeck-cloud-fixture
+      name: './mindeck-cloud-fixture.mjs'
+    - id: mindeck-models
+      name: '@deepseek-ai/dsh-mindeck-models'

@@ -1,0 +1,8 @@
+version: 1
+scenario: mindeck-model-reasoning
+profile: headless
+composition: mindeck-models
+recording: live
+header:
+  class: mindeck-models
+  pin: true

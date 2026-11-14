@@ -1,0 +1,16 @@
+# Keyless replay counterpart: the loopback Mindeck Cloud and mindeck-models stay real, so pi-ai still prepares each
+# request from the company catalog; only the recorded response stream is substituted.
+- id: llm-deepseek
+  name: '@deepseek-ai/dsh-llm-deepseek-api-key'
+  disabled: true
+
+- id: plugin-package-inventory-deepseek
+  disabled: true
+
+- insert:
+    - id: llm-replay
+      name: '@deepseek-ai/dsh-llm-replay'
+    - id: mindeck-cloud-fixture
+      name: './mindeck-cloud-fixture.mjs'
+    - id: mindeck-models
+      name: '@deepseek-ai/dsh-mindeck-models'
