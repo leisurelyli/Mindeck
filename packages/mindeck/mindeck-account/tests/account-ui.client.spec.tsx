@@ -302,6 +302,33 @@ it('reminds from 75% of the limit that runs out first, again from 95% and when u
   expect(view.queryByRole('status')).toBeNull()
 })
 
+it('offers the quota request from the used-up reminder, or the pending request, in the same dialog', async () => {
+  const f = fixture(withQuota(personalOut({ request: null, canRequest: true, blocker: null })))
+  const view = render(<QuotaDock {...f.props} />)
+  // The dialog is portaled out of the container, which holds only the reminder.
+  const dock = (): HTMLElement => view.container.querySelector<HTMLElement>('[data-level]') ?? view.container
+  const reminder = dock()
+  expect(reminder.textContent).toContain('Your model quota for this month is used up (¥80.00 of ¥80.00). It resets on 12/1; you can ask for more this month.')
+  expect(within(reminder).queryByRole('link')).toBeNull()
+  fireEvent.click(within(reminder).getByRole('button', { name: en.quotaRequestSubmit }))
+  expect(f.operations.refreshQuota).toHaveBeenCalledOnce()
+  const dialog = view.getByRole('dialog', { name: en.quotaTitle })
+  fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: '月底赶项目' } })
+  fireEvent.click(within(dialog).getByRole('button', { name: en.quotaRequestSubmit }))
+  await waitFor(() => { expect(f.operations.requestQuota).toHaveBeenCalledWith('月底赶项目') })
+
+  f.set(withQuota(personalOut({ request: request(), canRequest: false, blocker: 'pending' })))
+  expect(dock().textContent).toContain('your request for more is waiting for approval.')
+  fireEvent.click(within(view.getByRole('dialog', { name: en.quotaTitle })).getByRole('button', { name: en.close }))
+  expect(view.queryByRole('dialog')).toBeNull()
+  fireEvent.click(within(dock()).getByRole('button', { name: en.quotaDockViewRequest }))
+  expect(within(view.getByRole('dialog', { name: en.quotaTitle })).getByRole('button', { name: en.quotaRequestWithdraw })).toBeTruthy()
+
+  // A used-up department limit, which a personal request cannot raise, keeps the usage link.
+  f.set(withQuota({ ...personalOut({ request: null, canRequest: false, blocker: 'department' }), department: { used: 1000, limit: 1000 } }))
+  expect(within(dock()).getByRole('link', { name: en.quotaUsage })).toBeTruthy()
+})
+
 it('shows this month\'s quota in the account menu and refreshes it when the menu opens', async () => {
   const f = fixture(withQuota({ user: { used: 12.5, limit: 50 }, department: { used: 300, limit: 1000 }, companyBudgetPercent: null, resetDate: '2026-12-01', granted: 0, request: null }))
   const view = render(<AccountMenu {...f.props} />)

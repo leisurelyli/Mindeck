@@ -48,10 +48,11 @@ export function QuotaNotice({ matched, useAccount, refreshQuota, requestQuota, w
 type Busy = 'ask' | 'withdraw' | null
 
 /**
+ * The quota dialog body shared by the refused-request notice and the reminder above the composer.
  * @param props - signed-in account state, its Cloud address, close, quota request operations, and copy.
  * @returns the quota dialog for a signed-in member.
  */
-function QuotaDialog({ view, cloudUrl, dismiss, requestQuota, withdrawQuotaRequest, t }: {
+export function QuotaDialog({ view, cloudUrl, dismiss, requestQuota, withdrawQuotaRequest, t }: {
   view: MindeckAccountView
   cloudUrl: string
   dismiss: () => void
