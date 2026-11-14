@@ -2229,6 +2229,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the Mindeck Cloud employee id of the Session\'s preset, or undefined for the general assistant, another preset, or a Session without a live Agent.',
       },
       {
+        signature: 'foldersForSession(sessionId: SessionId): readonly EmployeeLibraryFolder[] | undefined',
+        description: 'Read the library folders that a live conversation\'s digital employee consults.',
+        parameters: [{ name: 'sessionId', description: 'the conversation\'s Session.' }],
+        returns: 'the employee\'s folders, empty when it has none; undefined for the general assistant, another preset, or a Session without a live Agent.',
+      },
+      {
         signature: '@Remote({ mode: \'stream\' }) async *watch(signal: AbortSignal): AsyncIterable<MindeckEmployeeCatalog>',
         description: 'Stream the cards of the digital-employee page.',
         parameters: [{ name: 'signal', description: 'stream lifetime.' }],
@@ -2266,10 +2272,10 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the folder\'s entries, folders first.',
       },
       {
-        signature: '@Remote async search(query: string, signal: AbortSignal): Promise<LibraryEntryView[]>',
-        description: 'Search file and folder names across the member\'s spaces; a blank query returns no entries.',
-        parameters: [{ name: 'query', description: 'text contained in names.' }, { name: 'signal', description: 'caller cancellation.' }],
-        returns: 'matching files and folders, at most `maxSearchResults`.',
+        signature: '@Remote async search(query: string, scope: LibrarySearchScope, signal: AbortSignal): Promise<LibrarySearchView>',
+        description: 'Search the member\'s spaces; a query without searchable text returns no entries.',
+        parameters: [{ name: 'query', description: 'search text.' }, { name: 'scope', description: '`names` for file and folder names; `text` also for document text where the library indexes it.' }, { name: 'signal', description: 'caller cancellation.' }],
+        returns: 'matching files and folders, at most `maxSearchResults`, a text match with its passage, and whether the search looked at document text.',
       },
       {
         signature: '@Remote async upload(folder: string, name: string, contentBase64: string, overwrite: boolean, signal: AbortSignal): Promise<LibraryEntryView>',
@@ -6583,6 +6589,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface EditGoalRequest {\n    readonly objective?: string;\n    readonly maxGoalRounds?: number;\n}',
   },
   {
+    name: 'EmployeeLibraryFolder',
+    declaration: 'export interface EmployeeLibraryFolder {\n    readonly itemId: string;\n    readonly label: string;\n    readonly path: string;\n    readonly accessible: boolean;\n}',
+  },
+  {
     name: 'EncodedFileAttachment',
     declaration: 'export interface EncodedFileAttachment {\n    data: string;\n    name?: string;\n}',
   },
@@ -7180,7 +7190,19 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'LibraryEntryView',
-    declaration: 'export interface LibraryEntryView {\n    readonly path: string;\n    readonly name: string;\n    readonly kind: \'folder\' | \'file\';\n    readonly size?: number;\n    readonly modified?: string;\n    readonly writable: boolean;\n    readonly webUrl?: string;\n}',
+    declaration: 'export interface LibraryEntryView {\n    readonly path: string;\n    readonly name: string;\n    readonly kind: \'folder\' | \'file\';\n    readonly size?: number;\n    readonly modified?: string;\n    readonly writable: boolean;\n    readonly webUrl?: string;\n    readonly passage?: readonly LibraryPassagePart[];\n}',
+  },
+  {
+    name: 'LibraryPassagePart',
+    declaration: 'export interface LibraryPassagePart {\n    readonly text: string;\n    readonly match: boolean;\n}',
+  },
+  {
+    name: 'LibrarySearchScope',
+    declaration: 'export type LibrarySearchScope = \'names\' | \'text\';',
+  },
+  {
+    name: 'LibrarySearchView',
+    declaration: 'export interface LibrarySearchView {\n    readonly entries: readonly LibraryEntryView[];\n    readonly text: boolean;\n}',
   },
   {
     name: 'LibrarySpaceView',
@@ -7603,8 +7625,12 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface MindeckEmployeeCatalog {\n    readonly cards: readonly MindeckEmployeeCard[];\n}',
   },
   {
+    name: 'MindeckEmployeeFolderView',
+    declaration: 'export interface MindeckEmployeeFolderView {\n    readonly label: string;\n    readonly path: string;\n    readonly accessible: boolean;\n}',
+  },
+  {
     name: 'MindeckEmployeeView',
-    declaration: 'export interface MindeckEmployeeView {\n    readonly kind: \'employee\';\n    readonly presetId: string;\n    readonly employeeId: string;\n    readonly name: string;\n    readonly avatar: string;\n    readonly tagline: string;\n    readonly starters: readonly string[];\n    readonly draft: boolean;\n}',
+    declaration: 'export interface MindeckEmployeeView {\n    readonly kind: \'employee\';\n    readonly presetId: string;\n    readonly employeeId: string;\n    readonly name: string;\n    readonly avatar: string;\n    readonly tagline: string;\n    readonly starters: readonly string[];\n    readonly draft: boolean;\n    readonly folders: readonly MindeckEmployeeFolderView[];\n    readonly model: string | null;\n}',
   },
   {
     name: 'MindeckGeneralView',

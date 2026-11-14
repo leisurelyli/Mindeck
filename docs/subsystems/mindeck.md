@@ -174,6 +174,14 @@ Registers the general assistant and the member's digital employees as agent pres
 employeeForSession(sessionId: SessionId): string | undefined
 
 /**
+ * Read the library folders that a live conversation's digital employee consults.
+ * @param sessionId - the conversation's Session.
+ * @returns the employee's folders, empty when it has none; undefined for the general assistant, another preset, or
+ *   a Session without a live Agent.
+ */
+foldersForSession(sessionId: SessionId): readonly EmployeeLibraryFolder[] | undefined
+
+/**
  * Stream the cards of the digital-employee page.
  * @param signal - stream lifetime.
  * @returns the current cards, then every change.
@@ -221,12 +229,14 @@ File-library tools and the panel's Remote for the signed-in member.
 @Remote async list(path: string, signal: AbortSignal): Promise<LibraryEntryView[]>
 
 /**
- * Search file and folder names across the member's spaces; a blank query returns no entries.
- * @param query - text contained in names.
+ * Search the member's spaces; a query without searchable text returns no entries.
+ * @param query - search text.
+ * @param scope - `names` for file and folder names; `text` also for document text where the library indexes it.
  * @param signal - caller cancellation.
- * @returns matching files and folders, at most `maxSearchResults`.
+ * @returns matching files and folders, at most `maxSearchResults`, a text match with its passage, and whether the
+ *   search looked at document text.
  */
-@Remote async search(query: string, signal: AbortSignal): Promise<LibraryEntryView[]>
+@Remote async search(query: string, scope: LibrarySearchScope, signal: AbortSignal): Promise<LibrarySearchView>
 
 /**
  * Save a file from the member's computer into a library folder.
