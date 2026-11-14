@@ -259,7 +259,8 @@ export const zh: Record<MindeckAccountKey, string> = {
   quotaDescription: '企业为你或你所在部门设置的本月模型额度已经用完。如需更多额度，请联系管理员。',
   quotaUsage: '查看我的用量',
   quotaDismiss: '知道了',
-  quotaReset: '{month} 月 {day} 日',
+  // No-break spaces keep the date on one line.
+  quotaReset: '{month}\u00a0月\u00a0{day}\u00a0日',
   quotaMenuUser: '本月已用 {used}/{limit}',
   quotaMenuUnlimited: '本月已用 {used}，不限额度',
   quotaMenuDepartment: '部门本月已用 {used}/{limit}',
@@ -282,7 +283,7 @@ export const zh: Record<MindeckAccountKey, string> = {
   quotaRequestSubmitting: '正在提交……',
   quotaRequestPendingTitle: '已申请提额，等待处理',
   quotaRequestPendingMeta: '{time} 提交，结果会发到“企业消息”。',
-  quotaRequestTime: '{month} 月 {day} 日 {time}',
+  quotaRequestTime: '{month}\u00a0月\u00a0{day}\u00a0日 {time}',
   quotaRequestReasonShown: '申请原因：{reason}',
   quotaRequestWithdraw: '撤回申请',
   quotaRequestWithdrawing: '正在撤回……',

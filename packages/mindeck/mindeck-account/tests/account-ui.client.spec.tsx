@@ -6,7 +6,7 @@ import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type { MindeckAccountView } from '../src/types.ts'
-import { en } from '../src/client/locales.ts'
+import { en, zh } from '../src/client/locales.ts'
 import type { MindeckAccountSnapshot, MindeckReminderSnapshot, OperationOutcome } from '../src/client/operations.ts'
 import { AccountSection, type AccountSectionProps } from '../src/client/AccountSection.tsx'
 import { QuotaNotice, type QuotaNoticeProps } from '../src/client/QuotaNotice.tsx'
@@ -230,6 +230,18 @@ it('asks for more quota once the personal limit is used up, then shows the pendi
   f.operations.requestQuota.mockResolvedValueOnce({ ok: false, reason: 'feedbackUnreachable' })
   await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: en.quotaRequestSubmit })) })
   expect(within(dialog).getByRole('alert').textContent).toBe(en.quotaRequestUnreachable)
+})
+
+it('keeps each Chinese date of the quota dialog and the reminder on one line', () => {
+  const f = fixture(withQuota(personalOut({ request: request(), canRequest: false, blocker: 'pending' })))
+  const props = { ...f.props, t: makeTranslate(zh) }
+  const view = render(<><QuotaDock {...props} /><QuotaNotice {...props} matched={quotaNotice} /></>)
+  // No-break spaces join each number to its 月 or 日; the text keeps its ordinary space before the time.
+  const dialog = view.getByRole('dialog', { name: zh.quotaTitle })
+  expect(dialog.textContent).toContain('12\u00a0月\u00a01\u00a0日起恢复')
+  expect(dialog.textContent).toContain('11\u00a0月\u00a014\u00a0日 10:32 提交')
+  const reminder = view.getAllByRole('status').find(status => status.textContent.includes('提额申请正在审批'))
+  expect(reminder?.textContent).toContain('12\u00a0月\u00a01\u00a0日起恢复')
 })
 
 it('names whom to contact instead of a request when the department or company limit is used up', () => {

@@ -28,7 +28,7 @@
 .fallbackActions { display: flex; justify-content: flex-end; gap: 8px; }
 .dialogHeader { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 22px 24px 12px; }
 .dialogTitle { margin: 0; font-size: 16px; line-height: 24px; font-weight: 500; color: var(--dsw-alias-label-primary); }
-.dialogText { margin: 0 0 8px; padding: 0 24px; font-size: 14px; line-height: 22px; color: var(--dsw-alias-label-primary); }
+.dialogText { margin: 0 0 8px; padding: 0 24px; font-size: 14px; line-height: 22px; color: var(--dsw-alias-label-primary); text-wrap: pretty; }
 .dialogActions { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 24px 0; }
 .dialogNote { color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 20px; }
 .dialogBody { padding: 4px 24px 8px; }
@@ -48,7 +48,7 @@
 .requestDot { flex: none; margin-top: 6px; }
 .requestStatusText { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
 .requestStatusTitle { margin: 0; font-size: 14px; line-height: 22px; color: var(--dsw-alias-label-primary); }
-.requestStatusMeta { margin: 0; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary); }
+.requestStatusMeta { margin: 0; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary); text-wrap: pretty; }
 .facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0 0 12px; padding: 0 24px; font-size: 14px; line-height: 22px; }
 .facts dt { color: var(--dsw-alias-label-secondary); }
 .facts dd { min-width: 0; margin: 0; overflow-wrap: anywhere; color: var(--dsw-alias-label-primary); }
@@ -65,6 +65,7 @@
 /* Quota reminder above the composer, sized like the other composer docks. */
 .quotaDock {
   box-sizing: border-box;
+  container-type: inline-size;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -80,7 +81,12 @@
 }
 .quotaDockIcon { flex: none; color: var(--dsw-alias-label-tertiary); }
 .quotaDock[data-level='urgent'] .quotaDockIcon, .quotaDock[data-level='out'] .quotaDockIcon { color: var(--dsw-alias-state-error-primary); }
-.quotaDockText { flex: 1 1 auto; min-width: 0; }
+/*
+ * Neither form leaves a few characters alone on the last line. Narrow: balanced lines. From 500px, where the longest
+ * clause fits on a line, Chinese breaks only between clauses; a clause wider than the line still breaks.
+ */
+.quotaDockText { flex: 1 1 auto; min-width: 0; text-wrap: balance; }
+@container (min-width: 500px) { .quotaDockText { word-break: keep-all; overflow-wrap: anywhere; text-wrap: pretty; } }
 .quotaDockLink { flex: none; color: var(--dsw-alias-state-business-primary); text-decoration: none; white-space: nowrap; }
 @media (hover: hover) { .quotaDockLink:hover { text-decoration: underline; } }
 .quotaDockAction { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
