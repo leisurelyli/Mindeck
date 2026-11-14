@@ -62,6 +62,7 @@ async function fixture() {
     finishWelcome: vi.fn(async (): Promise<RemoteResult<MindeckAccountView>> => ok(signedOut)),
     syncNow: vi.fn(async (): Promise<RemoteResult<MindeckAccountView>> => ok(signedOut)),
     syncSoon: vi.fn(async (): Promise<RemoteResult<undefined>> => ok(undefined)),
+    prepareFeedback: vi.fn(async (_session: string, _message: string, _attach: boolean): Promise<RemoteResult<undefined>> => ok(undefined)),
   }
   ctx.provide('remote.mindeckAccount', remote as never)
   ctx.provide('locale', new LocaleRuntime(ctx))
@@ -74,6 +75,7 @@ async function fixture() {
     'settings.section.icon': { kind: 'list', scope: 'root', inline: true },
     'shell.quota-notice': { kind: 'chain', scope: 'root' },
     'conversation.input.dock': { kind: 'list', scope: 'root' },
+    'feedback.dialog.options': { kind: 'list', scope: 'session' },
   } } as never, () => null)
   return { ctx, frames, remote, unmount }
 }
@@ -257,5 +259,39 @@ it('syncs when the window regains focus or the network returns, on request, and 
     await dispose()
     window.dispatchEvent(new Event('focus'))
     expect(f.remote.syncSoon).toHaveBeenCalledTimes(2)
+  } finally { await f.ctx.fiber.dispose() }
+})
+
+it('sends the feedback dialog\'s round choice before a rating down is recorded, and overrides the dialog hint', async () => {
+  const f = await fixture()
+  const hooks = new Set<(sessionId: string, target: unknown) => Promise<void>>()
+  f.ctx.provide('feedbackUi', {
+    openSession: () => {},
+    beforeSubmit: (hook: (sessionId: string, target: unknown) => Promise<void>) => { hooks.add(hook); return () => { hooks.delete(hook) } },
+  } as never)
+  try {
+    const dispose = await mountAccount(f.ctx, contribution)
+    expect(f.ctx.locale.bind('feedback')('dialog.hint')).toBe('Describe what happened (optional)')
+    await vi.waitFor(() => { expect(hooks.size).toBe(1) })
+    const [entry] = f.ctx.slots.entries('feedback.dialog.options')
+    expect(entry?.options.id).toBe('mindeck-account')
+    const face = (entry?.inject as (sessionId: string) => { choose: (attach: boolean) => void })('s1')
+    const [hook] = [...hooks]
+    const negative = { kind: 'message', messageId: 'm1', rating: 'negative' }
+    face.choose(true)
+    await hook?.('s1', negative)
+    await hook?.('s2', negative)
+    face.choose(false)
+    await hook?.('s1', negative)
+    await hook?.('s1', { kind: 'message', messageId: 'm1', rating: 'positive' })
+    await hook?.('s1', { kind: 'session' })
+    expect(f.remote.prepareFeedback.mock.calls).toEqual([['s1', 'm1', true], ['s2', 'm1', false], ['s1', 'm1', false]])
+    f.remote.prepareFeedback.mockResolvedValueOnce({ ok: false, error: new RemoteError('typert/unavailable' as never, 'Host gone', {} as never) } as never)
+    await expect(hook?.('s1', negative)).rejects.toThrow('Host gone')
+
+    await dispose()
+    expect(hooks.size).toBe(0)
+    expect(f.ctx.slots.entries('feedback.dialog.options')).toHaveLength(0)
+    expect(f.ctx.locale.bind('feedback')('dialog.hint')).toBe('dialog.hint')
   } finally { await f.ctx.fiber.dispose() }
 })

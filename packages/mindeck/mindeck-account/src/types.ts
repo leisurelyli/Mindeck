@@ -30,6 +30,12 @@ export interface MindeckSignInAttempt {
   readonly errorCode?: MindeckAccountErrorCode
 }
 
+/**
+ * Who ended the desktop session before it expired, as Mindeck Cloud reports it: an administrator signed this computer
+ * out or disabled the account (`admin`), or the member signed it out on the web (`member`).
+ */
+export type MindeckSignOutReason = 'admin' | 'member'
+
 /** Signed-in member as reported by Mindeck Cloud. */
 export interface MindeckAccountUser {
   readonly id: string
@@ -48,7 +54,10 @@ export interface MindeckQuotaUsage {
 
 /** The member's model quota for the current month, as Mindeck Cloud reports it. */
 export interface MindeckQuota {
+  /** The member's own limit, including extra quota approved for this month. */
   readonly user: MindeckQuotaUsage
+  /** Extra quota approved for this month and included in `user.limit`, in CNY; 0 without any. */
+  readonly granted: number
   /** The department's shared limit; null when the member has no department. */
   readonly department: MindeckQuotaUsage | null
   /**
@@ -58,6 +67,48 @@ export interface MindeckQuota {
   readonly companyBudgetPercent: number | null
   /** `YYYY-MM-DD` of the first day of the next month in the company time zone, when usage starts over. */
   readonly resetDate: string
+  /** Whether the member may ask for more quota now; null from a Mindeck Cloud without quota requests. */
+  readonly request: MindeckQuotaRequestState | null
+}
+
+/** One request of the member for more quota this month. */
+export interface MindeckQuotaRequest {
+  readonly id: string
+  /** `pending`, `approved`, `rejected`, `cancelled`, `expired`, or a status a newer Mindeck Cloud adds. */
+  readonly status: string
+  /** `YYYY-MM-DD` of the first day of the month the request is for. */
+  readonly month: string
+  /** What the member wrote; null for nothing. */
+  readonly reason: string | null
+  /** ISO 8601 time the member asked. */
+  readonly createdAt: string
+  /** ISO 8601 time it was decided, withdrawn, or closed; null while pending. */
+  readonly decidedAt: string | null
+  /** Who approved or rejected it; null otherwise. */
+  readonly decidedByName: string | null
+  /**
+   * How it was approved: `this_month` adds `amount` to this month's limit, `permanent` sets the monthly limit to
+   * `amount`; null unless approved, or a decision a newer Mindeck Cloud adds.
+   */
+  readonly decision: string | null
+  /** Approved amount in CNY; null unless approved. */
+  readonly amount: number | null
+  /** The approver's note; null without one. */
+  readonly decisionNote: string | null
+}
+
+/** The member's latest request and whether a new one would be accepted, as Mindeck Cloud decides. */
+export interface MindeckQuotaRequestState {
+  /** The pending request, else the latest of this month; null without one. */
+  readonly request: MindeckQuotaRequest | null
+  readonly canRequest: boolean
+  /**
+   * Why no request is accepted now; null when one is. `pending` while a request waits; `company` or `department`
+   * when a shared limit is used up, which a personal request cannot raise, so the member contacts an administrator
+   * instead; `unlimited` without a personal limit; `quota-left` below 90% of the personal limit. A newer Mindeck Cloud
+   * may add others, for which the desktop offers no request.
+   */
+  readonly blocker: string | null
 }
 
 /**
@@ -136,12 +187,19 @@ export interface MindeckAccountView {
   /** Cached identity of the signed-in member; null while signed out. */
   readonly user: MindeckAccountUser | null
   readonly companyName: string | null
-  /** Why the last session ended without the member signing out, until the next sign-in. */
-  readonly notice: 'session-expired' | null
+  /**
+   * Why the last session ended without the member signing out here, until the next sign-in: `session-expired` when
+   * Mindeck Cloud gave no reason or one this desktop does not know; `signed-out-by-admin` or `signed-out-by-member`
+   * when it named who signed this computer out.
+   */
+  readonly notice: 'session-expired' | 'signed-out-by-admin' | 'signed-out-by-member' | null
   readonly attempt: MindeckSignInAttempt | null
   /** Latest quota read while signed in; null while signed out or before the first successful read. */
   readonly quota: MindeckQuota | null
-  /** How members reach an administrator, as the company wrote it; null when unset or signed out. */
+  /**
+   * How members reach an administrator, as the company wrote it; null when unset, and while signed out unless
+   * `notice` explains the end of a session that had one.
+   */
   readonly adminContact: string | null
   /**
    * Whether the company allows a personal DeepSeek account beside the company account; false while signed out
@@ -171,6 +229,17 @@ export type MindeckFeedback =
     readonly text?: string
     /** The member took the rating back or rated the answer up. */
     readonly withdrawn?: true
+    /** Model id that produced the answer, at most 200 characters. */
+    readonly modelName?: string
+    /** Mindeck Cloud id of the conversation's digital employee. */
+    readonly employeeId?: string
+    /** Names of the skills the round used, at most 50 of at most 200 characters each. */
+    readonly skills?: readonly string[]
+    /**
+     * The round's question and answer, each at most 4,000 characters; present only when the member ticked the dialog's
+     * choice to attach them, so a later rating without it removes them.
+     */
+    readonly excerpt?: { readonly question: string; readonly answer: string }
   }
 
 declare module '@deepseek-ai/dsh-typert-protocol' {
@@ -191,5 +260,11 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'mindeck-account/unreachable': Record<string, never>
     /** The feedback is empty or longer than 2000 characters. */
     'mindeck-account/invalid-feedback': Record<string, never>
+    /**
+     * Mindeck Cloud refused a quota request or its withdrawal. `code` is Mindeck Cloud's, such as
+     * `QUOTA_REQUEST_PENDING`, `QUOTA_REQUEST_UNAVAILABLE`, `QUOTA_REQUEST_DECIDED`, `NOT_FOUND`, or `INVALID_REQUEST`;
+     * `message` is its explanation for the member.
+     */
+    'mindeck-account/quota-request-refused': { readonly code: string; readonly message: string }
   }
 }

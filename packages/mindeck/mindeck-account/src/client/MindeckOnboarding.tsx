@@ -70,6 +70,23 @@ function reducedMotion(): boolean {
 const CONFIRM_PHASES = new Set(['requesting', 'waiting', 'registering'])
 
 /**
+ * Explain why the last session ended without the member signing out on this computer.
+ * @param view - signed-out account state.
+ * @param t - account copy.
+ * @returns who signed this computer out, with the administrator contact when an administrator did, or that the
+ *   sign-in expired; null when no session ended that way.
+ */
+function sessionEndNotice(view: MindeckAccountView, t: Translate): { text: string; tone: 'info' } | null {
+  switch (view.notice) {
+    case 'signed-out-by-admin':
+      return { text: view.adminContact === null ? t('signedOutByAdmin') : t('signedOutByAdminContact', { contact: view.adminContact }), tone: 'info' }
+    case 'signed-out-by-member': return { text: t('signedOutByMember'), tone: 'info' }
+    case 'session-expired': return { text: t('sessionExpired'), tone: 'info' }
+    case null: return null
+  }
+}
+
+/**
  * @param props.view - signed-out account state.
  * @param props.t - account copy.
  * @param props.now - current time for the countdown.
@@ -227,16 +244,16 @@ export function MindeckOnboarding(
       }
       break
     case 'connect': {
-      const notice: { key: MindeckAccountKey; tone: 'error' | 'info' } | null = error !== null ? null
-        : phase === 'failed' ? { key: attemptErrorKey(attempt?.errorCode), tone: 'error' }
-          : view?.notice === 'session-expired' ? { key: 'sessionExpired', tone: 'info' } : null
+      const notice: { text: string; tone: 'error' | 'info' } | null = error !== null ? null
+        : phase === 'failed' ? { text: t(attemptErrorKey(attempt?.errorCode)), tone: 'error' }
+          : view === undefined ? null : sessionEndNotice(view, t)
       input = {
         ...common, page: 'connect', layout: 'centered', title: t('connectTitle'), description: t('connectDescription'), busy,
         onSubmit: submit,
         body: <div className={css.connect}>
           {notice !== null && <p className={css.notice} data-tone={notice.tone} role={notice.tone === 'error' ? 'alert' : 'status'}>
             {notice.tone === 'error' ? <IconWarningOutlineRegular size={16} /> : <IconInfoOutlineRegular size={16} />}
-            <span>{t(notice.key)}</span>
+            <span>{notice.text}</span>
           </p>}
           <div className={css.field}>
             <label htmlFor={fieldId} className={css.label}>{t('cloudUrlLabel')}</label>

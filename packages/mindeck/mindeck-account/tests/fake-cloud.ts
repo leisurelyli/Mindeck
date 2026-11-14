@@ -46,6 +46,14 @@ export interface FakeCloud {
   client: unknown
   /** Status that answers feedback; 200 stores it. */
   feedbackStatus: number
+  /** `error.reason` of every 401, such as `SIGNED_OUT_BY_ADMIN`; undefined leaves it out. */
+  signOutReason: string | undefined
+  /** Bodies received through `POST /api/desktop/quota-requests`. */
+  readonly quotaRequests: unknown[]
+  /** How `POST /api/desktop/quota-requests` answers. */
+  quotaRequestAnswer: { status: number; body: unknown }
+  /** How `DELETE /api/desktop/quota-requests/current` answers. */
+  withdrawAnswer: { status: number; body: unknown }
   /** Wait until the token endpoint has been polled `count` times in total. */
   polled: (count: number) => Promise<void>
   close: () => Promise<void>
@@ -100,7 +108,9 @@ export async function startFakeCloud(options: { basePath?: string } = {}): Promi
       const payload = await body(request)
       const token = /^Bearer (.+)$/.exec(request.headers.authorization ?? '')?.[1]
       const signedIn = token !== undefined && cloud.tokens.has(token)
-      const signInRequired = () => { reply(response, 401, { error: { code: 'SIGN_IN_REQUIRED', message: '请先登录。' } }) }
+      const signInRequired = () => {
+        reply(response, 401, { error: { code: 'SIGN_IN_REQUIRED', message: '请先登录。', ...cloud.signOutReason === undefined ? {} : { reason: cloud.signOutReason } } })
+      }
       if (path === '/api/auth/device/code' && request.method === 'POST') {
         reply(response, 200, {
           device_code: 'device-code-1', user_code: 'ABCD-EFGH',
@@ -151,6 +161,13 @@ export async function startFakeCloud(options: { basePath?: string } = {}): Promi
         if (!signedIn) { signInRequired(); return }
         if (cloud.feedbackStatus === 200) cloud.feedback.push(payload)
         reply(response, cloud.feedbackStatus, cloud.feedbackStatus === 200 ? { ok: true } : { error: { code: 'INVALID_REQUEST', message: '反馈内容格式不正确。' } })
+      } else if (path === '/api/desktop/quota-requests' && request.method === 'POST') {
+        if (!signedIn) { signInRequired(); return }
+        cloud.quotaRequests.push(payload)
+        reply(response, cloud.quotaRequestAnswer.status, cloud.quotaRequestAnswer.body)
+      } else if (path === '/api/desktop/quota-requests/current' && request.method === 'DELETE') {
+        if (!signedIn) { signInRequired(); return }
+        reply(response, cloud.withdrawAnswer.status, cloud.withdrawAnswer.body)
       } else if (path === '/api/desktop/sign-out' && request.method === 'POST') {
         if (!signedIn) { signInRequired(); return }
         cloud.tokens.delete(token)
@@ -166,7 +183,10 @@ export async function startFakeCloud(options: { basePath?: string } = {}): Promi
   if (address === null || typeof address === 'string') throw new Error('Expected a loopback listener')
   const cloud: FakeCloud = {
     url: `http://127.0.0.1:${address.port}${basePath}`,
-    requests: [], devices: [], deviceRequests: [], deviceRequestStatus: 204, feedback: [], feedbackStatus: 200, tokens: new Set(), droppedPolls: 0, pendingPolls: 0, outcome: 'issue', userName: '林晓',
+    requests: [], devices: [], deviceRequests: [], deviceRequestStatus: 204, feedback: [], feedbackStatus: 200, tokens: new Set(),
+    signOutReason: undefined, quotaRequests: [],
+    quotaRequestAnswer: { status: 404, body: { error: { code: 'NOT_FOUND', message: 'not found' } } },
+    withdrawAnswer: { status: 404, body: { error: { code: 'NOT_FOUND', message: '你还没有提交过提额申请。' } } }, droppedPolls: 0, pendingPolls: 0, outcome: 'issue', userName: '林晓',
     syncEnabled: false, syncStatus: 200, syncTags: [], personalDeepSeek: true, files: null, client: undefined,
     sync: {
       revisions: { models: 1, skills: 1, employees: 1, webSearch: 1, policies: 1, announcements: 1, client: 1 },

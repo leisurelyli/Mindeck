@@ -12,6 +12,7 @@ import { AccountSection, type AccountSectionProps } from '../src/client/AccountS
 import { QuotaNotice, type QuotaNoticeProps } from '../src/client/QuotaNotice.tsx'
 import { QuotaDock, type QuotaDockProps } from '../src/client/QuotaDock.tsx'
 import { AccountMenu, type AccountMenuProps } from '../src/client/AccountMenu.tsx'
+import { FeedbackOptions, type FeedbackOptionsProps } from '../src/client/FeedbackOptions.tsx'
 import type { MindeckQuota } from '../src/types.ts'
 import type { PersonalDeepSeekSnapshot } from '../src/client/personal-deepseek.ts'
 import type { AccountView, SignInAttemptId } from '@deepseek-ai/dsh-deepseek-account/types'
@@ -46,6 +47,8 @@ function fixture(view: MindeckAccountView | undefined, failed = false) {
     cancelPersonalSignIn: vi.fn(async () => {}),
     signOutPersonal: vi.fn(async (): Promise<OperationOutcome> => ok),
     syncNow: vi.fn(async (): Promise<OperationOutcome> => ok),
+    requestQuota: vi.fn(async (_reason: string): Promise<OperationOutcome> => ok),
+    withdrawQuotaRequest: vi.fn(async (): Promise<OperationOutcome> => ok),
   }
   // Global standard hooks are unused by these components; the renderer supplies them in production.
   const props = {
@@ -59,7 +62,7 @@ function fixture(view: MindeckAccountView | undefined, failed = false) {
 }
 
 it('shows the member, the company, and this month\'s usage with the base account page parts', () => {
-  const f = fixture({ ...signedIn, quota: { user: { used: 1234.5, limit: 2000 }, department: { used: 300, limit: 10_000 }, companyBudgetPercent: null, resetDate: '2026-12-01' } })
+  const f = fixture({ ...signedIn, quota: { user: { used: 1234.5, limit: 2000 }, department: { used: 300, limit: 10_000 }, companyBudgetPercent: null, resetDate: '2026-12-01', granted: 0, request: null } })
   const view = render(<AccountSection {...f.props} />)
   const page = view.getByRole('region', { name: en.nav })
   expect(page.className).toContain('section')
@@ -144,7 +147,7 @@ it('keeps the member and sign-out in plain form in a composition without the bas
 it('names the used-up limit and its reset date with a link to the member usage page, and keeps the generic warning while signed out', () => {
   const notice = (dismiss: () => void) => ({ code: 'QUOTA' as const, message: 'Quota used up', dismiss, keepOpen: () => () => {} })
   const member = fixture({ ...signedIn, quota: {
-    user: { used: 50, limit: 50 }, department: null, companyBudgetPercent: null, resetDate: '2026-12-01',
+    user: { used: 50, limit: 50 }, department: null, companyBudgetPercent: null, resetDate: '2026-12-01', granted: 0, request: null,
   } })
   const dismiss = vi.fn()
   const view = render(<QuotaNotice {...member.props} matched={notice(dismiss)} />)
@@ -157,7 +160,7 @@ it('names the used-up limit and its reset date with a link to the member usage p
   expect(usage.getAttribute('target')).toBe('_blank')
   // A used-up company budget is named even when the member's own limit is also used up.
   member.set({ ...signedIn, quota: {
-    user: { used: 50, limit: 50 }, department: null, companyBudgetPercent: 100, resetDate: '2026-12-01',
+    user: { used: 50, limit: 50 }, department: null, companyBudgetPercent: 100, resetDate: '2026-12-01', granted: 0, request: null,
   } })
   expect(within(dialog).getByText(/^Your company's model budget for this month is used up/)).toBeTruthy()
   fireEvent.click(within(dialog).getByRole('button', { name: en.quotaDismiss }))
@@ -177,12 +180,103 @@ it('names the used-up limit and its reset date with a link to the member usage p
 
 const withQuota = (quota: MindeckQuota): MindeckAccountView => ({ ...signedIn, quota })
 
+const quotaNotice = { code: 'QUOTA' as const, message: 'Quota used up', dismiss: () => {}, keepOpen: () => () => {} }
+const personalOut = (request: MindeckQuota['request']): MindeckQuota => ({
+  user: { used: 80, limit: 80 }, granted: 30, department: { used: 300, limit: 1000 }, companyBudgetPercent: null,
+  resetDate: '2026-12-01', request,
+})
+const request = (patch: Partial<NonNullable<NonNullable<MindeckQuota['request']>['request']>> = {}) => ({
+  id: 'qr-1', status: 'pending', month: '2026-11-01', reason: null, createdAt: new Date(2026, 10, 14, 10, 32).toISOString(),
+  decidedAt: null, decidedByName: null, decision: null, amount: null, decisionNote: null, ...patch,
+})
+
+it('asks for more quota once the personal limit is used up, then shows the pending request with its time and withdraws it after confirmation', async () => {
+  const f = fixture(withQuota(personalOut({ request: null, canRequest: true, blocker: null })))
+  const view = render(<QuotaNotice {...f.props} matched={quotaNotice} />)
+  const dialog = view.getByRole('dialog', { name: en.quotaTitle })
+  expect(within(dialog).getByText(/^Your personal model quota for this month is used up \(¥80\.00\/¥80\.00\)/)).toBeTruthy()
+  expect(within(dialog).queryByText(/Contact/)).toBeNull()
+  fireEvent.change(within(dialog).getByLabelText(en.quotaRequestReasonLabel), { target: { value: '月底赶项目' } })
+  expect(within(dialog).getByText('5/200')).toBeTruthy()
+  let finish: (outcome: OperationOutcome) => void = () => {}
+  f.operations.requestQuota.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve }))
+  fireEvent.click(within(dialog).getByRole('button', { name: en.quotaRequestSubmit }))
+  expect(f.operations.requestQuota).toHaveBeenCalledWith('月底赶项目')
+  const sending = within(dialog).getByRole('button', { name: en.quotaRequestSubmitting })
+  expect(sending.hasAttribute('disabled')).toBe(true)
+  fireEvent.click(sending)
+  expect(f.operations.requestQuota).toHaveBeenCalledOnce()
+  await act(async () => { finish({ ok: true }) })
+  f.set(withQuota(personalOut({ request: request({ reason: '月底赶项目' }), canRequest: false, blocker: 'pending' })))
+  expect(within(dialog).getByText(en.quotaRequestPendingTitle)).toBeTruthy()
+  expect(within(dialog).getByText('Sent 11/14 10:32. The decision arrives in Company messages.')).toBeTruthy()
+  expect(within(dialog).getByText('Reason: 月底赶项目')).toBeTruthy()
+  expect(within(dialog).queryByRole('button', { name: en.quotaRequestSubmit })).toBeNull()
+
+  fireEvent.click(within(dialog).getByRole('button', { name: en.quotaRequestWithdraw }))
+  expect(within(dialog).getByText(en.quotaRequestWithdrawConfirm)).toBeTruthy()
+  fireEvent.click(within(dialog).getByRole('button', { name: en.quotaRequestKeep }))
+  expect(f.operations.withdrawQuotaRequest).not.toHaveBeenCalled()
+  fireEvent.click(within(dialog).getByRole('button', { name: en.quotaRequestWithdraw }))
+  f.operations.withdrawQuotaRequest.mockResolvedValueOnce({ ok: false, reason: 'quotaRequestRefused', message: '这条申请已经批准了，不能再撤回。' })
+  await act(async () => { fireEvent.click(within(dialog).getAllByRole('button', { name: en.quotaRequestWithdraw }).at(-1) as HTMLElement) })
+  expect(within(dialog).getByRole('alert').textContent).toBe('这条申请已经批准了，不能再撤回。')
+  fireEvent.click(within(dialog).getByRole('button', { name: en.quotaRequestWithdraw }))
+  await act(async () => { fireEvent.click(within(dialog).getAllByRole('button', { name: en.quotaRequestWithdraw }).at(-1) as HTMLElement) })
+  f.set(withQuota(personalOut({ request: request({ status: 'cancelled' }), canRequest: true, blocker: null })))
+  expect(within(dialog).getByRole('status').textContent).toBe(en.quotaRequestWithdrawn)
+  expect(within(dialog).getByRole('button', { name: en.quotaRequestSubmit })).toBeTruthy()
+
+  f.operations.requestQuota.mockResolvedValueOnce({ ok: false, reason: 'feedbackUnreachable' })
+  await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: en.quotaRequestSubmit })) })
+  expect(within(dialog).getByRole('alert').textContent).toBe(en.quotaRequestUnreachable)
+})
+
+it('names whom to contact instead of a request when the department or company limit is used up', () => {
+  const f = fixture({ ...withQuota({
+    user: { used: 20, limit: 80 }, granted: 0, department: { used: 1000, limit: 1000 }, companyBudgetPercent: null,
+    resetDate: '2026-12-01', request: { request: null, canRequest: false, blocker: 'department' },
+  }), adminContact: '企业微信找周敏' })
+  const view = render(<QuotaNotice {...f.props} matched={quotaNotice} />)
+  const dialog = view.getByRole('dialog', { name: en.quotaTitle })
+  expect(within(dialog).getByText(/^Your department's model quota for this month is used up/)).toBeTruthy()
+  expect(within(dialog).getByText('Contact your administrator: 企业微信找周敏')).toBeTruthy()
+  expect(within(dialog).queryByRole('button', { name: en.quotaRequestSubmit })).toBeNull()
+  expect(within(dialog).queryByRole('textbox')).toBeNull()
+  f.set({ ...withQuota({
+    user: { used: 20, limit: 80 }, granted: 0, department: null, companyBudgetPercent: 100,
+    resetDate: '2026-12-01', request: { request: null, canRequest: false, blocker: 'company' },
+  }), adminContact: '企业微信找周敏' })
+  expect(within(dialog).getByText(/^Your company's model budget for this month is used up/)).toBeTruthy()
+  expect(within(dialog).queryByRole('button', { name: en.quotaRequestSubmit })).toBeNull()
+})
+
+it('shows the outcome of this month\'s request: a rejection with its note above a new request, and an approval that gives room again', () => {
+  const f = fixture(withQuota(personalOut({ request: request({ status: 'rejected', decisionNote: '本月预算紧张' }), canRequest: true, blocker: null })))
+  const view = render(<QuotaNotice {...f.props} matched={quotaNotice} />)
+  const dialog = view.getByRole('dialog', { name: en.quotaTitle })
+  expect(within(dialog).getByText('Your last request for more quota was not approved. Note: 本月预算紧张')).toBeTruthy()
+  expect(within(dialog).getByRole('button', { name: en.quotaRequestResubmit })).toBeTruthy()
+  f.set(withQuota({
+    ...personalOut({ request: request({ status: 'approved', decision: 'this_month', amount: 50 }), canRequest: false, blocker: 'quota-left' }),
+    user: { used: 80, limit: 130 },
+  }))
+  const approved = view.getByRole('dialog', { name: en.quotaApprovedTitle })
+  expect(within(approved).getByText('Your request for more quota was approved: ¥50.00 more this month. You can go back to the conversation and continue.')).toBeTruthy()
+  expect(within(approved).queryByRole('textbox')).toBeNull()
+  f.set(withQuota({
+    ...personalOut({ request: request({ status: 'approved', decision: 'permanent', amount: 200 }), canRequest: true, blocker: null }),
+    user: { used: 200, limit: 200 },
+  }))
+  expect(within(view.getByRole('dialog', { name: en.quotaTitle })).getByText('Your request for more quota was approved: your monthly quota is now ¥200.00.')).toBeTruthy()
+})
+
 it('reminds from 75% of the limit that runs out first, again from 95% and when used up, until dismissed', () => {
-  const f = fixture(withQuota({ user: { used: 30, limit: 50 }, department: null, companyBudgetPercent: null, resetDate: '2026-12-01' }))
+  const f = fixture(withQuota({ user: { used: 30, limit: 50 }, department: null, companyBudgetPercent: null, resetDate: '2026-12-01', granted: 0, request: null }))
   const view = render(<QuotaDock {...f.props} />)
   expect(view.container.textContent).toBe('')
 
-  f.set(withQuota({ user: { used: 40, limit: 50 }, department: { used: 100, limit: 1000 }, companyBudgetPercent: null, resetDate: '2026-12-01' }))
+  f.set(withQuota({ user: { used: 40, limit: 50 }, department: { used: 100, limit: 1000 }, companyBudgetPercent: null, resetDate: '2026-12-01', granted: 0, request: null }))
   const reminder = view.getByRole('status')
   expect(reminder.textContent).toContain('You have used 80% of your model quota this month (¥40.00 of ¥50.00). It resets on 12/1.')
   expect(reminder.getAttribute('data-level')).toBe('warning')
@@ -191,32 +285,32 @@ it('reminds from 75% of the limit that runs out first, again from 95% and when u
   expect(f.operations.dismissReminder).toHaveBeenCalledWith('2026-12-01:user:warning')
   expect(view.queryByRole('status')).toBeNull()
 
-  f.set(withQuota({ user: { used: 48, limit: 50 }, department: null, companyBudgetPercent: null, resetDate: '2026-12-01' }))
+  f.set(withQuota({ user: { used: 48, limit: 50 }, department: null, companyBudgetPercent: null, resetDate: '2026-12-01', granted: 0, request: null }))
   expect(view.getByRole('status').getAttribute('data-level')).toBe('urgent')
-  f.set(withQuota({ user: { used: 1, limit: null }, department: { used: 1000, limit: 1000 }, companyBudgetPercent: null, resetDate: '2026-12-01' }))
+  f.set(withQuota({ user: { used: 1, limit: null }, department: { used: 1000, limit: 1000 }, companyBudgetPercent: null, resetDate: '2026-12-01', granted: 0, request: null }))
   expect(view.getByRole('status').textContent).toContain('Your department\'s model quota for this month is used up (¥1,000.00 of ¥1,000.00).')
-  f.set(withQuota({ user: { used: 0, limit: 0 }, department: null, companyBudgetPercent: null, resetDate: '2026-12-01' }))
+  f.set(withQuota({ user: { used: 0, limit: 0 }, department: null, companyBudgetPercent: null, resetDate: '2026-12-01', granted: 0, request: null }))
   expect(view.getByRole('status').getAttribute('data-level')).toBe('out')
-  f.set(withQuota({ user: { used: 99, limit: null }, department: null, companyBudgetPercent: null, resetDate: '2026-12-01' }))
+  f.set(withQuota({ user: { used: 99, limit: null }, department: null, companyBudgetPercent: null, resetDate: '2026-12-01', granted: 0, request: null }))
   expect(view.queryByRole('status')).toBeNull()
-  f.set(withQuota({ user: { used: 10, limit: 50 }, department: null, companyBudgetPercent: 96, resetDate: '2026-12-01' }))
+  f.set(withQuota({ user: { used: 10, limit: 50 }, department: null, companyBudgetPercent: 96, resetDate: '2026-12-01', granted: 0, request: null }))
   expect(view.getByRole('status').textContent).toContain('Your company has used 96% of this month\'s model budget.')
   expect(view.getByRole('status').getAttribute('data-level')).toBe('urgent')
-  f.set(withQuota({ user: { used: 10, limit: 50 }, department: null, companyBudgetPercent: 40, resetDate: '2026-12-01' }))
+  f.set(withQuota({ user: { used: 10, limit: 50 }, department: null, companyBudgetPercent: 40, resetDate: '2026-12-01', granted: 0, request: null }))
   expect(view.queryByRole('status')).toBeNull()
   f.set({ ...signedOut, quota: null })
   expect(view.queryByRole('status')).toBeNull()
 })
 
 it('shows this month\'s quota in the account menu and refreshes it when the menu opens', async () => {
-  const f = fixture(withQuota({ user: { used: 12.5, limit: 50 }, department: { used: 300, limit: 1000 }, companyBudgetPercent: null, resetDate: '2026-12-01' }))
+  const f = fixture(withQuota({ user: { used: 12.5, limit: 50 }, department: { used: 300, limit: 1000 }, companyBudgetPercent: null, resetDate: '2026-12-01', granted: 0, request: null }))
   const view = render(<AccountMenu {...f.props} />)
   fireEvent.click(view.getByRole('button', { name: en.menu }))
   expect(f.operations.refreshQuota).toHaveBeenCalledOnce()
   expect(await screen.findByText('This month: ¥12.50 of ¥50.00')).toBeTruthy()
   expect(screen.getByText('Department: ¥300.00 of ¥1,000.00')).toBeTruthy()
   cleanup()
-  const unlimited = fixture(withQuota({ user: { used: 3, limit: null }, department: null, companyBudgetPercent: null, resetDate: '2026-12-01' }))
+  const unlimited = fixture(withQuota({ user: { used: 3, limit: null }, department: null, companyBudgetPercent: null, resetDate: '2026-12-01', granted: 0, request: null }))
   render(<AccountMenu {...unlimited.props} />)
   fireEvent.click(screen.getByRole('button', { name: en.menu }))
   expect(await screen.findByText('This month: ¥3.00, no limit')).toBeTruthy()
@@ -316,4 +410,29 @@ it('offers only About while signed out without a Cloud address', async () => {
   expect(await screen.findByRole('menuitem', { name: en.about })).toBeTruthy()
   expect(screen.queryByRole('menuitem', { name: en.help })).toBeNull()
   expect(screen.queryByRole('menuitem', { name: en.feedback })).toBeNull()
+})
+
+it('offers to attach a rated-down answer\'s round, unticked on every opening, and says where other feedback goes', () => {
+  const choose = vi.fn()
+  const props = { t: makeTranslate(en), choose, submitting: false } as Omit<FeedbackOptionsProps, 'target'>
+  const negative = { kind: 'message' as const, messageId: 'm1' as never, rating: 'negative' as const }
+  const view = render(<FeedbackOptions {...props} target={negative} />)
+  const box = view.getByRole('checkbox', { name: en.feedbackAttachExcerpt }) as HTMLInputElement
+  expect(box.checked).toBe(false)
+  expect(view.getByText(en.feedbackAttachNote)).toBeTruthy()
+  expect(choose).toHaveBeenLastCalledWith(false)
+  fireEvent.click(box)
+  expect(box.checked).toBe(true)
+  expect(choose).toHaveBeenLastCalledWith(true)
+  view.rerender(<FeedbackOptions {...props} target={negative} submitting />)
+  expect((view.getByRole('checkbox') as HTMLInputElement).disabled).toBe(true)
+  view.unmount()
+  const reopened = render(<FeedbackOptions {...props} target={negative} />)
+  expect((reopened.getByRole('checkbox') as HTMLInputElement).checked).toBe(false)
+  expect(choose).toHaveBeenLastCalledWith(false)
+  reopened.rerender(<FeedbackOptions {...props} target={{ kind: 'session' }} />)
+  expect(reopened.queryByRole('checkbox')).toBeNull()
+  expect(reopened.getByText(en.feedbackReportNote)).toBeTruthy()
+  reopened.rerender(<FeedbackOptions {...props} target={{ ...negative, rating: 'positive' }} />)
+  expect(reopened.getByText(en.feedbackLikeNote)).toBeTruthy()
 })

@@ -12,7 +12,11 @@
 .address { font-size: 13px; line-height: 20px; }
 
 .primaryLink { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 36px; padding: 0 14px; border-radius: var(--dsw-radius-md); background: var(--dsw-alias-button-primary-fill); color: var(--dsw-alias-label-primary-foreground); font-size: 14px; line-height: 22px; font-weight: 500; text-decoration: none; white-space: nowrap; }
+/* The outline Button's material on a link, for the secondary usage link beside a primary action. */
+.outlineLink { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 14px; border-radius: var(--dsw-radius-md); box-shadow: inset 0 0 0 var(--dsh-hairline-width, 0.5px) var(--dsh-button-outline-color, var(--dsw-alias-border-l3)); color: var(--dsw-alias-label-primary); font-size: 14px; line-height: 22px; text-decoration: none; white-space: nowrap; }
+.outlineLink:focus-visible { outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 2px; }
 @media (hover: hover) {
+  .outlineLink:hover { background: var(--dsw-alias-interactive-bg-hover); }
   .primaryLink:hover { background: var(--dsw-alias-button-primary-hover); }
   .trigger:hover, .close:hover { background-color: var(--dsw-alias-interactive-bg-hover); }
 }
@@ -31,6 +35,20 @@
 .textarea { display: block; width: 100%; min-height: 116px; max-height: 280px; box-sizing: border-box; padding: 10px 12px; border: 0.5px solid var(--dsw-alias-border-l4); border-radius: var(--dsw-radius-lg); background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary); font: inherit; font-size: 14px; line-height: 22px; field-sizing: content; resize: none; }
 .textarea::placeholder { color: var(--dsw-alias-label-caption); }
 .textarea:focus-visible { outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: -1px; }
+/* Rows the account adds under the base feedback dialog's detail field. */
+.feedbackOptions { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
+.feedbackNote { margin: 8px 0 0; color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 18px; }
+.feedbackOptions .feedbackNote { margin: 0; padding-inline-start: 24px; }
+
+/* The quota request: the optional reason with its counter, and a pending request with its state dot. */
+.fieldHead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary); }
+.counter { flex: none; color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 18px; font-variant-numeric: tabular-nums; }
+.reasonInput { min-height: 72px; }
+.requestStatus { display: flex; align-items: flex-start; gap: 10px; margin: 0 24px 8px; padding: 10px 12px; border-radius: var(--dsw-radius-lg); background: var(--dsw-alias-bg-skeleton); }
+.requestDot { flex: none; margin-top: 6px; }
+.requestStatusText { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.requestStatusTitle { margin: 0; font-size: 14px; line-height: 22px; color: var(--dsw-alias-label-primary); }
+.requestStatusMeta { margin: 0; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary); }
 .facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0 0 12px; padding: 0 24px; font-size: 14px; line-height: 22px; }
 .facts dt { color: var(--dsw-alias-label-secondary); }
 .facts dd { min-width: 0; margin: 0; overflow-wrap: anywhere; color: var(--dsw-alias-label-primary); }

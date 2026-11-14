@@ -202,6 +202,16 @@ it('starts an ended session at the address with the reason, even on a device tha
   expect(field().value).toBe(cloudUrl)
 })
 
+it('says who signed this computer out, with the administrator contact when an administrator did', () => {
+  const f = stage({ ...firstRun, cloudUrl, notice: 'signed-out-by-admin', adminContact: '企业微信找周敏' })
+  expect(screen.getByRole('status').textContent)
+    .toBe('An administrator signed this computer out. To keep using Mindeck, sign in again; for questions, contact an administrator: 企业微信找周敏.')
+  f.set({ ...firstRun, cloudUrl, notice: 'signed-out-by-admin', adminContact: null })
+  expect(screen.getByRole('status').textContent).toBe(en.signedOutByAdmin)
+  f.set({ ...firstRun, cloudUrl, notice: 'signed-out-by-member' })
+  expect(screen.getByRole('status').textContent).toBe(en.signedOutByMember)
+})
+
 it('greets the member after a sign-in, then fades into the workspace and leaves it as it was', () => {
   vi.useFakeTimers()
   const f = stage(attempt({ phase: 'registering' }))

@@ -5,7 +5,7 @@ import TypertRegistry from '@deepseek-ai/dsh-typert-registry'
 import { afterEach, expect, it, vi } from 'vitest'
 import { MemoryCredentials } from '../../../credentials/credentials/tests/memory.ts'
 import { liveConfig } from '../../../settings/settings/tests/live-config.ts'
-import MindeckAccount, { feedbackOf, MINDECK_ACCOUNT_KEY, type MindeckAccountView } from '../src/index.ts'
+import MindeckAccount, { answerContext, feedbackOf, MINDECK_ACCOUNT_KEY, type MindeckAccountView } from '../src/index.ts'
 import { startFakeCloud } from './fake-cloud.ts'
 
 const cleanups: Array<() => Promise<void>> = []
@@ -185,12 +185,14 @@ it('reads the quota after sign-in and on request, and forgets it with the sessio
   await signIn(f)
   await vi.waitFor(async () => {
     expect((await f.state()).quota).toEqual({
-      user: { used: 12.5, limit: 50 }, department: { used: 30, limit: null }, companyBudgetPercent: null, resetDate: '2026-12-01',
+      user: { used: 12.5, limit: 50 }, granted: 0, department: { used: 30, limit: null }, companyBudgetPercent: null,
+      resetDate: '2026-12-01', request: null,
     })
   })
   f.cloud.quota = { resetDate: '2026-12-01', user: { limit: 50, used: 40 }, department: null, companyBudget: { usedPercent: 101.5 } }
-  expect((await f.account().refreshQuota(new AbortController().signal)).quota)
-    .toEqual({ user: { used: 40, limit: 50 }, department: null, companyBudgetPercent: 101.5, resetDate: '2026-12-01' })
+  expect((await f.account().refreshQuota(new AbortController().signal)).quota).toEqual({
+    user: { used: 40, limit: 50 }, granted: 0, department: null, companyBudgetPercent: 101.5, resetDate: '2026-12-01', request: null,
+  })
   f.cloud.quota = { broken: true }
   expect((await f.account().refreshQuota(new AbortController().signal)).quota?.user.used).toBe(40)
   await f.account().signOut()
@@ -200,6 +202,86 @@ it('reads the quota after sign-in and on request, and forgets it with the sessio
   f.cloud.quota = 'sign-in-required'
   const ended = await f.account().refreshQuota(new AbortController().signal)
   expect(ended).toMatchObject({ status: 'signed-out', notice: 'session-expired', quota: null })
+})
+
+const pendingRequest = {
+  id: 'qr-1', status: 'pending', month: '2026-11-01', reason: '月底赶项目', createdAt: '2026-11-14T02:32:00.000Z',
+  decidedAt: null, decidedByName: null, decision: null, amount: null, decisionNote: null,
+}
+const usedUp = (request: unknown) => ({
+  monthStartDate: '2026-11-01', resetDate: '2026-12-01', timezone: 'Asia/Shanghai',
+  user: { limit: 80, used: 80, granted: 30, source: 'default' }, department: null, companyBudget: null, request,
+})
+
+it('asks for more quota, withdraws the request, and reads the quota again after Mindeck Cloud answers or refuses', async () => {
+  const f = await fixture()
+  const signal = new AbortController().signal
+  await expect(f.account().requestQuota('多做几次评审', signal)).rejects.toMatchObject({ code: 'mindeck-account/signed-out' })
+  await signIn(f)
+  f.cloud.quota = usedUp({ request: null, canRequest: true, blocker: null })
+  expect((await f.account().refreshQuota(signal)).quota).toMatchObject({
+    user: { used: 80, limit: 80 }, granted: 30, request: { request: null, canRequest: true, blocker: null },
+  })
+
+  f.cloud.quotaRequestAnswer = { status: 201, body: { request: pendingRequest } }
+  f.cloud.quota = usedUp({ request: pendingRequest, canRequest: false, blocker: 'pending' })
+  const asked = await f.account().requestQuota('  多做几次评审  ', signal)
+  expect(f.cloud.quotaRequests).toEqual([{ reason: '多做几次评审' }])
+  expect(asked.quota?.request).toEqual({ request: pendingRequest, canRequest: false, blocker: 'pending' })
+  await f.account().requestQuota('   ', signal)
+  expect(f.cloud.quotaRequests.at(-1)).toEqual({ reason: null })
+
+  // A request made on another device meanwhile: the refusal explains it, and the quota shows that request.
+  f.cloud.quotaRequestAnswer = { status: 409, body: { error: { code: 'QUOTA_REQUEST_PENDING', message: '你已经有一条等待处理的提额申请，处理结果会通知你。' } } }
+  await expect(f.account().requestQuota('', signal)).rejects.toMatchObject({
+    code: 'mindeck-account/quota-request-refused',
+    details: { code: 'QUOTA_REQUEST_PENDING', message: '你已经有一条等待处理的提额申请，处理结果会通知你。' },
+  })
+
+  const cancelled = { ...pendingRequest, status: 'cancelled', decidedAt: '2026-11-14T03:00:00.000Z' }
+  f.cloud.withdrawAnswer = { status: 200, body: { request: cancelled } }
+  f.cloud.quota = usedUp({ request: cancelled, canRequest: true, blocker: null })
+  expect((await f.account().withdrawQuotaRequest(signal)).quota?.request).toMatchObject({ canRequest: true, request: { status: 'cancelled' } })
+  f.cloud.withdrawAnswer = { status: 409, body: { error: { code: 'QUOTA_REQUEST_DECIDED', message: '这条申请已经批准了，不能再撤回。' } } }
+  await expect(f.account().withdrawQuotaRequest(signal)).rejects.toMatchObject({
+    code: 'mindeck-account/quota-request-refused', details: { code: 'QUOTA_REQUEST_DECIDED' },
+  })
+
+  f.cloud.quotaRequestAnswer = { status: 500, body: { error: { code: 'INTERNAL', message: '服务器出错了。' } } }
+  await expect(f.account().requestQuota('', signal)).rejects.toMatchObject({ code: 'mindeck-account/unreachable' })
+  f.cloud.signOutReason = 'SIGNED_OUT_BY_ADMIN'
+  f.cloud.tokens.clear()
+  await expect(f.account().withdrawQuotaRequest(signal)).rejects.toMatchObject({ code: 'mindeck-account/signed-out' })
+  expect(await f.state()).toMatchObject({ status: 'signed-out', notice: 'signed-out-by-admin', adminContact: '企业微信找周敏' })
+})
+
+it('says who signed this computer out when Mindeck Cloud names it, and that the sign-in expired otherwise', async () => {
+  const f = await fixture()
+  f.cloud.syncEnabled = true
+  await signIn(f)
+  f.cloud.signOutReason = 'SIGNED_OUT_BY_MEMBER'
+  f.cloud.tokens.clear()
+  await f.account().syncNow()
+  expect(await f.state()).toMatchObject({ status: 'signed-out', notice: 'signed-out-by-member', adminContact: '企业微信找周敏' })
+
+  // A reason this desktop does not know reads as an expired sign-in.
+  await signIn(f)
+  f.cloud.signOutReason = 'SIGNED_OUT_BY_ROBOT'
+  f.cloud.tokens.clear()
+  await f.account().syncNow()
+  expect(await f.state()).toMatchObject({ status: 'signed-out', notice: 'session-expired' })
+
+  // Another plugin reports the refusal without its body; the account asks Mindeck Cloud why.
+  const token = await signIn(f)
+  expect((await f.state()).notice).toBeNull()
+  f.cloud.signOutReason = 'SIGNED_OUT_BY_ADMIN'
+  f.cloud.tokens.clear()
+  await f.account().rejectToken(token)
+  expect((await f.state()).notice).toBe('session-expired')
+  await vi.waitFor(async () => { expect((await f.state()).notice).toBe('signed-out-by-admin') })
+  expect((await f.state()).adminContact).toBe('企业微信找周敏')
+  f.cloud.pendingPolls = Number.POSITIVE_INFINITY
+  expect(await f.account().startSignIn('1.2.3')).toMatchObject({ notice: null, adminContact: null })
 })
 
 it('ends the session only for the token Mindeck Cloud rejected', async () => {
@@ -268,8 +350,9 @@ it('sends written feedback, forwards answers rated down and taken back, and expl
     seq: 9, time: 1, type: 'feedback/message-put',
     data: { sessionId: 's1', item: { messageId: 'm1', rating, version: 'v', createdAt: 1, updatedAt: 1, ...extra } },
   })
-  f.ctx.emit('session/event', {} as never, put('negative', { category: 'task-result', note: '漏了风险' }) as never)
-  f.ctx.emit('session/event', {} as never, { seq: 10, time: 2, type: 'feedback/message-delete', data: { sessionId: 's1', messageId: 'm1' } } as never)
+  const live = { deriveMessages: () => [] }
+  f.ctx.emit('session/event', live as never, put('negative', { category: 'task-result', note: '漏了风险' }) as never)
+  f.ctx.emit('session/event', live as never, { seq: 10, time: 2, type: 'feedback/message-delete', data: { sessionId: 's1', messageId: 'm1' } } as never)
   await vi.waitFor(() => { expect(f.cloud.feedback).toHaveLength(3) })
   expect(f.cloud.feedback.slice(1)).toEqual([
     { kind: 'answer', ref: 's1/m1', category: 'task-result', text: '漏了风险' },
@@ -283,6 +366,95 @@ it('sends written feedback, forwards answers rated down and taken back, and expl
   f.cloud.tokens.clear()
   await expect(f.account().sendFeedback('再试一次', signal)).rejects.toMatchObject({ code: 'mindeck-account/signed-out' })
   expect((await f.state()).status).toBe('signed-out')
+})
+
+const text = (value: string) => ({ type: 'text', text: value })
+const round = [
+  { id: 'u0', role: 'user', source: { kind: 'user' }, content: [text('上一个问题')] },
+  { id: 'a0', role: 'assistant', source: { kind: 'model', provider: 'mindeck-anthropic', model: 'deepseek-chat' }, content: [text('上一个回答')] },
+  { id: 'u1', role: 'user', source: { kind: 'user' }, content: [text('这份合同有风险吗？'), { type: 'image' }] },
+  { id: 'i1', role: 'user', source: { kind: 'skill-invocation', name: 'contract-review', form: 'instructions' }, content: [text('<skill_content>…')] },
+  { id: 'a1', role: 'assistant', source: { kind: 'model', provider: 'mindeck-anthropic', model: 'deepseek-chat' }, content: [
+    { type: 'reasoning', text: '先读合同' }, text('我先看一下条款。'),
+    { type: 'tool-call', id: 'c1', name: 'skill', arguments: '{"name":"risk-notes"}' },
+    { type: 'tool-call', id: 'c2', name: 'skill', arguments: '{"name":' },
+    { type: 'tool-call', id: 'c3', name: 'read', arguments: '{"path":"a.docx"}' },
+  ] },
+  { id: 't1', role: 'tool', source: { kind: 'tool', callId: 'c1' }, toolCallId: 'c1', content: [text('<skill_content>…')] },
+  { id: 'a2', role: 'assistant', source: { kind: 'model', provider: 'mindeck-openai', model: 'doubao-seed-2-1-pro-260915' }, content: [
+    { type: 'tool-call', id: 'c4', name: 'skill', arguments: '{"name":"contract-review"}' }, text('有三处风险：'), text('付款期限过长。'),
+  ] },
+]
+
+it('describes a rated answer\'s round: its model, the skills since the question, and the question and answer within Mindeck Cloud\'s limits', () => {
+  expect(answerContext(round as never, 'a2')).toEqual({
+    modelName: 'doubao-seed-2-1-pro-260915',
+    skills: ['contract-review', 'risk-notes'],
+    excerpt: { question: '这份合同有风险吗？', answer: '有三处风险：\n\n付款期限过长。' },
+  })
+  expect(answerContext(round as never, 'a0')).toEqual({ modelName: 'deepseek-chat', skills: [], excerpt: { question: '上一个问题', answer: '上一个回答' } })
+  // A compacted answer, or a message that is not an answer, has no context.
+  expect(answerContext(round as never, 'gone')).toBeUndefined()
+  expect(answerContext(round as never, 'u1')).toBeUndefined()
+  const long = [
+    { id: 'u', role: 'user', source: { kind: 'user' }, content: [text('问'.repeat(5000))] },
+    { id: 'a', role: 'assistant', source: { kind: 'model', provider: 'p', model: 'm'.repeat(300) }, content: [
+      ...Array.from({ length: 60 }, (_, index) => ({ type: 'tool-call', id: `c${index}`, name: 'skill', arguments: JSON.stringify({ name: `s${index}` }) })),
+      { type: 'tool-call', id: 'x', name: 'skill', arguments: JSON.stringify({ name: 'n'.repeat(201) }) },
+      text('答'.repeat(4000)),
+    ] },
+  ]
+  const clipped = answerContext(long as never, 'a')
+  expect(clipped?.modelName).toHaveLength(200)
+  expect(clipped?.skills).toHaveLength(50)
+  expect(clipped?.excerpt.question).toBe(`${'问'.repeat(3999)}…`)
+  expect(clipped?.excerpt.answer).toBe('答'.repeat(4000))
+  // Without a typed prompt, the question is empty.
+  expect(answerContext([round[1]] as never, 'a0')?.excerpt.question).toBe('')
+})
+
+it('sends a rating down with its round\'s model, digital employee, and skills, and attaches the question and answer only when the member chose to', async () => {
+  const f = await fixture()
+  await signIn(f)
+  f.ctx.on('mindeck-account/employee', sessionId => sessionId === 's1' ? 'employee-legal' : undefined)
+  const live = { deriveMessages: () => round }
+  const put = (messageId: string) => ({
+    seq: 9, time: 1, type: 'feedback/message-put',
+    data: { sessionId: 's1', item: { messageId, rating: 'negative', category: 'task-result', version: 'v', createdAt: 1, updatedAt: 1 } },
+  })
+  const context = { modelName: 'doubao-seed-2-1-pro-260915', employeeId: 'employee-legal', skills: ['contract-review', 'risk-notes'] }
+  f.ctx.emit('session/event', live as never, put('a2') as never)
+  await vi.waitFor(() => { expect(f.cloud.feedback).toHaveLength(1) })
+  expect(f.cloud.feedback[0]).toEqual({ kind: 'answer', ref: 's1/a2', category: 'task-result', ...context })
+
+  await f.account().prepareFeedback('s1', 'a2', true)
+  f.ctx.emit('session/event', live as never, put('a2') as never)
+  await vi.waitFor(() => { expect(f.cloud.feedback).toHaveLength(2) })
+  expect(f.cloud.feedback[1]).toEqual({
+    kind: 'answer', ref: 's1/a2', category: 'task-result', ...context,
+    excerpt: { question: '这份合同有风险吗？', answer: '有三处风险：\n\n付款期限过长。' },
+  })
+  // The choice holds for one rating; the next one leaves the excerpt out, which removes it on Mindeck Cloud.
+  f.ctx.emit('session/event', live as never, put('a2') as never)
+  await vi.waitFor(() => { expect(f.cloud.feedback).toHaveLength(3) })
+  expect(f.cloud.feedback[2]).not.toHaveProperty('excerpt')
+  await f.account().prepareFeedback('s1', 'a2', true)
+  await f.account().prepareFeedback('s1', 'a2', false)
+  f.ctx.emit('session/event', live as never, put('a2') as never)
+  await vi.waitFor(() => { expect(f.cloud.feedback).toHaveLength(4) })
+  expect(f.cloud.feedback[3]).not.toHaveProperty('excerpt')
+
+  // A closed conversation's log gives the same context; a compacted answer sends the rating alone.
+  const logged = round.map((message, index) => message.role === 'assistant'
+    ? { seq: index, time: index, type: 'assistant/message', data: { turn: 1, step: index, message, stream: [] } }
+    : { seq: index, time: index, type: message.role === 'user' ? 'user/message' : 'tool/result', data: message.role === 'user' ? message : { message } })
+  await f.account().prepareFeedback('s1', 'a2', true)
+  await f.ctx.parallel('feedback/committed', { events: [...logged, put('a2')] } as never)
+  await vi.waitFor(() => { expect(f.cloud.feedback).toHaveLength(5) })
+  expect(f.cloud.feedback[4]).toMatchObject({ ...context, excerpt: { question: '这份合同有风险吗？' } })
+  f.ctx.emit('session/event', { deriveMessages: () => [] } as never, put('a2') as never)
+  await vi.waitFor(() => { expect(f.cloud.feedback).toHaveLength(6) })
+  expect(f.cloud.feedback[5]).toEqual({ kind: 'answer', ref: 's1/a2', category: 'task-result', employeeId: 'employee-legal' })
 })
 
 it('sends down-rated answers and /feedback remarks, and keeps up-ratings on this computer apart from taking back', () => {

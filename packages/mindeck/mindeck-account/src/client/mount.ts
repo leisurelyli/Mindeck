@@ -5,6 +5,7 @@ import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@deepseek-ai/dsh-client-ui-message-feedback/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
@@ -18,7 +19,8 @@ import { composerInject, createMindeckComposer } from './composer.ts'
 import { AccountSection, AccountSectionIcon } from './AccountSection.tsx'
 import { QuotaNotice } from './QuotaNotice.tsx'
 import { MindeckOnboarding } from './MindeckOnboarding.tsx'
-import { deepseekAccount, en, NS, zh, type MindeckAccountKey } from './locales.ts'
+import { FeedbackOptions, type MindeckFeedbackOptionsInjected } from './FeedbackOptions.tsx'
+import { deepseekAccount, en, feedbackDialog, NS, zh, type MindeckAccountKey } from './locales.ts'
 import type { MindeckAccountInjected, MindeckAccountSnapshot, MindeckReminderSnapshot, OperationOutcome } from './operations.ts'
 import { QuotaDock } from './QuotaDock.tsx'
 import { followPersonalDeepSeek } from './personal-deepseek.ts'
@@ -42,6 +44,7 @@ function failureReason(error: RemoteFailure): MindeckAccountKey {
     case 'mindeck-account/signed-out': return 'feedbackSignedOut'
     case 'mindeck-account/unreachable': return 'feedbackUnreachable'
     case 'mindeck-account/invalid-feedback': return 'feedbackInvalid'
+    case 'mindeck-account/quota-request-refused': return 'quotaRequestRefused'
     default: return 'failed'
   }
 }
@@ -50,14 +53,21 @@ function registerUi(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { en, zh }), 'mindeck-account: dictionaries')
   // The base account page shows the personal DeepSeek account beside this page, so it takes the DeepSeek name.
   ctx.effect(() => ctx.locale.override('settings.account', deepseekAccount), 'mindeck-account: DeepSeek account page name')
+  // The base feedback dialog says it sends the conversation log; Mindeck sends a round only when the member ticks it.
+  ctx.effect(() => ctx.locale.override('feedback', feedbackDialog), 'mindeck-account: feedback dialog hint')
   // The Mindeck pages open conversations through this service whether or not the member is signed in.
   ctx.inject(composerInject, (child) => { child.provide('mindeckComposer', createMindeckComposer(child)) })
   const state = createSnapshotStore<MindeckAccountSnapshot>({ view: undefined, failed: false })
   const reminders = createSnapshotStore<MindeckReminderSnapshot>({ dismissed: [] })
   const appVersion = process.env.DSH_CLIENT_VERSION ?? ''
   const personal = followPersonalDeepSeek(ctx, state)
-  const outcome = (result: { ok: true } | { ok: false; error: RemoteFailure }): OperationOutcome =>
-    result.ok ? { ok: true } : { ok: false, reason: failureReason(result.error) }
+  const outcome = (result: { ok: true } | { ok: false; error: RemoteFailure }): OperationOutcome => {
+    if (result.ok) return { ok: true }
+    const { error } = result
+    // Mindeck Cloud explains its refusals of quota requests itself.
+    if (error.code === 'mindeck-account/quota-request-refused') return { ok: false, reason: 'quotaRequestRefused', message: error.details.message }
+    return { ok: false, reason: failureReason(error) }
+  }
   const operations: MindeckAccountInjected = {
     hooks: { account: state, reminders, personal: personal.store },
     async connect(input) {
@@ -76,6 +86,8 @@ function registerUi(ctx: Context): void {
     },
     async signOut() { return outcome(await ctx.remote.mindeckAccount.signOut()) },
     async sendFeedback(text) { return outcome(await ctx.remote.mindeckAccount.sendFeedback(text)) },
+    async requestQuota(reason) { return outcome(await ctx.remote.mindeckAccount.requestQuota(reason)) },
+    async withdrawQuotaRequest() { return outcome(await ctx.remote.mindeckAccount.withdrawQuotaRequest()) },
     appVersion,
     refreshQuota() {
       // A failed refresh keeps the last quota; the periodic Host read tries again.
@@ -141,6 +153,31 @@ function registerUi(ctx: Context): void {
   ctx.remoteAccess.whenAccess('mindeckAccount/watch', () => ctx.slots.inject('shell.quota-notice', () => ctx.slots.register({
     name: 'shell.quota-notice', locale: NS, select: owner => owner.code === 'QUOTA' ? owner : null, inject: () => operations,
   }, QuotaNotice)))
+  // Sessions whose open feedback dialog has its round attached; a rating down sends the choice before it is recorded.
+  const attached = new Set<string>()
+  const optionFaces = new Map<string, MindeckFeedbackOptionsInjected>()
+  const optionsFor = (sessionId: string): MindeckFeedbackOptionsInjected => {
+    let face = optionFaces.get(sessionId)
+    if (face === undefined) {
+      face = { choose: (attach) => { if (attach) attached.add(sessionId); else attached.delete(sessionId) } }
+      optionFaces.set(sessionId, face)
+    }
+    return face
+  }
+  ctx.remoteAccess.whenAccess('mindeckAccount/prepareFeedback', () => {
+    const feedback = ctx.inject(['feedbackUi'], (scope) => {
+      scope.effect(() => scope.feedbackUi.beforeSubmit(async (sessionId, target) => {
+        if (target.kind !== 'message' || target.rating !== 'negative') return
+        // Called on this plugin's scope, which injected the account Remote; the feedback service's scope did not.
+        const result = await ctx.remote.mindeckAccount.prepareFeedback(sessionId, target.messageId, attached.has(sessionId))
+        if (!result.ok) throw new Error(result.error.message)
+      }), 'mindeck-account: feedback round choice')
+      scope.slots.inject('feedback.dialog.options', () => scope.slots.register({
+        name: 'feedback.dialog.options', id: 'mindeck-account', locale: NS, inject: sessionId => optionsFor(sessionId),
+      }, FeedbackOptions))
+    })
+    return () => { void feedback.dispose() }
+  })
   ctx.remoteAccess.whenAccess('mindeckAccount/watch', () => ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
     name: 'conversation.input.dock', id: 'mindeck-quota', order: -10, locale: NS, inject: () => operations,
   }, QuotaDock)))

@@ -3,7 +3,7 @@
  * endpoint for the signed-in session, or reads the bootstrap again on a Mindeck Cloud without one.
  */
 import { MindeckCloudError, readSync } from './cloud.ts'
-import type { MindeckSyncAnswer, MindeckSyncTopic, MindeckSyncView } from './types.ts'
+import type { MindeckSignOutReason, MindeckSyncAnswer, MindeckSyncTopic, MindeckSyncView } from './types.ts'
 
 /** Every topic; a sync the member asks for refreshes all of them. */
 export const ALL_SYNC_TOPICS: readonly MindeckSyncTopic[] = [
@@ -62,8 +62,8 @@ export interface SyncLoopHost {
   readonly session: () => Promise<SyncSession | undefined>
   /** Run one Mindeck Cloud request with the request timeout, fused with the service lifetime. */
   readonly request: <T>(run: (signal: AbortSignal) => Promise<T>) => Promise<T>
-  /** Mindeck Cloud rejected `token`. */
-  readonly rejectToken: (token: string) => Promise<void>
+  /** Mindeck Cloud rejected `token`; `reason` says who ended its session, null when Mindeck Cloud did not say. */
+  readonly rejectToken: (token: string, reason: MindeckSignOutReason | null) => Promise<void>
   /** Read the bootstrap again and store it when it changed. */
   readonly readBootstrap: () => Promise<BootstrapRead>
   /** Read the quota again. */
@@ -208,7 +208,7 @@ export class SyncLoop {
     }
     // A sign-out or another sign-in during the poll resets the state for the new session.
     if (state === undefined || this.current !== state) return
-    if (poll.status === 'sign-in-required') { await this.host.rejectToken(token); return }
+    if (poll.status === 'sign-in-required') { await this.host.rejectToken(token, poll.reason); return }
     // The account read the quota when the session started, so the session's first answer does not read it again.
     const first = state.answer === undefined
     let topics = new Set<MindeckSyncTopic>()

@@ -16,24 +16,26 @@ import { brandString } from '@deepseek-ai/dsh-brand'
 import { credentialKey } from '@deepseek-ai/dsh-credentials'
 import type {} from '@deepseek-ai/dsh-command-feedback/types'
 import type {} from '@deepseek-ai/dsh-message-feedback'
-import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
+import type { Session } from '@deepseek-ai/dsh-session'
+import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-settings'
 import { deadline } from '@deepseek-ai/dsh-timeout'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { followChanges } from './changes.ts'
 import {
-  cloudUrlCandidates, type DeviceInfo, type MindeckBootstrap, MindeckCloudError, normalizeCloudUrl, pollDeviceToken, probeCloud,
-  readBootstrap, readQuota, reportDevice, reportDeviceRequest, requestDeviceCode, sendFeedback, signOutDevice,
+  cancelQuotaRequest, cloudUrlCandidates, createQuotaRequest, type DeviceInfo, type MindeckBootstrap, MindeckCloudError,
+  normalizeCloudUrl, pollDeviceToken, probeCloud, type QuotaRequestOutcome, readBootstrap, readQuota, reportDevice,
+  reportDeviceRequest, requestDeviceCode, sendFeedback, SignInRequired, signOutDevice,
 } from './cloud.ts'
 import { type BootstrapRead, SyncLoop } from './sync.ts'
 import type {
   MindeckAccountErrorCode, MindeckAccountView, MindeckClientRelease, MindeckFeedback, MindeckQuota, MindeckSignInAttempt,
-  MindeckSignInAttemptId, MindeckSyncAnswer, MindeckSyncTopic,
+  MindeckSignInAttemptId, MindeckSignOutReason, MindeckSyncAnswer, MindeckSyncTopic,
 } from './types.ts'
 
 export type * from './types.ts'
 export type { MindeckBootstrap } from './cloud.ts'
-export { cloudUrlCandidates, normalizeCloudUrl } from './cloud.ts'
+export { cloudUrlCandidates, normalizeCloudUrl, signOutReasonOf } from './cloud.ts'
 export { followChanges } from './changes.ts'
 export { ALL_SYNC_TOPICS, changedTopics } from './sync.ts'
 
@@ -61,6 +63,13 @@ declare module '@deepseek-ai/cordis' {
      * @mode emit
      */
     'mindeck-account/synced'(): void
+    /**
+     * Name the Mindeck Cloud digital employee a conversation talks to, for the context of feedback on its answers.
+     * @param sessionId - the conversation's Session.
+     * @returns the employee's Mindeck Cloud id, or undefined when the listener does not know one.
+     * @mode bail
+     */
+    'mindeck-account/employee'(sessionId: SessionId): string | undefined
   }
 }
 
@@ -169,6 +178,100 @@ export function feedbackOf(event: SessionEvent): MindeckFeedback | undefined {
   }
 }
 
+/** A message of a conversation's derived history. */
+type ConversationMessage = ReturnType<Session['deriveMessages']>[number]
+
+/** Most characters of each part of an attached question and answer, as Mindeck Cloud keeps them. */
+const EXCERPT_MAX = 4000
+/** Most skill names, and most characters of each name and of the model id, that Mindeck Cloud accepts. */
+const SKILLS_MAX = 50
+const NAME_MAX = 200
+
+/** What feedback on one answer reports about its round. */
+export interface AnswerContext {
+  /** Model id that produced the answer. */
+  readonly modelName?: string
+  /** Skills the round used: invoked by the member or loaded by the model, in order, each once. */
+  readonly skills: readonly string[]
+  /** The member's question and the answer's text. */
+  readonly excerpt: { readonly question: string; readonly answer: string }
+}
+
+/**
+ * Describe the round of a rated answer: the model that produced it, the skills used since the member's question, and
+ * the question and the answer's text, each cut to Mindeck Cloud's limits.
+ * @param messages - the conversation's messages in order, such as its derived history.
+ * @param messageId - the rated assistant message.
+ * @returns the round's context, or undefined when the messages no longer hold the answer, as after compaction.
+ */
+export function answerContext(messages: readonly ConversationMessage[], messageId: string): AnswerContext | undefined {
+  const index = messages.findIndex(message => message.id === messageId)
+  const answer = messages[index]
+  if (answer?.role !== 'assistant') return undefined
+  let start = index
+  while (start > 0 && !isPrompt(messages[start - 1])) start--
+  const question = messages[start - 1]
+  const skills = new Set<string>()
+  for (const message of messages.slice(start, index + 1)) {
+    // Read as the open source vocabulary: the skill plugin adds `skill-invocation` with the invoked name.
+    const source: { readonly kind: string } = message.source
+    if (message.role === 'user' && source.kind === 'skill-invocation' && 'name' in source && typeof source.name === 'string') skills.add(source.name)
+    if (message.role !== 'assistant') continue
+    for (const block of message.content) {
+      if (block.type !== 'tool-call' || block.name !== 'skill') continue
+      const name = skillArgument(block.arguments)
+      if (name !== undefined) skills.add(name)
+    }
+  }
+  return {
+    ...answer.source.model === '' ? {} : { modelName: answer.source.model.slice(0, NAME_MAX) },
+    skills: [...skills].filter(name => name.length <= NAME_MAX).slice(0, SKILLS_MAX),
+    excerpt: { question: clip(question === undefined ? '' : textOf(question)), answer: clip(textOf(answer)) },
+  }
+}
+
+/** Whether a message is a prompt the member typed. */
+function isPrompt(message: ConversationMessage | undefined): boolean {
+  return message?.role === 'user' && message.source.kind === 'user'
+}
+
+/** The `name` argument of a `skill` tool call; undefined when the model wrote no usable name. */
+function skillArgument(text: string): string | undefined {
+  let parsed: unknown
+  try { parsed = JSON.parse(text) }
+  catch (_error) {
+    // SyntaxError: the model wrote malformed arguments, which the skill tool refused.
+    return undefined
+  }
+  const name = typeof parsed === 'object' && parsed !== null && 'name' in parsed ? parsed.name : undefined
+  return typeof name === 'string' && name.trim() !== '' ? name.trim() : undefined
+}
+
+/** A message's text blocks, joined by blank lines. */
+function textOf(message: ConversationMessage): string {
+  return message.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('\n\n').trim()
+}
+
+/** Cut text to Mindeck Cloud's excerpt limit the way Mindeck Cloud would, ending with an ellipsis. */
+function clip(text: string): string {
+  return text.length <= EXCERPT_MAX ? text : `${text.slice(0, EXCERPT_MAX - 1)}…`
+}
+
+/**
+ * The derived messages of a closed conversation's log, as its live Session would list them before any compaction.
+ * @param events - the conversation's complete log.
+ * @returns its user and assistant messages in order.
+ */
+function loggedMessages(events: readonly SessionEvent[]): ConversationMessage[] {
+  return events.flatMap((event): ConversationMessage[] => {
+    switch (event.type) {
+      case 'user/message': return [event.data]
+      case 'assistant/message': return [event.data.message]
+      default: return []
+    }
+  })
+}
+
 /**
  * Choose what this computer learns about the recommended desktop version.
  * @param client - the stored bootstrap's `client`.
@@ -209,6 +312,10 @@ export default class MindeckAccount extends TypertRemoteService {
   private stored: StoredSession | undefined
   private attempt: Attempt | undefined
   private notice: MindeckAccountView['notice'] = null
+  /** The administrator contact of the session `notice` explains, kept after the session is removed. */
+  private noticeContact: string | null = null
+  /** Rated answers, by `sessionId/messageId`, whose next rating attaches its round's question and answer. */
+  private readonly excerpts = new Set<string>()
   /** Latest quota with the token it was read for, so a quota never outlives its session. */
   private quota: { readonly token: string; readonly value: MindeckQuota } | undefined
   private readonly sync: SyncLoop
@@ -229,7 +336,7 @@ export default class MindeckAccount extends TypertRemoteService {
         return stored === undefined ? undefined : { token: stored.token, syncUrl: stored.bootstrap.endpoints.sync }
       },
       request: run => this.request(this.lifetime.signal, run),
-      rejectToken: token => this.rejectToken(token),
+      rejectToken: (token, reason) => this.rejectToken(token, reason),
       readBootstrap: () => this.revalidate(),
       readQuota: () => this.readQuota(this.lifetime.signal),
       revised: (topics) => { this.ctx.emit('mindeck-account/revised', topics) },
@@ -245,10 +352,10 @@ export default class MindeckAccount extends TypertRemoteService {
       return () => { clearInterval(timer) }
     }, 'mindeck-account: sync timer')
     // Answers rated down and `/feedback` remarks also reach the company, in live and closed conversations alike.
-    ctx.on('session/event', (_session, event) => { this.forwardFeedback(event) })
+    ctx.on('session/event', (session, event) => { this.forwardFeedback(event, () => session.deriveMessages()) })
     ctx.on('feedback/committed', (inspection) => {
       const last = inspection.events.at(-1)
-      if (last !== undefined) this.forwardFeedback(last)
+      if (last !== undefined) this.forwardFeedback(last, () => loggedMessages(inspection.events))
     })
   }
 
@@ -269,7 +376,7 @@ export default class MindeckAccount extends TypertRemoteService {
       notice: this.notice,
       attempt: this.attempt?.view ?? null,
       quota: stored !== undefined && this.quota?.token === stored.token ? this.quota.value : null,
-      adminContact: stored?.bootstrap.company.adminContact ?? null,
+      adminContact: stored === undefined ? this.noticeContact : stored.bootstrap.company.adminContact ?? null,
       personalDeepSeek: stored?.bootstrap.policies?.personalDeepSeek === true,
       sync: stored === undefined ? null : this.sync.viewFor({ token: stored.token, syncUrl: stored.bootstrap.endpoints.sync }),
       release: stored === undefined ? null : clientRelease(stored.bootstrap.client),
@@ -341,6 +448,51 @@ export default class MindeckAccount extends TypertRemoteService {
     const trimmed = text.trim()
     if (trimmed === '' || trimmed.length > 2000) throw new RemoteError('mindeck-account/invalid-feedback', 'feedback must have 1 to 2000 characters', {})
     await this.deliverFeedback({ kind: 'report', text: trimmed }, signal)
+  }
+
+  /**
+   * Say whether the next rating of an answer attaches its round's question and answer, as the feedback dialog's choice
+   * reads when the member submits; the dialog awaits this before the rating is recorded.
+   * @param sessionId - the conversation.
+   * @param messageId - the rated answer.
+   * @param attach - whether the member ticked the choice.
+   */
+  @Remote
+  prepareFeedback(sessionId: string, messageId: string, attach: boolean): Promise<void> {
+    const ref = `${sessionId}/${messageId}`
+    if (attach) this.excerpts.add(ref)
+    else this.excerpts.delete(ref)
+    return Promise.resolve()
+  }
+
+  /**
+   * Ask the member's approvers for more quota this month, as the quota notice offers once the personal limit is used
+   * up. The quota is read again afterwards, refused or not, since another device may have asked meanwhile.
+   * @param reason - what the member wrote; blank sends none. Mindeck Cloud refuses more than 200 characters.
+   * @param signal - caller cancellation.
+   * @returns state whose quota carries the new request.
+   * @throws RemoteError `mindeck-account/quota-request-refused` with Mindeck Cloud's code and explanation,
+   *   `mindeck-account/signed-out` without a usable session, or `mindeck-account/unreachable` when Mindeck Cloud does
+   *   not take it.
+   */
+  @Remote
+  async requestQuota(reason: string, signal: AbortSignal): Promise<MindeckAccountView> {
+    const text = reason.trim()
+    return await this.decideQuotaRequest(signal, (session, request) =>
+      createQuotaRequest(session.cloudUrl, session.token, text === '' ? null : text, request))
+  }
+
+  /**
+   * Withdraw the member's pending quota request. The quota is read again afterwards, refused or not.
+   * @param signal - caller cancellation.
+   * @returns state whose quota carries the withdrawn request.
+   * @throws RemoteError `mindeck-account/quota-request-refused` when the request was already decided
+   *   (`QUOTA_REQUEST_DECIDED`) or none exists (`NOT_FOUND`), `mindeck-account/signed-out` without a usable session, or
+   *   `mindeck-account/unreachable` when Mindeck Cloud does not take it.
+   */
+  @Remote
+  async withdrawQuotaRequest(signal: AbortSignal): Promise<MindeckAccountView> {
+    return await this.decideQuotaRequest(signal, (session, request) => cancelQuotaRequest(session.cloudUrl, session.token, request))
   }
 
   /**
@@ -427,7 +579,7 @@ export default class MindeckAccount extends TypertRemoteService {
       controller: new AbortController(),
     }
     this.attempt = attempt
-    this.notice = null
+    this.clearNotice()
     this.changed()
     attempt.task = this.runAttempt(attempt, cloudUrl, appVersion)
     this.track(attempt.task)
@@ -463,7 +615,7 @@ export default class MindeckAccount extends TypertRemoteService {
     const stored = await this.load()
     if (stored !== undefined) {
       await this.removeStored()
-      this.notice = null
+      this.clearNotice()
       this.changed(true)
       this.track(this.request(this.lifetime.signal, signal => signOutDevice(stored.cloudUrl, stored.token, signal))
         .catch((error: unknown) => { this.ctx.logger.warn('mindeck-account: Cloud sign-out failed; the session ends when it expires', error) }))
@@ -482,15 +634,48 @@ export default class MindeckAccount extends TypertRemoteService {
 
   /**
    * Report that Mindeck Cloud rejected a session token (HTTP 401). The stored session is removed only
-   * when it still holds that token, so a newer sign-in survives a late rejection.
+   * when it still holds that token, so a newer sign-in survives a late rejection. The sign-in page then says who
+   * ended the session; without `reason`, the account asks Mindeck Cloud once more with the rejected token.
    * @param token - the token the rejected request carried.
+   * @param reason - who ended the session, from the 401's `error.reason` (see `signOutReasonOf`); null when the 401
+   *   gave none, undefined when the caller did not read its body.
    */
-  async rejectToken(token: string): Promise<void> {
+  async rejectToken(token: string, reason?: MindeckSignOutReason | null): Promise<void> {
     const stored = await this.load()
     if (stored?.token !== token) return
     await this.removeStored()
-    this.notice = 'session-expired'
+    this.setNotice(reason ?? null, stored.bootstrap.company.adminContact ?? null)
     this.changed(true)
+    if (reason === undefined) this.track(this.learnSignOutReason(stored))
+  }
+
+  /** Show who ended a session that a plugin reported without the reason, once Mindeck Cloud names it. */
+  private async learnSignOutReason(ended: StoredSession): Promise<void> {
+    let answer: MindeckBootstrap | SignInRequired
+    try { answer = await this.request(this.lifetime.signal, signal => readBootstrap(ended.cloudUrl, ended.token, signal)) }
+    catch (error) {
+      if (!this.lifetime.signal.aborted) this.ctx.logger.debug('mindeck-account: could not learn why the session ended', error)
+      return
+    }
+    // A sign-in or sign-out meanwhile replaced the notice.
+    if (!(answer instanceof SignInRequired) || answer.reason === null || this.stored !== undefined || this.notice !== 'session-expired') return
+    this.setNotice(answer.reason, this.noticeContact)
+    this.changed()
+  }
+
+  /**
+   * Explain on the sign-in page why the session ended.
+   * @param reason - who ended the session; null for an expired one.
+   * @param contact - the ended session's administrator contact.
+   */
+  private setNotice(reason: MindeckSignOutReason | null, contact: string | null): void {
+    this.notice = reason === 'admin' ? 'signed-out-by-admin' : reason === 'member' ? 'signed-out-by-member' : 'session-expired'
+    this.noticeContact = contact
+  }
+
+  private clearNotice(): void {
+    this.notice = null
+    this.noticeContact = null
   }
 
   private cloudUrl(): string | undefined {
@@ -560,13 +745,13 @@ export default class MindeckAccount extends TypertRemoteService {
     try { stored = await this.load() }
     catch (error) { this.ctx.logger.warn('mindeck-account: could not read the stored session', error); return }
     if (stored === undefined) return
-    let quota: MindeckQuota | 'sign-in-required'
+    let quota: MindeckQuota | SignInRequired
     try { quota = await this.request(signal, request => readQuota(stored.cloudUrl, stored.token, request)) }
     catch (error) {
       if (!signal.aborted) this.ctx.logger.info('mindeck-account: could not read the quota; keeping the last one', error)
       return
     }
-    if (quota === 'sign-in-required') { await this.rejectToken(stored.token); return }
+    if (quota instanceof SignInRequired) { await this.rejectToken(stored.token, quota.reason); return }
     if (this.stored?.token !== stored.token) return
     if (this.quota?.token === stored.token && JSON.stringify(this.quota.value) === JSON.stringify(quota)) return
     this.quota = { token: stored.token, value: quota }
@@ -586,13 +771,13 @@ export default class MindeckAccount extends TypertRemoteService {
     this.track(this.markWelcomed().catch((_error: unknown) => {
       // markWelcomed logged the failure; the next start tries again.
     }))
-    let bootstrap: MindeckBootstrap | 'sign-in-required'
+    let bootstrap: MindeckBootstrap | SignInRequired
     try { bootstrap = await this.request(this.lifetime.signal, signal => readBootstrap(stored.cloudUrl, stored.token, signal)) }
     catch (error) {
       if (!this.lifetime.signal.aborted) this.ctx.logger.info('mindeck-account: keeping the stored session; Cloud check failed', error)
       return error instanceof MindeckCloudError && error.code === 'unreachable' ? 'unreachable' : 'failed'
     }
-    if (bootstrap === 'sign-in-required') { await this.rejectToken(stored.token); return 'signed-out' }
+    if (bootstrap instanceof SignInRequired) { await this.rejectToken(stored.token, bootstrap.reason); return 'signed-out' }
     // A sign-in or sign-out during the read stores its own bootstrap.
     if (this.stored?.token !== stored.token) return 'signed-out'
     if (JSON.stringify(bootstrap) === JSON.stringify(stored.bootstrap)) return 'ok'
@@ -642,11 +827,11 @@ export default class MindeckAccount extends TypertRemoteService {
       }
       const token = issued
       this.update(attempt, { phase: 'registering' })
-      if (await this.request(signal, request => reportDevice(cloudUrl, token, device, request)) === 'sign-in-required') {
+      if (await this.request(signal, request => reportDevice(cloudUrl, token, device, request)) instanceof SignInRequired) {
         throw new MindeckCloudError('protocol', 'the new session was rejected')
       }
       const bootstrap = await this.request(signal, request => readBootstrap(cloudUrl, token, request))
-      if (bootstrap === 'sign-in-required') throw new MindeckCloudError('protocol', 'the new session was rejected')
+      if (bootstrap instanceof SignInRequired) throw new MindeckCloudError('protocol', 'the new session was rejected')
       signal.throwIfAborted()
       try { await this.store({ version: 1, cloudUrl, token, bootstrap }) }
       catch (error) { throw new MindeckCloudError('storage', 'the session could not be stored', { cause: error }) }
@@ -676,19 +861,80 @@ export default class MindeckAccount extends TypertRemoteService {
     try { stored = await this.load() }
     catch (error) { throw new RemoteError('mindeck-account/storage', 'the stored session could not be read', {}, { cause: error }) }
     if (stored === undefined) throw new RemoteError('mindeck-account/signed-out', 'sign in to send feedback', {})
-    let outcome: 'ok' | 'sign-in-required'
+    let outcome: 'ok' | SignInRequired
     try { outcome = await this.request(signal, request => sendFeedback(stored.cloudUrl, stored.token, feedback, request)) }
     catch (error) { throw new RemoteError('mindeck-account/unreachable', 'Mindeck Cloud did not take the feedback', {}, { cause: error }) }
-    if (outcome === 'sign-in-required') {
-      await this.rejectToken(stored.token)
+    if (outcome instanceof SignInRequired) {
+      await this.rejectToken(stored.token, outcome.reason)
       throw new RemoteError('mindeck-account/signed-out', 'the session ended; sign in to send feedback', {})
     }
   }
 
-  /** Send an answer rating or a `/feedback` remark from a Session log event; other events and failures are ignored. */
-  private forwardFeedback(event: SessionEvent): void {
-    const feedback = feedbackOf(event)
+  /**
+   * Add what Mindeck Cloud keeps about a rated answer's round to its feedback.
+   * @param feedback - the rating.
+   * @param sessionId - the conversation.
+   * @param messageId - the rated answer.
+   * @param messages - the conversation's messages.
+   * @param attach - whether the member chose to attach the question and answer.
+   * @returns the rating with the model, the digital employee, the skills, and the attached excerpt, as known.
+   */
+  private withContext(
+    feedback: Extract<MindeckFeedback, { kind: 'answer' }>, sessionId: SessionId, messageId: string,
+    messages: readonly ConversationMessage[], attach: boolean,
+  ): MindeckFeedback {
+    const context = answerContext(messages, messageId)
+    const employeeId = this.ctx.bail('mindeck-account/employee', sessionId)
+    const excerpt = attach && context !== undefined && (context.excerpt.question !== '' || context.excerpt.answer !== '') ? context.excerpt : undefined
+    return {
+      ...feedback,
+      ...context?.modelName === undefined ? {} : { modelName: context.modelName },
+      ...employeeId === undefined ? {} : { employeeId },
+      ...context === undefined || context.skills.length === 0 ? {} : { skills: context.skills },
+      ...excerpt === undefined ? {} : { excerpt },
+    }
+  }
+
+  /** Run one quota request call with the stored session, then read the quota again; the RemoteError says why it failed. */
+  private async decideQuotaRequest(
+    signal: AbortSignal, run: (session: StoredSession, signal: AbortSignal) => Promise<QuotaRequestOutcome>,
+  ): Promise<MindeckAccountView> {
+    let stored: StoredSession | undefined
+    try { stored = await this.load() }
+    catch (error) { throw new RemoteError('mindeck-account/storage', 'the stored session could not be read', {}, { cause: error }) }
+    if (stored === undefined) throw new RemoteError('mindeck-account/signed-out', 'sign in to ask for more quota', {})
+    const session = stored
+    let outcome: QuotaRequestOutcome
+    try { outcome = await this.request(signal, request => run(session, request)) }
+    catch (error) {
+      if (signal.aborted) throw error
+      throw new RemoteError('mindeck-account/unreachable', 'Mindeck Cloud did not take the quota request', {}, { cause: error })
+    }
+    if (outcome.status === 'sign-in-required') {
+      await this.rejectToken(session.token, outcome.reason)
+      throw new RemoteError('mindeck-account/signed-out', 'the session ended; sign in to ask for more quota', {})
+    }
+    await this.readQuota(signal)
+    if (outcome.status === 'refused') {
+      throw new RemoteError('mindeck-account/quota-request-refused', outcome.message, { code: outcome.code, message: outcome.message })
+    }
+    return await this.getState()
+  }
+
+  /**
+   * Send an answer rating or a `/feedback` remark from a Session log event, with the context of a rated answer's
+   * round; other events and failures are ignored.
+   * @param event - the appended or committed event.
+   * @param messages - reads the conversation's messages, for a rating down.
+   */
+  private forwardFeedback(event: SessionEvent, messages: () => readonly ConversationMessage[]): void {
+    let feedback = feedbackOf(event)
     if (feedback === undefined) return
+    if (feedback.kind === 'answer' && event.type === 'feedback/message-put') {
+      const attach = this.excerpts.delete(feedback.ref)
+      const { sessionId, item } = event.data
+      if (feedback.withdrawn !== true) feedback = this.withContext(feedback, sessionId, item.messageId, messages(), attach)
+    }
     this.track(this.deliverFeedback(feedback, this.lifetime.signal).catch((error: unknown) => {
       if (!this.lifetime.signal.aborted) this.ctx.logger.info('mindeck-account: feedback did not reach Mindeck Cloud', error)
     }))

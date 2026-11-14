@@ -17,8 +17,13 @@ export interface MindeckReminderSnapshot {
   readonly dismissed: readonly string[]
 }
 
-/** Result of one Client-initiated operation; a failure names the copy that explains it. */
-export type OperationOutcome = { readonly ok: true } | { readonly ok: false; readonly reason: MindeckAccountKey }
+/**
+ * Result of one Client-initiated operation; a failure names the copy that explains it, and carries Mindeck Cloud's own
+ * explanation when Mindeck Cloud refused the operation with one.
+ */
+export type OperationOutcome =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly reason: MindeckAccountKey; readonly message?: string }
 
 /** Operations and hooks shared by the sign-in stage, the settings section, and the launcher. */
 export interface MindeckAccountInjected {
@@ -45,6 +50,14 @@ export interface MindeckAccountInjected {
   signOut: () => Promise<OperationOutcome>
   /** @param text - what the member wrote. @returns whether Mindeck Cloud took the feedback. */
   sendFeedback: (text: string) => Promise<OperationOutcome>
+  /**
+   * Ask for more quota this month; the account state carries the new request.
+   * @param reason - what the member wrote; blank sends none.
+   * @returns whether Mindeck Cloud took the request.
+   */
+  requestQuota: (reason: string) => Promise<OperationOutcome>
+  /** @returns whether Mindeck Cloud withdrew the pending quota request; the account state carries it. */
+  withdrawQuotaRequest: () => Promise<OperationOutcome>
   /** Version of this Mindeck build; empty in builds without release metadata. */
   appVersion: string
   /** Ask the Host to read the quota now; the account state carries the result. */
