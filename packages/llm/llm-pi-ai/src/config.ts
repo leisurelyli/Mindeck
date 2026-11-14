@@ -163,7 +163,10 @@ export interface PiAiProviderProfile {
   defaultInput?: PiAiModality[]
   /** Provider request headers, validated against Fetch when the profile resolves; Harness attribution wins reserved names. */
   headers?: Record<string, string>
-  /** Provider-neutral pi-ai reasoning level. */
+  /**
+   * Provider-neutral pi-ai reasoning level every model on this route starts at before a session selects one; a
+   * model's own `reasoning` wins.
+   */
   reasoning?: ModelThinkingLevel
   /** Token budgets used by reasoning providers that support them. */
   thinkingBudgets?: ThinkingBudgets
@@ -245,6 +248,8 @@ export interface ResolvedPiAiProviderProfile
    * own, so a catalog capability must not appear here.
    */
   configuredMaxTokens: ReadonlyMap<string, number>
+  /** Initial reasoning levels this profile set per model, by model id; each wins over the route's {@link reasoning}. */
+  configuredReasoning: ReadonlyMap<string, ModelThinkingLevel>
 }
 
 /** Plugin configuration: the provider routes this instance owns. */
@@ -341,6 +346,7 @@ const modelFields = {
   // `{}`, and absent must stay distinguishable — it means "inherit the
   // installed catalog's capability", while `false` disables reasoning.
   reasoningEfforts: z.union([z.const(false), reasoningEfforts]),
+  reasoning: z.union(THINKING_LEVELS),
   compat: compatProfile,
 }
 
@@ -348,6 +354,9 @@ const modelProfile: z<PiAiModelProfile> = z.object({
   id: z.string().required(),
   ...modelFields,
 })
+
+/** {@link modelProfile} applied to an entry decoded outside the configuration, before its type is known. */
+const decodedModelProfile = modelProfile as z<unknown, PiAiModelProfile>
 
 /** A {@link modelProfile} whose id lives in the `modelOverrides` dict key. */
 const modelOverride: z<PiAiModelOverride> = z.object(modelFields)
@@ -396,6 +405,31 @@ export function assertServiceable(config: Options, previous?: Options): void {
   const changed = Object.fromEntries(Object.entries(config.providers ?? {}).filter(([provider, profile]) =>
     !deepEqualJson(profile, previous?.providers?.[provider])))
   resolveProfiles(changed)
+}
+
+/** The route facts {@link assertModelProfile} checks a model entry against. */
+export interface PiAiModelRoute {
+  /** Route key, used in diagnostics. */
+  provider: string
+  /** Wire protocol of the route, which decides the compat switches a model may set. */
+  api: string
+  /** Endpoint of the route. */
+  baseURL: string
+}
+
+/**
+ * Check one model entry from outside the `providers` configuration, such as a remote catalog, before it joins a
+ * route: the configuration schema checks each value's type, then strict catalog resolution checks the entry on a
+ * route that declares `route.api` and `route.baseURL` and nothing else, as a `providers` write would. A caller can
+ * leave a refused field out and keep the model.
+ * @param route - the protocol and endpoint of the route the entry joins.
+ * @param model - the candidate entry, for example decoded JSON.
+ * @returns Assertion that the entry is a model profile the route can serve.
+ * @throws Error naming the route, the model, and the field that cannot be served.
+ */
+export function assertModelProfile(route: PiAiModelRoute, model: unknown): asserts model is PiAiModelProfile {
+  const entry = decodedModelProfile(structuredClone(model))
+  resolveProfiles({ [route.provider]: { api: route.api, baseURL: route.baseURL, models: [entry] } })
 }
 
 /** Reject removed pre-release profile fields and name their replacements. */
@@ -542,6 +576,7 @@ export function resolveProfiles(
       ...rest.headers === undefined ? {} : { headers: { ...rest.headers } },
       ...rest.thinkingBudgets === undefined ? {} : { thinkingBudgets: { ...rest.thinkingBudgets } },
       configuredMaxTokens: catalog?.configuredMaxTokens ?? new Map(),
+      configuredReasoning: catalog?.configuredReasoning ?? new Map(),
       modelErrors: catalog?.modelErrors ?? new Map(),
       ...piProvider === undefined ? {} : { piProvider },
       ...catalogError === undefined ? {} : { catalogError },

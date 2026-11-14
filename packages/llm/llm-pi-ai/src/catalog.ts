@@ -85,6 +85,21 @@ const THINKING_LEVEL_GATE: Record<ModelThinkingLevel, true> = {
 /** Every pi-ai thinking level a profile may declare, in escalation order. */
 export const THINKING_LEVELS = Object.keys(THINKING_LEVEL_GATE) as readonly ModelThinkingLevel[]
 
+/**
+ * Resolve selectable reasoning levels from pi-ai's public model metadata.
+ * @param model - model descriptor carrying reasoning support and wire mappings.
+ * @returns supported levels in pi-ai's escalation order.
+ */
+export function getSupportedThinkingLevels(model: Model<Api>): ModelThinkingLevel[] {
+  if (!model.reasoning) return ['off']
+  return THINKING_LEVELS.filter((level) => {
+    const mapped = model.thinkingLevelMap?.[level]
+    if (mapped === null) return false
+    if (level === 'xhigh' || level === 'max') return mapped !== undefined
+    return true
+  })
+}
+
 /** One reasoning-dispatch wire format a profile may name. */
 export type PiAiThinkingFormat = NonNullable<OpenAICompletionsCompat['thinkingFormat']>
 
@@ -635,6 +650,12 @@ export interface PiAiModelProfile {
    * declares the offered levels and their wire spellings.
    */
   reasoningEfforts?: false | PiAiReasoningEfforts
+  /**
+   * Level this model starts at before a session selects one, winning over the route's `reasoning`. It must be a
+   * level the model offers, so a model with differing levels keeps its own default on a shared route; a model
+   * offering no levels refuses it.
+   */
+  reasoning?: ModelThinkingLevel
   /** pi-ai wire-compatibility switches for this model, winning over the route's per field; one its protocol does not declare is refused. */
   compat?: PiAiCompatProfile
 }
@@ -844,6 +865,8 @@ export interface RouteCatalog {
    * picked, so only an explicit configuration lands here.
    */
   configuredMaxTokens: ReadonlyMap<string, number>
+  /** Initial reasoning levels this profile set per model, by model id; each wins over the route's `reasoning`. */
+  configuredReasoning: ReadonlyMap<string, ModelThinkingLevel>
 }
 
 /**
@@ -909,6 +932,7 @@ export function resolveRouteModels(
   assertOfferedCompatFields(provider, 'route', request.compat)
   const seen = new Set<string>()
   const configuredMaxTokens = new Map<string, number>()
+  const configuredReasoning = new Map<string, ModelThinkingLevel>()
   const resolveEntry = (entry: PiAiModelProfile): Model<Api> => {
     assertOfferedCompatFields(provider, `model "${entry.id}"`, entry.compat)
     if (entry.id.length === 0) invalid(provider, 'has a model with an empty id')
@@ -939,7 +963,7 @@ export function resolveRouteModels(
     // Only a value the profile named is a deployment choice; the catalog's is
     // the model's capability and stays out of request defaults.
     if (entry.maxTokens !== undefined) configuredMaxTokens.set(entry.id, entry.maxTokens)
-    return {
+    const model: Model<Api> = {
       // The installed entry lays the floor, and the fields below override it.
       // Enumerating instead would silently drop every `Model` field this
       // package does not model — reasoning-level spellings, compatibility
@@ -958,6 +982,17 @@ export function resolveRouteModels(
       ...resolveModelReasoning(provider, entry, base),
       ...resolveModelCompat(provider, entry, request.compat, base, api),
     }
+    if (entry.reasoning !== undefined) {
+      // Unlike the route's level, which describes every model and so may not
+      // fit one of them, a model's own level names a level that model must offer.
+      const offered = model.reasoning ? getSupportedThinkingLevels(model) : []
+      if (!offered.includes(entry.reasoning)) {
+        invalid(provider, `model "${entry.id}" sets reasoning "${entry.reasoning}", which it does not offer; its`
+          + ` levels are ${offered.length === 0 ? 'none' : offered.join(', ')}`)
+      }
+      configuredReasoning.set(entry.id, entry.reasoning)
+    }
+    return model
   }
   const models: Model<Api>[] = []
   for (const entry of entries) {
@@ -983,5 +1018,5 @@ export function resolveRouteModels(
     invalid(provider, `sets compat "${field}", but no model on the route speaks a protocol that takes it;`
       + ` it exists on ${takers.join(', ')}`)
   }
-  return { models: serviceableModels, configuredMaxTokens, modelErrors }
+  return { models: serviceableModels, configuredMaxTokens, configuredReasoning, modelErrors }
 }

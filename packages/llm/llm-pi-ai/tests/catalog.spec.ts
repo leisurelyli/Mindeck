@@ -11,9 +11,9 @@ import { getAllBuiltinModels, getBuiltinModels, getBuiltinProviders } from '@ear
 import { AssistantMessageEventStream } from '@earendil-works/pi-ai/utils/event-stream'
 import { normalizeContext } from '@earendil-works/pi-ai/utils/transcript'
 import type { Api, Model, OpenAICompletionsCompat, Provider } from '@earendil-works/pi-ai'
-import { catalogModels, catalogProvider } from '../src/catalog.ts'
+import { catalogModels, catalogProvider, getSupportedThinkingLevels } from '../src/catalog.ts'
 import { resolveProfiles } from '../src/config.ts'
-import { createModels, createProvider, getSupportedThinkingLevels } from '../src/models.ts'
+import { createModels, createProvider } from '../src/models.ts'
 import { buildProvider, supportedProtocols } from '../src/provider.ts'
 import { assemble } from './assemble.ts'
 import { memoryAuth } from './auth-double.ts'
@@ -765,6 +765,40 @@ describe('per-model reasoning efforts', () => {
     expect(declare({ off: 'none' })).toThrow(/offers no level beyond "off"/)
     expect(declare({ high: null })).toThrow(/only "off" may leave it empty/)
     expect(declare({ high: '' })).toThrow(/must not be an empty string/)
+  })
+
+  it('records each model’s own initial level, inherited levels included', () => {
+    const [catalogModel] = getBuiltinModels('deepseek')
+    if (catalogModel === undefined) throw new Error('the installed catalog ships no deepseek model')
+    const resolved = resolveProfiles({
+      ...declared([
+        { id: 'think', reasoningEfforts: { off: null, low: 'low', high: 'high' }, reasoning: 'high' },
+        { id: 'quiet', reasoningEfforts: { off: null, low: 'low' }, reasoning: 'off' },
+        { id: 'plain', reasoningEfforts: { off: null, low: 'low' } },
+      ]),
+      deepseek: { modelOverrides: { [catalogModel.id]: { reasoning: 'max' } } },
+    })
+
+    expect([...resolved.get('acme-gateway')?.configuredReasoning ?? []]).toEqual([['think', 'high'], ['quiet', 'off']])
+    expect(resolved.get('deepseek')?.configuredReasoning.get(catalogModel.id)).toBe('max')
+  })
+
+  it('refuses an initial level the model does not offer, keeping its siblings in a stored read', () => {
+    const declare = (model: LlmPiAi.PiAiModelProfile): (() => unknown) => () => resolveProfiles(declared([model]))
+
+    expect(declare({ id: 'm', reasoningEfforts: { off: null, high: 'high' }, reasoning: 'max' }))
+      .toThrow(/model "m" sets reasoning "max", which it does not offer; its levels are off, high/)
+    expect(declare({ id: 'm', reasoningEfforts: false, reasoning: 'off' })).toThrow(/its levels are none/)
+    // A hand-declared model without levels does not reason, so no level fits it.
+    expect(declare({ id: 'm', reasoning: 'high' })).toThrow(/its levels are none/)
+
+    const stored = resolveProfiles(declared([
+      { id: 'bad', reasoningEfforts: { high: 'high' }, reasoning: 'low' },
+      { id: 'good', reasoningEfforts: { high: 'high' }, reasoning: 'high' },
+    ]), 'deferred').get('acme-gateway')
+    expect(stored?.modelErrors.get('bad')).toMatch(/sets reasoning "low"/)
+    expect(stored?.piProvider?.getModels().map(model => model.id)).toEqual(['good'])
+    expect([...stored?.configuredReasoning ?? []]).toEqual([['good', 'high']])
   })
 })
 

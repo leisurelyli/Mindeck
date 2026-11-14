@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assertServiceable, Config, resolveProfiles, type Options } from '../src/config.ts'
+import { assertModelProfile, assertServiceable, Config, resolveProfiles, type Options } from '../src/config.ts'
 
 /** Validate one hand-declared route, with the caller's fields layered onto it. */
 const routeWith = (profile: Record<string, unknown>): (() => unknown) =>
@@ -54,6 +54,34 @@ describe('reasoning schema boundary', () => {
         supportsThinkingTokenBudget: true,
       },
     })).not.toThrow()
+  })
+})
+
+describe('model entries decoded outside the configuration', () => {
+  const route = { provider: 'company-openai', api: 'openai-completions', baseURL: 'https://gateway.test/v1' }
+  const check = (entry: unknown): (() => void) => () => { assertModelProfile(route, entry) }
+
+  it('accepts an entry a providers write would accept and types it', () => {
+    const entry: unknown = {
+      id: 'deepseek-v4',
+      reasoningEfforts: { off: null, high: 'high', max: 'max' },
+      reasoning: 'high',
+      compat: { thinkingFormat: 'deepseek', maxTokensField: 'max_tokens' },
+    }
+    assertModelProfile(route, entry)
+    expect(entry.reasoning).toBe('high')
+    expect(entry.compat).toEqual({ thinkingFormat: 'deepseek', maxTokensField: 'max_tokens' })
+  })
+
+  it('refuses a value of the wrong type, a switch its protocol does not take, and a level it does not offer', () => {
+    expect(check({ id: 'm', compat: { supportsDeveloperRole: 'no' } })).toThrow(/supportsDeveloperRole expected boolean/)
+    expect(check({ id: 'm', reasoningEfforts: { turbo: 'x' } })).toThrow(/reasoningEfforts expected/)
+    expect(check({ id: 'm', compat: { forceAdaptiveThinking: true } }))
+      .toThrow(/provider "company-openai" model "m" sets compat "forceAdaptiveThinking", but its api is "openai-completions"/)
+    expect(check({ id: 'm', compat: { bogus: true } })).toThrow(/which no wire protocol declares/)
+    expect(check({ id: 'm', reasoningEfforts: { high: null } })).toThrow(/only "off" may leave it empty/)
+    expect(check({ id: 'm', reasoningEfforts: { high: 'high' }, reasoning: 'low' })).toThrow(/does not offer/)
+    expect(check('deepseek-v4')).toThrow(/expected object/)
   })
 })
 

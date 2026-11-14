@@ -58,9 +58,10 @@ import type {
 } from '@deepseek-ai/dsh-llm'
 import type { AttachmentStore, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import { idleWatchdog, timeoutOf } from '@deepseek-ai/dsh-timeout'
+import { getSupportedThinkingLevels } from './catalog.ts'
 import type { ResolvedPiAiProviderProfile } from './config.ts'
 import { requestImageTarget, toPiContext } from './context.ts'
-import { conversationUpdates, createModels, getSupportedThinkingLevels } from './models.ts'
+import { conversationUpdates, createModels } from './models.ts'
 import { toStreamChunks } from './stream.ts'
 import type { PiAiRequestHeaderContext } from './types.ts'
 
@@ -154,6 +155,16 @@ function profileOptions(
     // The agent recovery layer owns visible attempts; one adapter call is one SDK attempt.
     maxRetries: 0,
   }
+}
+
+/**
+ * The level one model starts at before a session selects one: the model's own, then the route's.
+ * @param profile - the route's resolved profile.
+ * @param model - model id on the route.
+ * @returns the configured level, or undefined when neither sets one.
+ */
+function initialReasoning(profile: ResolvedPiAiProviderProfile, model: string): ModelThinkingLevel | undefined {
+  return profile.configuredReasoning.get(model) ?? profile.reasoning
 }
 
 /**
@@ -367,7 +378,7 @@ export class PiAiAdapter extends LlmAdapter {
   private modelInfo(snapshot: PiAiSnapshot, provider: string, model: string): LlmResolvedModelInfo {
     const profile = this.profileOf(snapshot, provider)
     const resolvedModel = this.modelOf(snapshot, provider, model)
-    const defaultLevel = describableReasoningLevel(resolvedModel, profile.reasoning)
+    const defaultLevel = describableReasoningLevel(resolvedModel, initialReasoning(profile, model))
     // Only a cap the deployment configured is a request default; the
     // catalog's `maxTokens` sizes the model and stops there.
     const configuredMaxTokens = profile.configuredMaxTokens.get(model)
@@ -421,7 +432,7 @@ export class PiAiAdapter extends LlmAdapter {
       : options
     const reasoning = resolveReasoningLevel(
       model,
-      options.reasoningEffort ?? profile.reasoning,
+      options.reasoningEffort ?? initialReasoning(profile, options.model),
     )
     const apiKey = await this.config.resolveApiKey(options.provider, profile)
 

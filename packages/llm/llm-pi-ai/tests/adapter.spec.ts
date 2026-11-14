@@ -688,6 +688,38 @@ describe('provider profile lifecycle', () => {
     })
   })
 
+  it('starts each model on a shared route at its own level and sends it when a request names none', async () => {
+    vi.stubEnv('PI_TEST_KEY', 'test-key')
+    const server = await mockServer([{ events: textEvents }, { events: textEvents }])
+    const ctx = new Context()
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(LlmPiAi, {
+      providers: {
+        'acme-gateway': {
+          apiKeyEnv: 'PI_TEST_KEY',
+          api: 'openai-completions',
+          baseURL: `${server.url}/v1`,
+          compat: { thinkingFormat: 'deepseek' },
+          reasoning: 'low',
+          models: [
+            { id: 'acme-think', reasoningEfforts: { off: null, low: 'low', high: 'high', max: 'max' }, reasoning: 'max' },
+            { id: 'acme-quiet', reasoningEfforts: { off: null, high: 'high' }, reasoning: 'off' },
+            { id: 'acme-mini', reasoningEfforts: { off: null, low: 'low' } },
+          ],
+        },
+      },
+    })
+    const defaultOf = async (model: string) => (await ctx.llm.resolveModelInfo('acme-gateway', model)).reasoning?.defaultEffort
+    expect([await defaultOf('acme-think'), await defaultOf('acme-quiet'), await defaultOf('acme-mini')])
+      .toEqual([ReasoningEffortId('max'), ReasoningEffortId('off'), ReasoningEffortId('low')])
+
+    await assemble(ctx, { provider: 'acme-gateway', model: 'acme-think', messages: [] })
+    expect(server.requests[0]).toMatchObject({ thinking: { type: 'enabled' }, reasoning_effort: 'max' })
+    await assemble(ctx, { provider: 'acme-gateway', model: 'acme-quiet', messages: [] })
+    expect(server.requests[1]).toMatchObject({ thinking: { type: 'disabled' } })
+    expect(server.requests[1]).not.toHaveProperty('reasoning_effort')
+  })
+
   it('sends the declared wire spelling and refuses undeclared levels before network I/O', async () => {
     vi.stubEnv('PI_TEST_KEY', 'test-key')
     const server = await mockServer([{ events: textEvents }])

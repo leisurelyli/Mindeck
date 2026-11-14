@@ -5,14 +5,12 @@ import type {
   Api,
   CreateModelsOptions,
   Model,
-  ModelThinkingLevel,
   MutableModels,
   Provider,
   ProviderAuth,
   ProviderStreams,
 } from '@earendil-works/pi-ai'
 import type { LlmResolvedModelInfo } from '@deepseek-ai/dsh-llm'
-import { THINKING_LEVELS } from './catalog.ts'
 
 /** Input accepted by the static, single-protocol providers this package builds. */
 interface StaticProviderOptions {
@@ -50,21 +48,6 @@ export function createProvider(input: StaticProviderOptions): Provider {
     stream: (model, context, options) => input.api.stream(model, context, options),
     streamSimple: (model, context, options) => input.api.streamSimple(model, context, options),
   }
-}
-
-/**
- * Resolve selectable reasoning levels from pi-ai's public model metadata.
- * @param model - model descriptor carrying reasoning support and wire mappings.
- * @returns supported levels in pi-ai's escalation order.
- */
-export function getSupportedThinkingLevels(model: Model<Api>): ModelThinkingLevel[] {
-  if (!model.reasoning) return ['off']
-  return THINKING_LEVELS.filter((level) => {
-    const mapped = model.thinkingLevelMap?.[level]
-    if (mapped === null) return false
-    if (level === 'xhigh' || level === 'max') return mapped !== undefined
-    return true
-  })
 }
 
 /**

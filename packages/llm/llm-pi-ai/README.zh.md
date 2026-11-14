@@ -104,7 +104,7 @@ profile 的 `models` 列表会替换而非扩展路由的已安装目录；每�
 
 ### 带推理（reasoning）与协议兼容运行
 
-`reasoningEfforts` 声明模型可选择的 thinking 等级：每个键都是选择器提供的等级，其值是分派时在协议中发送的拼写，因此 `max: ultra` 可以为拥有自有词汇的网关重命名等级。省略该字段时保留已安装目录条目的能力；`false` 声明非推理模型。对于 pi-ai 无法识别的端点，`compat` 开关重塑请求——哪个角色携带系统提示词、哪个字段限制输出、thinking 等级如何传递——可逐路由、逐模型配置。条目与已安装目录都没有尺寸的模型，会采用路由的 `defaultContextWindow` 与 `defaultMaxTokens` 回退值。
+`reasoningEfforts` 声明模型可选择的 thinking 等级：每个键都是选择器提供的等级，其值是分派时在协议中发送的拼写，因此 `max: ultra` 可以为拥有自有词汇的网关重命名等级。省略该字段时保留已安装目录条目的能力；`false` 声明非推理模型。路由的 `reasoning` 是其每个模型在会话选定等级之前的初始等级；模型自己的 `reasoning` 优先，且必须是该模型提供的等级，因此等级和默认值各不相同的模型可以共用一条路由。对于 pi-ai 无法识别的端点，`compat` 开关重塑请求——哪个角色携带系统提示词、哪个字段限制输出、thinking 等级如何传递——可逐路由、逐模型配置。条目与已安装目录都没有尺寸的模型，会采用路由的 `defaultContextWindow` 与 `defaultMaxTokens` 回退值。
 
 确切模型元数据将 `reasoning.efforts` 按可选强度从低到高排列。配置函数可从该列表中选择，再由 `prepareCall()` 校验具体强度。适配器只接收解析后的控制项。选择 `off` 不保证禁用推理：以省略推理字段表达该值的协议会沿用网关默认行为。所选等级下产生的推理 token 都计入该请求的输出上限。
 
@@ -159,9 +159,9 @@ Config 更新严格验证发生变化的 provider。初始加载将已存储的�
 | [`src/auth.ts`](src/auth.ts) | 覆盖 harness 凭据平面的凭据存储与 ambient auth context |
 | [`src/login.ts`](src/login.ts) | 面向提供登录的已安装提供方的授权流程 |
 | [`src/config.ts`](src/config.ts) | Profile schema、解析与可服务性校验 |
-| [`src/catalog.ts`](src/catalog.ts) | 已安装目录集成与漂移门禁 |
+| [`src/catalog.ts`](src/catalog.ts) | 已安装目录集成、漂移门禁与 reasoning level |
 | [`src/provider-data.ts`](src/provider-data.ts) | 配置界面使用的认证与端点生成数据 |
-| [`src/models.ts`](src/models.ts) | 基于 pi-ai 窄入口的 model collection、静态 provider 与 reasoning level |
+| [`src/models.ts`](src/models.ts) | 基于 pi-ai 窄入口的 model collection 与静态 provider |
 | [`src/provider.ts`](src/provider.ts) | 受支持协议表与提供方构建 |
 | [`src/context.ts`](src/context.ts) | Harness 到 pi-ai 的上下文转换、图片处理、回放恢复 |
 | [`src/stream.ts`](src/stream.ts) | 把 pi-ai 事件转换为 harness `StreamChunk` 值 |
@@ -172,7 +172,7 @@ Config 更新严格验证发生变化的 provider。初始加载将已存储的�
 
 插件会在可配置提供方目录中声明它能认证的每个已安装目录提供方，并加入当前 profile 声明的每条路由，因此配置界面可以在任何路由存在之前提供完整目录。目录列出了模型却没有聊天模型的提供方（例如只有分类器模型）不进入目录，也不注册登录流程，因为本适配器只分派聊天请求。每个条目都携带 `declared`——pi-ai 是否在该键下不提供任何内容——因为只有适配器能区分手工声明路由与收窄目录路由。目录条目以 `defaultBaseURL` 表示提供方的固定端点或全部模型共用的固定端点，以 `baseURLEnv` 表示端点配置变量，以 `nativeAuth` 表示认证变量和 OAuth 可用性。不同模型的端点和未展开的 URL 模板不会显示为单一固定默认值。路由注册具有原子性：与其他适配器冲突的候选集合会让此前路由继续服务。零路由的裸挂载即休眠姿态：settings 分节提供 profile 前不注册任何内容，分节清空时路由随之消失。
 
-在 `providers` 配置之外持有路由的插件，可以用 `createPiAiAdapter(ctx, { profiles, resolveApiKey, auth })` 构建自己的适配器，它与本插件的适配器使用相同的请求头 waterfall、附件访问和回放警告。`profiles` 以 `providers` 配置格式返回提供方 profile，每个对象只解析一次，`piAiAuthFrom(ctx)` 提供 `auth`。该插件自行注册适配器及其路由。
+在 `providers` 配置之外持有路由的插件，可以用 `createPiAiAdapter(ctx, { profiles, resolveApiKey, auth })` 构建自己的适配器，它与本插件的适配器使用相同的请求头 waterfall、附件访问和回放警告。`profiles` 以 `providers` 配置格式返回提供方 profile，每个对象只解析一次，`piAiAuthFrom(ctx)` 提供 `auth`。该插件自行注册适配器及其路由。这些 profile 不经过配置 schema，因此用自己无法控制的数据（例如远程目录）构建 profile 的插件，要先用 `assertModelProfile(route, entry)` 检查每个模型条目：它在一条具有该 `api` 和 `baseURL` 的路由上，对条目执行 `providers` 写入时的 schema 校验和严格解析，并抛出第一个无法服务的字段的诊断。
 
 <a id="generated-provider-metadata"></a>
 ### 生成的提供方元数据

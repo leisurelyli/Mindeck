@@ -79,13 +79,14 @@ import type { PiAiRequestHeaderContext } from './types.ts'
 export { PiAiAdapter } from './adapter.ts'
 export type { PiAiAdapterOptions, PiAiAuthInjection } from './adapter.ts'
 export type { PiAiRequestHeaderContext } from './types.ts'
-export { Config } from './config.ts'
+export { assertModelProfile, Config } from './config.ts'
 export type {
   Options,
   PiAiCompatProfile,
   PiAiModality,
   PiAiModelOverride,
   PiAiModelProfile,
+  PiAiModelRoute,
   PiAiProviderProfile,
   PiAiReasoningEfforts,
   PiAiThinkingFormat,
