@@ -10,7 +10,7 @@ import type { MindeckSession } from '@deepseek-ai/dsh-mindeck-account'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import { afterEach, expect, it, vi } from 'vitest'
 import { assemble } from '../../../llm/llm-pi-ai/tests/assemble.ts'
-import { anthropicTextEvents, closeMockServers, mockServer } from '../../../llm/llm-pi-ai/tests/mock-server.ts'
+import { anthropicTextEvents, closeMockServers, mockServer, textEvents } from '../../../llm/llm-pi-ai/tests/mock-server.ts'
 import * as MindeckModels from '../src/index.ts'
 
 const cleanups: Array<() => Promise<void>> = []
@@ -20,7 +20,8 @@ function options(overrides: Partial<MindeckModels.Config> = {}): MindeckModels.C
   cleanups.push(async () => { rmSync(cacheDir, { recursive: true, force: true }) })
   return {
     refreshIntervalMs: 600_000, retryIntervalMs: 15_000, cacheDir, requestTimeoutMs: 15_000,
-    defaultContextWindow: 128_000, defaultMaxTokens: 8192, searchCount: 10, ...overrides,
+    defaultContextWindow: 128_000, defaultMaxTokens: 8192, searchCount: 10, minuteLimitWaitMs: 60_000,
+    openaiMaxTokensField: 'max_tokens', ...overrides,
   }
 }
 afterEach(async () => {
@@ -231,7 +232,64 @@ it('reads the catalog again and asks the account to sync when the gateway no lon
   await vi.waitFor(() => { expect(f.catalog.state.requests).toBe(2) })
 })
 
-it('names the digital employee of a conversation in its gateway requests', async () => {
+it('waits out a company limit once per conversation, explains a lasting one, tells provider limits apart, and asks the account to sync', async () => {
+  const limited = (reason: string) => ({
+    status: 429, headers: { 'retry-after': '3' },
+    body: JSON.stringify({ type: 'error', error: { type: 'rate_limit_error', message: '请求太频繁。请求编号：r1', reason } }),
+  })
+  const gateway = await mockServer([
+    limited('MEMBER_CONCURRENCY_LIMIT'), limited('MEMBER_CONCURRENCY_LIMIT'),
+    limited('MEMBER_RATE_LIMIT'), { events: anthropicTextEvents }, limited('MEMBER_RATE_LIMIT'),
+    { status: 429, body: JSON.stringify({ type: 'error', error: { type: 'rate_limit_error', message: 'Too many requests' } }) },
+  ])
+  const f = await fixture(`${gateway.url}/gateway/anthropic`)
+  f.catalog.state.models = [f.model('deepseek-chat')]
+  await f.ctx.plugin(MindeckModels, options({ minuteLimitWaitMs: 30_000 }))
+  await vi.waitFor(() => { expect(f.providers()).toEqual(['mindeck-anthropic']) })
+  const request = {
+    provider: 'mindeck-anthropic', model: 'deepseek-chat', sessionId: SessionId('session-1'),
+    messages: [{ role: 'user' as const, content: [{ type: 'text' as const, text: 'hi' }] }],
+  }
+  const failure = async () => {
+    const finish = (await assemble(f.ctx, request)).finish
+    return finish.kind === 'error' ? finish.failure : undefined
+  }
+  expect(await failure()).toMatchObject({ code: 'RATE_LIMIT', status: 429, providerRetryAfterMs: 3000 })
+  const lasting = await failure()
+  expect(lasting?.code).toBe(MindeckModels.RATE_LIMITED_CODE)
+  expect(lasting?.message).toMatch(/^同时进行的请求超过了企业设定的上限/)
+  // After a lasting refusal is reported, the conversation's next request waits once again.
+  expect(await failure()).toMatchObject({ code: 'RATE_LIMIT', providerRetryAfterMs: 30_000 })
+  expect(await failure()).toBeUndefined()
+  // A request that went through starts the count over.
+  expect(await failure()).toMatchObject({ code: 'RATE_LIMIT', providerRetryAfterMs: 30_000 })
+  expect(await failure()).toMatchObject({ code: 'RATE_LIMIT', message: '模型服务商暂时限流，稍后自动重试。服务商说明：Too many requests' })
+  expect(f.account.requestSync).toHaveBeenCalledTimes(5)
+  // The base retry policy accepts the company limit's wait.
+  expect(f.ctx.llm.providerRetryPolicy('mindeck-anthropic')).toMatchObject({ mode: 'normal', maxRetries: 5, maxDelayMs: 30_000 })
+})
+
+it('sends the output limit as max_tokens on the OpenAI route, or as configured', async () => {
+  const gateway = await mockServer([{ events: textEvents }, { events: textEvents }])
+  const f = await fixture(`${gateway.url}/gateway/openai/v1`)
+  f.catalog.state.models = [{ ...f.model('doubao-seed', 'openai-completions'), protocol: 'openai', maxOutputTokens: 32_768 }]
+  await f.ctx.plugin(MindeckModels, options())
+  await vi.waitFor(() => { expect(f.providers()).toEqual(['mindeck-openai']) })
+  const request = { provider: 'mindeck-openai', model: 'doubao-seed', messages: [{ role: 'user' as const, content: [{ type: 'text' as const, text: 'hi' }] }] }
+  expect((await assemble(f.ctx, request)).finish).toEqual({ kind: 'stop' })
+  expect(gateway.requests[0]).toMatchObject({ max_tokens: 32_768 })
+  expect(gateway.requests[0]).not.toHaveProperty('max_completion_tokens')
+
+  const other = await fixture(`${gateway.url}/gateway/openai/v1`)
+  other.catalog.state.models = [{ ...other.model('doubao-seed', 'openai-completions'), protocol: 'openai', maxOutputTokens: 32_768 }]
+  await other.ctx.plugin(MindeckModels, options({ openaiMaxTokensField: 'max_completion_tokens' }))
+  await vi.waitFor(() => { expect(other.providers()).toEqual(['mindeck-openai']) })
+  expect((await assemble(other.ctx, request)).finish).toEqual({ kind: 'stop' })
+  expect(gateway.requests[1]).toMatchObject({ max_completion_tokens: 32_768 })
+  expect(gateway.requests[1]).not.toHaveProperty('max_tokens')
+})
+
+it('names the digital employee of a conversation in its gateway requests and its feedback', async () => {
   const gateway = await mockServer([{ events: anthropicTextEvents }, { events: anthropicTextEvents }, { events: anthropicTextEvents }])
   const f = await fixture(`${gateway.url}/gateway/anthropic`)
   f.ctx.provide('mindeckEmployees', {
@@ -246,4 +304,7 @@ it('names the digital employee of a conversation in its gateway requests', async
   await assemble(f.ctx, { ...request, sessionId: SessionId('session-general') })
   await assemble(f.ctx, request)
   expect(gateway.headers.map(headers => headers[MindeckModels.EMPLOYEE_HEADER])).toEqual(['e1', undefined, undefined])
+  // Feedback on the conversation's answers names the same employee.
+  expect(f.ctx.bail('mindeck-account/employee', SessionId('session-legal'))).toBe('e1')
+  expect(f.ctx.bail('mindeck-account/employee', SessionId('session-general'))).toBeUndefined()
 })

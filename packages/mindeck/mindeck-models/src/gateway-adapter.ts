@@ -18,6 +18,42 @@ export const ACCOUNT_UNAVAILABLE_CODE = 'ACCOUNT_UNAVAILABLE'
 /** Failure code of a model request made while no Mindeck account is signed in. */
 export const SIGN_IN_REQUIRED_CODE = 'MINDECK_SIGN_IN_REQUIRED'
 
+/**
+ * Failure code of a request the company's per-member limit refused again after the desktop waited once; it is not
+ * retried, so a runaway loop stops instead of waiting forever.
+ */
+export const RATE_LIMITED_CODE = 'MINDECK_RATE_LIMITED'
+
+/** Retry code the base retry policy waits on, for a first refusal by a company limit and for a provider's own 429. */
+const RATE_LIMIT_CODE = 'RATE_LIMIT'
+
+/**
+ * Which company limit refused a request, by the `error.reason` of the gateway's 429: `minute` for the requests per
+ * minute (`MEMBER_RATE_LIMIT`), `concurrency` for the requests running at once (`MEMBER_CONCURRENCY_LIMIT`). A 429
+ * without a reason comes from the model provider.
+ */
+export type MemberLimit = 'minute' | 'concurrency'
+
+const MEMBER_LIMIT_REASONS: Readonly<Record<string, MemberLimit>> = {
+  MEMBER_RATE_LIMIT: 'minute',
+  MEMBER_CONCURRENCY_LIMIT: 'concurrency',
+}
+
+/** The gateway's fixed `Retry-After` of a request refused for the requests running at once, in milliseconds. */
+const CONCURRENCY_RETRY_AFTER_MS = 3000
+
+/** What the transcript says while the desktop waits out a company limit once. */
+const LIMIT_WAIT_MESSAGES: Readonly<Record<MemberLimit, string>> = {
+  minute: '请求较多，已达到企业设定的每分钟请求上限，稍后自动继续。',
+  concurrency: '同时进行的请求较多，已达到企业设定的上限，稍后自动继续。',
+}
+
+/** What the transcript says when a company limit refused the request again after the wait. */
+const LIMIT_LASTING_MESSAGES: Readonly<Record<MemberLimit, string>> = {
+  minute: '这段对话的请求超过了企业设定的每分钟上限，可以稍后再试；如果经常遇到，请联系管理员。',
+  concurrency: '同时进行的请求超过了企业设定的上限，可以等其他任务完成后再试；如果经常遇到，请联系管理员。',
+}
+
 /** Gateway request header naming the Mindeck Cloud id of the digital employee a conversation talks to. */
 export const EMPLOYEE_HEADER = 'x-mindeck-employee'
 
@@ -40,18 +76,35 @@ export interface GatewayHooks {
   readonly modelMissing: () => void
   /** The company's notes on a catalog model, by model id; undefined for a model the catalog does not list. */
   readonly notes: (model: string) => ModelNotes | undefined
+  /** Mindeck Cloud or the model provider refused a request as too many (HTTP 429). */
+  readonly rateLimited: () => void
+  /**
+   * Milliseconds the desktop waits before its one retry of a request the per-minute company limit refused. The 429's
+   * `Retry-After` does not reach the adapter, so this covers the limit's whole window.
+   */
+  readonly minuteLimitWaitMs: number
+}
+
+/** What a provider failure says about the gateway's answer. */
+export interface GatewayFailure {
+  readonly status?: number
+  /** The gateway's or the provider's message. */
+  readonly text?: string
+  /** `error.reason`, which the gateway sets on failures the desktop tells apart. */
+  readonly reason?: string
 }
 
 /**
  * Read the gateway's own message from a provider failure. The client SDKs report the gateway's JSON
  * error body, the error object inside it, or its message, with or without the HTTP status.
  * @param message - failure text from the client SDK.
- * @returns the HTTP status and the gateway message, when the text carries them.
+ * @returns the HTTP status, the gateway message, and `error.reason`, when the text carries them.
  */
-export function readGatewayFailure(message: string): { status?: number; text?: string } {
+export function readGatewayFailure(message: string): GatewayFailure {
   const status = /^\s*(\d{3})\b/.exec(message)?.[1]
   const json = message.indexOf('{')
   let text: string | undefined
+  let reason: string | undefined
   if (json >= 0) {
     try {
       const body: unknown = JSON.parse(message.slice(json))
@@ -59,6 +112,8 @@ export function readGatewayFailure(message: string): { status?: number; text?: s
       const error = typeof body === 'object' && body !== null && 'error' in body ? body.error : body
       const inner = typeof error === 'object' && error !== null && 'message' in error ? error.message : undefined
       if (typeof inner === 'string' && inner.length > 0) text = inner
+      const code = typeof error === 'object' && error !== null && 'reason' in error ? error.reason : undefined
+      if (typeof code === 'string' && code.length > 0) reason = code
     } catch (_error) {
       // Not a JSON body: the SDK already reduced the response to its message, read below.
     }
@@ -67,18 +122,37 @@ export function readGatewayFailure(message: string): { status?: number; text?: s
     const rest = message.replace(/^\s*\d{3}\b\s*/, '').trim()
     if (rest.length > 0 && !rest.startsWith('{')) text = rest
   }
-  return { ...status === undefined ? {} : { status: Number(status) }, ...text === undefined ? {} : { text } }
+  return {
+    ...status === undefined ? {} : { status: Number(status) },
+    ...text === undefined ? {} : { text },
+    ...reason === undefined ? {} : { reason },
+  }
+}
+
+/**
+ * Tell which company limit refused a request.
+ * @param failure - failure reported by the pi-ai adapter.
+ * @returns the limit named by the gateway's 429, or undefined for any other failure, a provider's own 429 included.
+ */
+export function memberLimitOf(failure: LlmFailure): MemberLimit | undefined {
+  const read = readGatewayFailure(failure.message)
+  const { reason } = read
+  if ((failure.status ?? read.status) !== 429 || reason === undefined || !Object.hasOwn(MEMBER_LIMIT_REASONS, reason)) return undefined
+  return MEMBER_LIMIT_REASONS[reason]
 }
 
 /**
  * Map one failed request: a refused session ends the local session, an exhausted quota stops retries
- * and shows the Cloud's explanation, and a missing model refreshes the catalog.
+ * and shows the Cloud's explanation, and a missing model refreshes the catalog. A company limit's first refusal is
+ * retried once after its wait; its refusal of that retry stops with an explanation. A provider's own 429 keeps the
+ * base retry policy.
  * @param failure - failure reported by the pi-ai adapter.
  * @param token - token the request used.
  * @param hooks - account actions.
+ * @param repeated - whether a company limit already refused the previous request of the same conversation.
  * @returns the failure to report.
  */
-export function mapGatewayFailure(failure: LlmFailure, token: string | undefined, hooks: GatewayHooks): LlmFailure {
+export function mapGatewayFailure(failure: LlmFailure, token: string | undefined, hooks: GatewayHooks, repeated: boolean): LlmFailure {
   const read = readGatewayFailure(failure.message)
   const status = failure.status ?? read.status
   const message = read.text ?? failure.message
@@ -93,6 +167,16 @@ export function mapGatewayFailure(failure: LlmFailure, token: string | undefined
     case 404:
       hooks.modelMissing()
       return { ...failure, status, code: 'UNKNOWN_MODEL', message }
+    case 429: {
+      hooks.rateLimited()
+      const limit = memberLimitOf({ ...failure, status })
+      if (limit === undefined) {
+        return { ...failure, status, code: RATE_LIMIT_CODE, message: `模型服务商暂时限流，稍后自动重试。${read.text === undefined ? '' : `服务商说明：${read.text}`}` }
+      }
+      if (repeated) return { ...failure, status, code: RATE_LIMITED_CODE, message: LIMIT_LASTING_MESSAGES[limit] }
+      const wait = limit === 'concurrency' ? CONCURRENCY_RETRY_AFTER_MS : hooks.minuteLimitWaitMs
+      return { ...failure, status, code: RATE_LIMIT_CODE, message: LIMIT_WAIT_MESSAGES[limit], providerRetryAfterMs: wait }
+    }
     case undefined:
       return failure
     default:
@@ -100,8 +184,15 @@ export function mapGatewayFailure(failure: LlmFailure, token: string | undefined
   }
 }
 
-/** Delegating adapter that applies {@link mapGatewayFailure} to every error finish. */
+/**
+ * Delegating adapter that applies {@link mapGatewayFailure} to every error finish. It remembers, per conversation,
+ * that a company limit refused the last request, until a request of that conversation finishes otherwise or the
+ * limit refuses it again.
+ */
 export class GatewayAdapter extends LlmAdapter {
+  /** Conversations whose last request a company limit refused. */
+  private readonly limited = new Set<string>()
+
   /** @param inner - the pi-ai adapter serving the routes. @param hooks - account actions. */
   constructor(private readonly inner: LlmAdapter, private readonly hooks: GatewayHooks) { super() }
 
@@ -137,17 +228,24 @@ export class GatewayAdapter extends LlmAdapter {
 
   override async prepareCall(provider: string, model: string, signal?: AbortSignal): Promise<PreparedAdapterCall> {
     const call = await this.inner.prepareCall(provider, model, signal)
-    return { model: call.model, stream: options => this.guard(call.stream(options)) }
+    return { model: call.model, stream: options => this.guard(call.stream(options), options) }
   }
 
-  stream(options: GenerateOptions): AsyncIterable<StreamChunk> { return this.guard(this.inner.stream(options)) }
+  stream(options: GenerateOptions): AsyncIterable<StreamChunk> { return this.guard(this.inner.stream(options), options) }
 
-  private async *guard(source: AsyncIterable<StreamChunk>): AsyncIterable<StreamChunk> {
+  private async *guard(source: AsyncIterable<StreamChunk>, options: GenerateOptions): AsyncIterable<StreamChunk> {
     const token = await this.hooks.token()
+    // A request outside a conversation has no earlier request to compare with.
+    const conversation = options.sessionId === undefined ? undefined : String(options.sessionId)
     for await (const chunk of source) {
       if (chunk.type === 'finish' && chunk.reason.kind === 'error') {
-        yield { ...chunk, reason: { kind: 'error', failure: mapGatewayFailure(chunk.reason.failure, token, this.hooks) } }
+        const { failure } = chunk.reason
+        const repeated = conversation !== undefined && this.limited.has(conversation)
+        if (conversation !== undefined && memberLimitOf(failure) !== undefined && !repeated) this.limited.add(conversation)
+        else if (conversation !== undefined) this.limited.delete(conversation)
+        yield { ...chunk, reason: { kind: 'error', failure: mapGatewayFailure(failure, token, this.hooks, repeated) } }
       } else {
+        if (chunk.type === 'finish' && conversation !== undefined) this.limited.delete(conversation)
         yield chunk
       }
     }
