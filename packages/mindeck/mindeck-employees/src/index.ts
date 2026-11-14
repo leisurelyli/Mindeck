@@ -94,6 +94,12 @@ interface Registration {
   readonly dispose: () => Promise<void>
 }
 
+/** A model of the company catalog: the provider that serves it and its display name. */
+interface CompanyModel {
+  readonly provider: string
+  readonly name: string
+}
+
 /** Registers the general assistant and the member's digital employees as agent presets and lists them for the digital-employee page. */
 export default class MindeckEmployees extends TypertRemoteService {
   static inject = ['agentPresets', 'mindeckAccount', 'typert']
@@ -367,7 +373,7 @@ export default class MindeckEmployees extends TypertRemoteService {
   private async publishCards(): Promise<void> {
     const revision = ++this.cardsRevision
     const employees = this.shown
-    const models = employees.some(employee => employee.defaultModel !== null) ? await this.companyModels() : new Map()
+    const models = employees.some(employee => employee.defaultModel !== null) ? await this.companyModels() : new Map<string, CompanyModel>()
     // A later publication read newer employees or models.
     if (revision !== this.cardsRevision || this.stopped()) return
     const cards: MindeckEmployeeCard[] = []
@@ -387,8 +393,8 @@ export default class MindeckEmployees extends TypertRemoteService {
    * Read the company models the configured providers list.
    * @returns each model id with its provider and display name; the first provider listing an id wins.
    */
-  private async companyModels(): Promise<ReadonlyMap<string, { readonly provider: string; readonly name: string }>> {
-    const found = new Map<string, { readonly provider: string; readonly name: string }>()
+  private async companyModels(): Promise<ReadonlyMap<string, CompanyModel>> {
+    const found = new Map<string, CompanyModel>()
     const llm = this.ctx.get('llm')
     if (llm === undefined) return found
     const registered = new Set(llm.listProviders().map(provider => provider.id))

@@ -83,8 +83,10 @@ const PROPFIND_BODY = '<?xml version="1.0"?><d:propfind xmlns:d="DAV:" xmlns:oc=
   + '</d:prop></d:propfind>'
 
 // OpenCloud writes line breaks in highlights, and other characters Go's XML encoder escapes, as character references
-// such as `&#xA;`, which only `htmlEntities` decodes.
+// such as `&#xA;`, which only `htmlEntities` decodes. Its replacement, `entityDecoder`, takes a whole decoder object
+// this package would have to supply; the pinned fast-xml-parser 5.11.1 still honors `htmlEntities`.
 const parser = new XMLParser({
+  // oxlint-disable-next-line typescript/no-deprecated -- See above.
   ignoreAttributes: true, removeNSPrefix: true, processEntities: true, htmlEntities: true, parseTagValue: false,
   isArray: name => name === 'response' || name === 'propstat',
 })
