@@ -2604,7 +2604,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-mindeck-employees`
 
 - `inject`: `agentPresets` · `mindeckAccount` · `typert`
-- `source`: [`packages/mindeck/mindeck-employees/src/index.ts:39`](../packages/mindeck/mindeck-employees/src/index.ts)
+- `source`: [`packages/mindeck/mindeck-employees/src/index.ts:57`](../packages/mindeck/mindeck-employees/src/index.ts)
 
 ```ts config-catalog
 /** Deployment options. */
@@ -2624,6 +2624,11 @@ export interface Config {
   retryIntervalMs: number
   /** Timeout of one Mindeck Cloud request in milliseconds. */
   requestTimeoutMs: number
+  /**
+   * LLM providers that serve the company's models, searched in order for an employee's default model; mindeck-models
+   * registers these routes.
+   */
+  modelProviders: string[]
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-mindeck-employees -->
@@ -2634,7 +2639,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-mindeck-files`
 
 - `inject`: `tools` · `fs` · `workingDirectory` · `mindeckAccount` · `typert`
-- `source`: [`packages/mindeck/mindeck-files/src/index.ts:32`](../packages/mindeck/mindeck-files/src/index.ts)
+- `source`: [`packages/mindeck/mindeck-files/src/index.ts:37`](../packages/mindeck/mindeck-files/src/index.ts)
 
 ```ts config-catalog
 /** Deployment options. */
