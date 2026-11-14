@@ -152,7 +152,7 @@ export function LibraryPanel({ t, useLibrary, spaces, list, search, upload: uplo
                   {entry.passage !== undefined && <Passage parts={entry.passage} className={css.passage as string} />}
                 </span>
               </>
-              return <li key={entry.path} className={css.row}>
+              return <li key={entry.path} className={css.row} data-passage={entry.passage === undefined ? undefined : ''}>
                 {entry.kind === 'folder'
                   ? <button type="button" className={css.action} onClick={() => { open(entry.path) }}>{body}</button>
                   : <button type="button" className={css.action} aria-label={`${t('addToConversation')}: ${entry.name}`}

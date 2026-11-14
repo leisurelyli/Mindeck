@@ -32,11 +32,14 @@ export interface TransferLimits {
 const PASSAGE_LEAD = 40
 /** Most characters of a passage. */
 const PASSAGE_LENGTH = 160
+/** Punctuation that ends a clause, where a shortened lead starts. */
+const CLAUSE_END = /[。！？；!?;]/u
 
 /**
  * Read an OpenCloud highlight into a passage: white space runs become one space, adjacent matches join, and the text
- * is shortened to {@link PASSAGE_LEAD} characters before the first match and {@link PASSAGE_LENGTH} in all, with `…`
- * where it was cut.
+ * is shortened to {@link PASSAGE_LEAD} characters before the first match and to {@link PASSAGE_LENGTH} in all, with `…`
+ * where it was cut. A lead that was cut, here or by OpenCloud's leading `…`, starts after its first clause end when it
+ * has one.
  * @param highlights - `oc:highlights` text, each matching run inside `<mark>` and `</mark>`.
  * @returns the passage, or undefined when it marks no match.
  */
@@ -53,9 +56,12 @@ export function passageOf(highlights: string): LibraryPassagePart[] | undefined 
   }
   const first = parts.findIndex(part => part.match)
   if (first === -1) return undefined
-  const lead = parts.slice(0, first).map(part => part.text).join('').trimStart()
+  const before = parts.slice(0, first).map(part => part.text).join('').trimStart()
+  const clipped = before.startsWith('…')
+  const lead = clipped ? before.slice(1) : before
   const kept: Array<{ text: string; match: boolean }> = []
-  if (lead !== '') kept.push({ text: lead.length > PASSAGE_LEAD ? `…${lead.slice(-PASSAGE_LEAD).trimStart()}` : lead, match: false })
+  if (clipped || lead.length > PASSAGE_LEAD) kept.push({ text: `…${shortLead(lead)}`, match: false })
+  else if (lead !== '') kept.push({ text: lead, match: false })
   let length = kept[0]?.text.length ?? 0
   for (const part of parts.slice(first)) {
     const room = PASSAGE_LENGTH - length
@@ -68,6 +74,13 @@ export function passageOf(highlights: string): LibraryPassagePart[] | undefined 
   const last = kept.at(-1)
   if (last !== undefined && !last.match) last.text = last.text.trimEnd()
   return kept.filter(part => part.text !== '')
+}
+
+function shortLead(lead: string): string {
+  const tail = lead.slice(-PASSAGE_LEAD)
+  const end = tail.search(CLAUSE_END)
+  const clause = end === -1 ? '' : tail.slice(end + 1).trimStart()
+  return clause === '' ? tail.trimStart() : clause
 }
 
 function entry(space: LibrarySpace, item: OpenCloudItem): LibraryEntry {

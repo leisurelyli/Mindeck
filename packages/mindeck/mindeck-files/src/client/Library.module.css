@@ -60,7 +60,10 @@
 
 .iconButton:focus-visible, .crumb:focus-visible, .action:focus-visible, .textButton:focus-visible { outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: -2px; }
 
-/* A text match's passage under its name, two lines at most, with the matching text marked. */
+/* A text match's passage under its name and place, two lines at most, with the matching text marked; the file icon
+   stays centered on the name and place. */
+.row[data-passage] .action { align-items: flex-start; }
+.row[data-passage] .action > svg { margin-top: 10px; }
 .passage { display: -webkit-box; overflow: hidden; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .passage mark { padding: 0 1px; border-radius: var(--dsw-radius-xs); background: var(--dsw-alias-state-business-tertiary); color: var(--dsw-alias-label-primary); }
 .state .stateHint { margin: 0; color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 18px; }
