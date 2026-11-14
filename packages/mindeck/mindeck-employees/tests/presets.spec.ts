@@ -2,13 +2,14 @@
 import { expect, it } from 'vitest'
 import type { CachedEmployee } from '../src/cache.ts'
 import {
-  employeeDefinition, employeePersona, generalDefinition, PERSONA_PLUGIN, promptSafe, withPersona, type PresetRows,
+  employeeDefinition, employeePersona, generalDefinition, libraryFolderPath, PERSONA_PLUGIN, promptSafe, withPersona,
+  type PresetRows,
 } from '../src/presets.ts'
 
 const legal: CachedEmployee = {
   id: 'e1', name: '法务专员', avatar: 'legal', tagline: '审合同，答劳动用工问题',
   instructions: '先确认合同类型。\n引用条款时注明出处。', starters: ['帮我审一份采购合同'], skills: ['contract-review', 'nda-check'],
-  draft: false, retired: false,
+  draft: false, retired: false, defaultModel: null, folders: [],
 }
 
 it('writes the employee persona in the model\'s terms, with the company\'s instructions verbatim', () => {
@@ -22,16 +23,40 @@ it('writes the employee persona in the model\'s terms, with the company\'s instr
     '',
     'The company suggests these skills for this role: /contract-review, /nda-check. Use them when they fit the task.',
   ].join('\n'))
-  expect(employeePersona({ name: '助理', tagline: '', instructions: '', skills: [] }))
+  expect(employeePersona({ name: '助理', tagline: '', instructions: '', skills: [], folders: [] }))
     .toBe('You are "助理", a digital employee of the user\'s company, powered by the {{model}} model.')
 })
 
 it('keeps Cloud text from forming a prompt variable', () => {
   expect(promptSafe('{{model}} {{{x}}} }}')).toBe('{ {model} } { { {x} } } } }')
-  const persona = employeePersona({ name: '{{name}}', tagline: 'a}}b', instructions: 'use {{date}}', skills: [] })
+  const persona = employeePersona({
+    name: '{{name}}', tagline: 'a}}b', instructions: 'use {{date}}', skills: [],
+    folders: [{ driveId: 'd', itemId: 'i', path: '{{x}} / y', label: '{{label}}', accessible: true }],
+  })
   expect(persona.match(/\{\{/gu)).toEqual(['{{'])
   expect(persona.match(/\}\}/gu)).toEqual(['}}'])
   expect(persona).toContain('{{model}}')
+})
+
+it('sends the model to the library folders by the paths the file-library tools use', () => {
+  const persona = employeePersona({
+    ...legal,
+    folders: [
+      { driveId: 'drive-company', itemId: 'rules', path: '企业空间 / 制度文件', label: '企业制度', accessible: true },
+      { driveId: 'drive-dept', itemId: 'specs', path: '研发部 / 规范 / 2026', label: '研发规范', accessible: false },
+    ],
+  })
+  expect(persona.split('\n\n').at(-1)).toBe([
+    'The company keeps the material for this role in these file library folders:',
+    '- 企业制度: folder "/企业空间/制度文件"',
+    '- 研发规范: folder "/研发部/规范/2026"',
+    'Before answering a question this material may cover, search it with library_search, setting folder to one of these '
+    + 'folders, instead of answering from memory. Read the files you find with library_download, name the files your '
+    + 'answer relies on, and say so when the material does not cover the question.',
+  ].join('\n'))
+  expect(persona.startsWith(employeePersona(legal))).toBe(true)
+  expect(libraryFolderPath('企业空间')).toBe('/企业空间')
+  expect(libraryFolderPath(' 研发部 /  规范 / ')).toBe('/研发部/规范')
 })
 
 it('replaces only the top-level persona row, or puts one first', () => {

@@ -13,7 +13,7 @@ import Loader from '@deepseek-ai/cordis-plugin-loader'
 import AgentRegistry, { assembleContextFor } from '@deepseek-ai/dsh-agent'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import AgentPresets, { type PresetDefinition } from '@deepseek-ai/dsh-agent-preset-registry'
-import LlmRuntime from '@deepseek-ai/dsh-llm'
+import LlmRuntime, { LlmAdapter, type LlmModelInfo, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import type { MindeckSession } from '@deepseek-ai/dsh-mindeck-account'
 import * as Persona from '@deepseek-ai/dsh-persona'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
@@ -41,6 +41,8 @@ interface CloudEmployee {
   starters?: readonly string[]
   skills?: readonly string[]
   draft?: boolean
+  defaultModel?: string | null
+  folders?: ReadonlyArray<{ driveId: string; itemId: string; path: string; label: string; accessible: boolean }>
 }
 
 /** Loopback `GET /api/desktop/employees` answering each token with its member's employees. */
@@ -145,6 +147,7 @@ async function fixture() {
   const config: Config = {
     basePreset: 'standard', generalPersona: 'You are a work assistant powered by the {{model}} model.',
     cacheDir, refreshIntervalMs: 600_000, retryIntervalMs: 1000, requestTimeoutMs: 10_000,
+    modelProviders: ['mindeck-anthropic', 'mindeck-openai'],
   }
   /** The roster as the preset chip lists it, without the base preset. */
   const roster = async () => (await ctx.agentPresets.list()).filter(preset => preset.id.startsWith('mindeck-'))
@@ -187,7 +190,7 @@ it('registers the general assistant and each employee on the base preset\'s rows
   const document = await f.ctx.agentPresets.readDocument('mindeck-employee-e1')
   expect(document.content).toContain('!!js')
   expect(load(document.content, { schema: entryListSchema })).toEqual([
-    { ...STANDARD.plugins[0], config: { prefix: employeePersona({ name: '法务专员', tagline: LEGAL.tagline ?? '', instructions: '先确认合同类型。', skills: ['contract-review'] }) } },
+    { ...STANDARD.plugins[0], config: { prefix: employeePersona({ name: '法务专员', tagline: LEGAL.tagline ?? '', instructions: '先确认合同类型。', skills: ['contract-review'], folders: [] }) } },
     STANDARD.plugins[1],
   ])
 
@@ -201,7 +204,7 @@ it('registers the general assistant and each employee on the base preset\'s rows
   await f.ctx.agentPresets.select(agent, 'mindeck-employee-e1')
   const prompt = await f.ctx.systemPrompt.assemble(assembleContextFor(agent))
   expect(prompt.sections.find(section => section.name === PERSONA_PREFIX_SECTION)?.text).toBe(employeePersona({
-    name: '法务专员', tagline: '审合同，答劳动用工问题', instructions: '先确认合同类型。', skills: ['contract-review'],
+    name: '法务专员', tagline: '审合同，答劳动用工问题', instructions: '先确认合同类型。', skills: ['contract-review'], folders: [],
   }))
   expect(f.ctx.mindeckEmployees.employeeForSession(SessionId('session-1'))).toBe('e1')
   expect(f.ctx.mindeckEmployees.employeeForSession(SessionId('no-such-session'))).toBeUndefined()
@@ -210,10 +213,92 @@ it('registers the general assistant and each employee on the base preset\'s rows
   expect(catalog.cards).toEqual([
     { kind: 'general', presetId: 'mindeck-general' },
     { kind: 'employee', presetId: 'mindeck-employee-e1', employeeId: 'e1', name: '法务专员', avatar: 'legal',
-      tagline: '审合同，答劳动用工问题', starters: ['帮我审一份采购合同'], draft: false },
+      tagline: '审合同，答劳动用工问题', starters: ['帮我审一份采购合同'], draft: false, folders: [], model: null },
     { kind: 'employee', presetId: 'mindeck-employee-e2', employeeId: 'e2', name: '销售助理', avatar: 'sales',
-      tagline: '写方案和报价', starters: [], draft: true },
+      tagline: '写方案和报价', starters: [], draft: true, folders: [], model: null },
   ])
+})
+
+/** A company model route listing the given models. */
+class CatalogAdapter extends LlmAdapter {
+  constructor(private readonly models: readonly LlmModelInfo[]) { super() }
+  // oxlint-disable-next-line require-yield -- no request reaches this route in these tests.
+  async * stream(): AsyncIterable<StreamChunk> { throw new Error('no requests in this test') }
+  override async listModels(provider: string): Promise<LlmModelInfo[]> {
+    return this.models.filter(model => model.provider === provider)
+  }
+}
+
+const RULES: CloudEmployee = {
+  id: 'e3', name: '制度问答', avatar: 'hr', tagline: '答报销、请假和考勤的问题', defaultModel: 'glm-4.6',
+  folders: [
+    { driveId: 'drive-company', itemId: 'space$company!rules', path: '企业空间 / 制度文件', label: '企业制度', accessible: true },
+    { driveId: 'drive-dept', itemId: 'space$dept!specs', path: '研发部 / 规范', label: '研发规范', accessible: false },
+  ],
+}
+
+it('starts conversations with an employee on its default model and names its folders and model on the card', async () => {
+  const f = await fixture()
+  f.cloud.state.byToken['token-u1'] = [RULES, { ...LEGAL, defaultModel: 'retired-model' }]
+  f.ctx.provide('agentDefaultModel', { currentSelection: () => ({ provider: 'mindeck-openai', model: 'deepseek-chat' }) } as never)
+  await f.ctx.plugin(MindeckEmployees, f.config)
+  await vi.waitFor(async () => { expect(await f.ids()).toContain('mindeck-employee-e3') })
+
+  // The company catalog arrives after the listing; the card names the model once it does.
+  const without = await cardsMatching(f.ctx, frame => frame.cards.length === 3)
+  expect(without.cards[1]).toMatchObject({ employeeId: 'e3', model: null })
+  f.ctx.llm.registerAdapter(['mindeck-openai'], new CatalogAdapter([
+    { provider: 'mindeck-openai', id: 'deepseek-chat', name: 'DeepSeek V3' },
+    { provider: 'mindeck-openai', id: 'glm-4.6', name: 'GLM 4.6' },
+  ]))
+  f.ctx.emit('llm/models-updated', 'mindeck-openai')
+  const catalog = await cardsMatching(f.ctx, frame => frame.cards[1]?.kind === 'employee' && frame.cards[1].model !== null)
+  expect(catalog.cards.slice(1)).toEqual([
+    { kind: 'employee', presetId: 'mindeck-employee-e3', employeeId: 'e3', name: '制度问答', avatar: 'hr',
+      tagline: '答报销、请假和考勤的问题', starters: [], draft: false, model: 'GLM 4.6', folders: [
+        { label: '企业制度', path: '企业空间 / 制度文件', accessible: true },
+        { label: '研发规范', path: '研发部 / 规范', accessible: false },
+      ] },
+    expect.objectContaining({ employeeId: 'e1', model: null }),
+  ])
+
+  // As the session controller does, a conversation starts on the deployment default until it records a choice.
+  const create = async (id: string, preset: string) => (await f.ctx.agents.create({
+    sessionId: SessionId(id), meta: { agentPreset: preset }, agentOptions: { provider: 'mindeck-openai', model: 'deepseek-chat' },
+    setup: async (agentCtx: Context) => { await f.ctx.agentPresets.mount(agentCtx, preset) },
+  })).agent
+
+  // A new conversation with the employee runs its default model; the member's model stays for the others.
+  const rules = await create('session-rules', 'mindeck-employee-e3')
+  expect(rules.model.current()).toEqual({ provider: 'mindeck-openai', model: 'glm-4.6' })
+  expect(f.ctx.mindeckEmployees.foldersForSession(SessionId('session-rules'))).toEqual([
+    { itemId: 'space$company!rules', label: '企业制度', path: '/企业空间/制度文件', accessible: true },
+    { itemId: 'space$dept!specs', label: '研发规范', path: '/研发部/规范', accessible: false },
+  ])
+  const general = await create('session-general', 'mindeck-general')
+  expect(general.model.current()).toEqual({ provider: 'mindeck-openai', model: 'deepseek-chat' })
+  expect(f.ctx.mindeckEmployees.foldersForSession(SessionId('session-general'))).toBeUndefined()
+
+  // A blank conversation switched to the employee takes its model, and switched away gives it back.
+  await f.ctx.agentPresets.select(general, 'mindeck-employee-e3')
+  await vi.waitFor(() => { expect(general.model.current()).toEqual({ provider: 'mindeck-openai', model: 'glm-4.6' }) })
+  await f.ctx.agentPresets.select(general, 'mindeck-general')
+  await vi.waitFor(() => { expect(general.model.current()).toEqual({ provider: 'mindeck-openai', model: 'deepseek-chat' }) })
+
+  // A model the member picked stays when the preset changes to one without a default model.
+  await f.ctx.agentPresets.select(rules, 'mindeck-general')
+  await vi.waitFor(() => { expect(rules.model.current()?.model).toBe('deepseek-chat') })
+  await f.ctx.agentPresets.select(rules, 'mindeck-employee-e3')
+  await vi.waitFor(() => { expect(rules.model.current()?.model).toBe('glm-4.6') })
+  rules.model.select({ provider: 'mindeck-openai', model: 'deepseek-chat' })
+  await f.ctx.agentPresets.select(rules, 'mindeck-general')
+  await new Promise(resolve => setTimeout(resolve, 20))
+  expect(rules.model.current()?.model).toBe('deepseek-chat')
+
+  // A default model the member's company models do not list leaves the conversation on the member's model.
+  const legal = await create('session-legal', 'mindeck-employee-e1')
+  expect(legal.model.current()).toEqual({ provider: 'mindeck-openai', model: 'deepseek-chat' })
+  expect(f.ctx.mindeckEmployees.foldersForSession(SessionId('session-legal'))).toEqual([])
 })
 
 it('reads the employees again when a sync reports changed employees, and not for other topics', async () => {
@@ -341,4 +426,36 @@ it('keeps the presets while Mindeck Cloud fails, retries soon, and reports what 
   f.cloud.state.byToken['token-u1'] = [LEGAL, { id: 'bad id', name: '无效' }]
   await vi.waitFor(() => { expect(f.cloud.state.tokens.length).toBeGreaterThanOrEqual(2) }, { timeout: 5000 })
   await vi.waitFor(() => { expect(warn.mock.calls.some(([message]) => String(message).includes('skipped 1'))).toBe(true) })
+})
+
+it('leaves started conversations alone and chooses the model once a reused conversation is published', async () => {
+  const f = await fixture()
+  f.cloud.state.byToken['token-u1'] = [RULES]
+  await f.ctx.plugin(MindeckEmployees, f.config)
+  await vi.waitFor(async () => { expect(await f.ids()).toContain('mindeck-employee-e3') })
+  // A route that fails to list its models is skipped; the next one still names the default model.
+  f.ctx.llm.registerAdapter(['mindeck-anthropic'], new class extends CatalogAdapter {
+    override async listModels(): Promise<LlmModelInfo[]> { throw new Error('catalog unavailable') }
+  }([]))
+  f.ctx.llm.registerAdapter(['mindeck-openai'], new CatalogAdapter([{ provider: 'mindeck-openai', id: 'glm-4.6', name: 'GLM 4.6' }]))
+  const options = { provider: 'mindeck-openai', model: 'deepseek-chat' }
+
+  // A stored blank conversation reused under the employee records the preset before its Agent is published.
+  f.ctx.emit('agent-preset/selected', SessionId('session-reused'), 'mindeck-employee-e3')
+  const reused = (await f.ctx.agents.create({
+    sessionId: SessionId('session-reused'), meta: { agentPreset: 'mindeck-employee-e3' }, agentOptions: options,
+    setup: async (agentCtx: Context) => { await f.ctx.agentPresets.mount(agentCtx, 'mindeck-employee-e3') },
+  })).agent
+  expect(reused.model.current()).toEqual({ provider: 'mindeck-openai', model: 'glm-4.6' })
+
+  // A conversation that has started keeps its model.
+  const started = (await f.ctx.agents.create({
+    sessionId: SessionId('session-started'), meta: { agentPreset: 'mindeck-general' }, agentOptions: options,
+    setup: async (agentCtx: Context) => { await f.ctx.agentPresets.mount(agentCtx, 'mindeck-general') },
+  })).agent
+  started.session.append('turn/start', { turn: 1 })
+  started.session.append('agent-preset/selected', { agentPreset: 'mindeck-employee-e3' })
+  await new Promise(resolve => setTimeout(resolve, 20))
+  expect(f.ctx.mindeckEmployees.employeeForSession(SessionId('session-started'))).toBe('e3')
+  expect(started.model.current()).toEqual(options)
 })

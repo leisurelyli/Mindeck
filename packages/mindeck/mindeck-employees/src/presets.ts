@@ -1,7 +1,7 @@
 /** Agent preset definitions of the general assistant and the digital employees, built on a base preset's plugin rows. */
 import type { PresetDefinition } from '@deepseek-ai/dsh-agent-preset-registry'
 import type { CachedEmployee } from './cache.ts'
-import type { CloudEmployee } from './cloud.ts'
+import type { CloudEmployee, EmployeeFolder } from './cloud.ts'
 
 /** Preset id of the built-in general assistant. */
 export const GENERAL_PRESET_ID = 'mindeck-general'
@@ -42,12 +42,37 @@ export function promptSafe(text: string): string {
 }
 
 /**
+ * The library path the file-library tools use for a folder Mindeck Cloud names by its space and folder names.
+ * @param path - space and folder names joined with ` / `, such as `企业空间 / 制度文件`.
+ * @returns the library path, such as `/企业空间/制度文件`.
+ */
+export function libraryFolderPath(path: string): string {
+  return `/${path.split(' / ').map(part => part.trim()).filter(part => part !== '').join('/')}`
+}
+
+/**
+ * The paragraph that sends the model to an employee's library folders before it answers from memory.
+ * @param folders - the employee's folders.
+ * @returns the paragraph, or undefined without folders.
+ */
+function libraryParagraph(folders: readonly EmployeeFolder[]): string | undefined {
+  if (folders.length === 0) return undefined
+  return [
+    'The company keeps the material for this role in these file library folders:',
+    ...folders.map(folder => `- ${promptSafe(folder.label)}: folder "${promptSafe(libraryFolderPath(folder.path))}"`),
+    'Before answering a question this material may cover, search it with library_search, setting folder to one of '
+    + 'these folders, instead of answering from memory. Read the files you find with library_download, name the files '
+    + 'your answer relies on, and say so when the material does not cover the question.',
+  ].join('\n')
+}
+
+/**
  * The persona prefix of one digital employee, in the model's terms: who it is, what the role covers, the
- * company's instructions verbatim, and the suggested skills.
- * @param employee - the employee's name, tagline, instructions, and suggested skills.
+ * company's instructions verbatim, the suggested skills, and the library folders to consult.
+ * @param employee - the employee's name, tagline, instructions, suggested skills, and folders.
  * @returns the prefix template; `{{model}}` is its only variable.
  */
-export function employeePersona(employee: Pick<CloudEmployee, 'name' | 'tagline' | 'instructions' | 'skills'>): string {
+export function employeePersona(employee: Pick<CloudEmployee, 'name' | 'tagline' | 'instructions' | 'skills' | 'folders'>): string {
   const tagline = employee.tagline === '' ? '' : ` Your role: ${promptSafe(employee.tagline)}`
   const paragraphs = [
     `You are "${promptSafe(employee.name)}", a digital employee of the user's company, powered by the {{model}} model.${tagline}`,
@@ -59,6 +84,8 @@ export function employeePersona(employee: Pick<CloudEmployee, 'name' | 'tagline'
     const skills = employee.skills.map(skill => `/${skill}`).join(', ')
     paragraphs.push(`The company suggests these skills for this role: ${skills}. Use them when they fit the task.`)
   }
+  const library = libraryParagraph(employee.folders)
+  if (library !== undefined) paragraphs.push(library)
   return paragraphs.join('\n\n')
 }
 

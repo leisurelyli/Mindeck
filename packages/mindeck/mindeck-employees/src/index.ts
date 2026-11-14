@@ -10,10 +10,12 @@ import type { Context } from '@deepseek-ai/cordis'
 import { entryListSchema } from '@deepseek-ai/cordis-plugin-include'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import z from '@deepseek-ai/schemastery'
-import type {} from '@deepseek-ai/dsh-agent'
+import type { Agent, ModelSelection } from '@deepseek-ai/dsh-agent'
+import type {} from '@deepseek-ai/dsh-agent-default-model'
 import { entryListProblem, type PresetDefinition } from '@deepseek-ai/dsh-agent-preset-registry'
 import type { AgentPresetDocument } from '@deepseek-ai/dsh-agent-preset-registry/types'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
+import type {} from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-mindeck-account'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { deadline } from '@deepseek-ai/dsh-timeout'
@@ -22,12 +24,28 @@ import { deepEqualJson } from '@deepseek-ai/dsh-util-values'
 import { load } from 'js-yaml'
 import { type CachedEmployee, type EmployeeCache, type EmployeeOwner, employeesOf, mergeListing, readCache, sameOwner, withOwner, writeCache } from './cache.ts'
 import { fetchEmployees } from './cloud.ts'
-import { employeeDefinition, employeePresetId, GENERAL_PRESET_ID, generalDefinition, type PresetRows } from './presets.ts'
+import {
+  employeeDefinition, employeePresetId, GENERAL_PRESET_ID, generalDefinition, libraryFolderPath, type PresetRows,
+} from './presets.ts'
 import { PublishedValue } from './published.ts'
 import type { MindeckEmployeeCard, MindeckEmployeeCatalog } from './types.ts'
 
-export { employeePersona, employeePresetId, GENERAL_PRESET_ID } from './presets.ts'
-export type { MindeckEmployeeCard, MindeckEmployeeCatalog, MindeckEmployeeView, MindeckGeneralView } from './types.ts'
+export { employeePersona, employeePresetId, GENERAL_PRESET_ID, libraryFolderPath } from './presets.ts'
+export type {
+  MindeckEmployeeCard, MindeckEmployeeCatalog, MindeckEmployeeFolderView, MindeckEmployeeView, MindeckGeneralView,
+} from './types.ts'
+
+/** A library folder that a conversation's digital employee consults, for the file-library search. */
+export interface EmployeeLibraryFolder {
+  /** OpenCloud resource id of the folder. */
+  readonly itemId: string
+  /** Name the company gave the material. */
+  readonly label: string
+  /** Library path the employee's persona names the folder by, such as `/企业空间/制度文件`. */
+  readonly path: string
+  /** Whether the member's department may open the folder, as Mindeck Cloud judges it. */
+  readonly accessible: boolean
+}
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -52,6 +70,11 @@ export interface Config {
   retryIntervalMs: number
   /** Timeout of one Mindeck Cloud request in milliseconds. */
   requestTimeoutMs: number
+  /**
+   * LLM providers that serve the company's models, searched in order for an employee's default model; mindeck-models
+   * registers these routes.
+   */
+  modelProviders: string[]
 }
 
 /**
@@ -87,14 +110,25 @@ export default class MindeckEmployees extends TypertRemoteService {
       .description('First wait after a failed refresh, in milliseconds; it doubles up to refreshIntervalMs.'),
     requestTimeoutMs: z.natural().min(1000).default(15_000)
       .description('Timeout of one Mindeck Cloud request in milliseconds.'),
+    modelProviders: z.array(z.string().min(1)).default(['mindeck-anthropic', 'mindeck-openai', 'mindeck-openai-responses'])
+      .description('LLM providers that serve the company\'s models, searched in order for an employee\'s default model.'),
   })
 
   private readonly cacheFile: string
   private readonly lifetime = new AbortController()
   private cache: EmployeeCache | undefined
   private readonly registrations = new Map<string, Registration>()
-  /** Cloud employee id of each employee preset of the member whose presets are registered. */
-  private employeeIds: ReadonlyMap<string, string> = new Map()
+  /** The employee behind each employee preset of the member whose presets are registered, retired ones included. */
+  private employeesByPreset: ReadonlyMap<string, CachedEmployee> = new Map()
+  /** The member's employees the cards show, current ones first. */
+  private shown: readonly CachedEmployee[] = []
+  private cardsRevision = 0
+  /** Sessions whose preset changed before their Agent was published; the model is chosen once it is. */
+  private readonly presetChanged = new Set<SessionId>()
+  /** The default model this plugin chose for a blank conversation, until its preset changes again. */
+  private readonly chosen = new WeakMap<Agent, ModelSelection>()
+  /** The latest model choice of each Agent, so choices for one conversation apply in order. */
+  private readonly choosing = new WeakMap<Agent, Promise<void>>()
   /** The member whose employees are registered; null before any member is known. */
   private owner: EmployeeOwner | null = null
   private readonly catalog = new PublishedValue<MindeckEmployeeCatalog>({ cards: [] })
@@ -119,6 +153,18 @@ export default class MindeckEmployees extends TypertRemoteService {
     }, 'mindeck-employees: agent presets')
     ctx.on('mindeck-account/changed', () => { this.refresh() })
     ctx.on('mindeck-account/revised', (topics) => { if (topics.has('employees')) this.refresh() })
+    // The card names an employee's default model once the company catalog lists it.
+    ctx.on('llm/models-updated', () => { void this.publishCards() })
+    // A new conversation, and a blank one that changes preset, start on the employee's default model.
+    ctx.on('agent/created', async ({ agent, source }) => {
+      const changed = this.presetChanged.delete(agent.id)
+      if (source === 'startup' || changed) await this.chooseModel(agent)
+    })
+    ctx.on('agent-preset/selected', (sessionId) => {
+      const agent = ctx.get('agents')?.get(sessionId)
+      if (agent === undefined) { this.presetChanged.add(sessionId); return }
+      void this.chooseModel(agent)
+    })
     ctx.effect(() => {
       const timer = setInterval(() => { this.refresh() }, config.refreshIntervalMs)
       return () => { clearInterval(timer) }
@@ -133,9 +179,25 @@ export default class MindeckEmployees extends TypertRemoteService {
    *   preset, or a Session without a live Agent.
    */
   employeeForSession(sessionId: SessionId): string | undefined {
+    return this.employeeOf(sessionId)?.id
+  }
+
+  /**
+   * Read the library folders that a live conversation's digital employee consults.
+   * @param sessionId - the conversation's Session.
+   * @returns the employee's folders, empty when it has none; undefined for the general assistant, another preset, or
+   *   a Session without a live Agent.
+   */
+  foldersForSession(sessionId: SessionId): readonly EmployeeLibraryFolder[] | undefined {
+    return this.employeeOf(sessionId)?.folders.map(({ itemId, label, path, accessible }) => ({
+      itemId, label, path: libraryFolderPath(path), accessible,
+    }))
+  }
+
+  private employeeOf(sessionId: SessionId): CachedEmployee | undefined {
     const session = this.ctx.get('agents')?.get(sessionId)?.session
     const preset = session === undefined ? undefined : this.ctx.get('agentPresets')?.presetForSession(session)
-    return preset == null ? undefined : this.employeeIds.get(preset)
+    return preset == null ? undefined : this.employeesByPreset.get(preset)
   }
 
   /**
@@ -296,15 +358,99 @@ export default class MindeckEmployees extends TypertRemoteService {
       }
     }
     this.owner = owner
-    this.employeeIds = new Map(employees.map(employee => [employeePresetId(employee.id), employee.id]))
+    this.employeesByPreset = new Map(employees.map(employee => [employeePresetId(employee.id), employee]))
+    this.shown = employees
+    await this.publishCards()
+  }
+
+  /** Publish the cards of the registered presets, naming each default model the company catalog lists. */
+  private async publishCards(): Promise<void> {
+    const revision = ++this.cardsRevision
+    const employees = this.shown
+    const models = employees.some(employee => employee.defaultModel !== null) ? await this.companyModels() : new Map()
+    // A later publication read newer employees or models.
+    if (revision !== this.cardsRevision || this.stopped()) return
     const cards: MindeckEmployeeCard[] = []
     if (this.registrations.has(GENERAL_PRESET_ID)) cards.push(GENERAL_CARD)
     for (const employee of employees) {
       const presetId = employeePresetId(employee.id)
       if (employee.retired || !this.registrations.has(presetId)) continue
-      const { id: employeeId, name, avatar, tagline, starters, draft } = employee
-      cards.push({ kind: 'employee', presetId, employeeId, name, avatar, tagline, starters, draft })
+      const { id: employeeId, name, avatar, tagline, starters, draft, defaultModel } = employee
+      const folders = employee.folders.map(({ label, path, accessible }) => ({ label, path, accessible }))
+      const model = defaultModel === null ? null : models.get(defaultModel)?.name ?? null
+      cards.push({ kind: 'employee', presetId, employeeId, name, avatar, tagline, starters, draft, folders, model })
     }
     this.catalog.publish({ cards })
+  }
+
+  /**
+   * Read the company models the configured providers list.
+   * @returns each model id with its provider and display name; the first provider listing an id wins.
+   */
+  private async companyModels(): Promise<ReadonlyMap<string, { readonly provider: string; readonly name: string }>> {
+    const found = new Map<string, { readonly provider: string; readonly name: string }>()
+    const llm = this.ctx.get('llm')
+    if (llm === undefined) return found
+    const registered = new Set(llm.listProviders().map(provider => provider.id))
+    for (const provider of this.config.modelProviders) {
+      if (!registered.has(provider)) continue
+      let models
+      try { models = await llm.listModels(provider) }
+      catch (error) {
+        this.ctx.logger.warn(`mindeck-employees: could not list the models of "${provider}"`, error)
+        continue
+      }
+      for (const model of models) if (!found.has(model.id)) found.set(model.id, { provider, name: model.name })
+    }
+    return found
+  }
+
+  /**
+   * Choose the model of a blank conversation after its preset is set: an employee's default model when the company
+   * catalog lists it; for a preset without one, the deployment default again when the conversation still runs the
+   * default model this plugin chose. Choices for one conversation apply in order.
+   * @param agent - the conversation's Agent.
+   */
+  private async chooseModel(agent: Agent): Promise<void> {
+    const previous = this.choosing.get(agent) ?? Promise.resolve()
+    const next = previous.then(() => this.chooseModelNow(agent)).catch((error: unknown) => {
+      this.ctx.logger.warn('mindeck-employees: could not choose the conversation\'s model', error)
+    })
+    this.choosing.set(agent, next)
+    await next
+  }
+
+  private async chooseModelNow(agent: Agent): Promise<void> {
+    // A preset selection notifies listeners while it is being appended; the model choice is appended after it.
+    await Promise.resolve()
+    if (this.stopped() || !this.blank(agent)) return
+    const preset = this.ctx.agentPresets.presetForSession(agent.session)
+    const employee = preset === null ? undefined : this.employeesByPreset.get(preset)
+    const chosen = this.chosen.get(agent)
+    if (employee === undefined || employee.retired || employee.defaultModel === null) {
+      if (chosen === undefined) return
+      this.chosen.delete(agent)
+      const current = agent.model.current()
+      const defaults = this.ctx.get('agentDefaultModel')?.currentSelection()
+      if (defaults !== undefined && current?.provider === chosen.provider && current.model === chosen.model) {
+        agent.model.select({ provider: defaults.provider, model: defaults.model })
+      }
+      return
+    }
+    const route = (await this.companyModels()).get(employee.defaultModel)
+    if (this.stopped() || !this.blank(agent)) return
+    if (route === undefined) {
+      this.ctx.logger.warn(`mindeck-employees: "${employee.name}" names default model "${employee.defaultModel}", which the company models do not list; the conversation keeps its model`)
+      return
+    }
+    const selection = { provider: route.provider, model: employee.defaultModel }
+    agent.model.select(selection)
+    this.chosen.set(agent, selection)
+  }
+
+  /** Whether no turn of the conversation has started, so its preset and model are still open. */
+  private blank(agent: Agent): boolean {
+    const boundary = this.ctx.get('agents')?.turnBoundaryOf(agent.session)
+    return boundary !== undefined && boundary.openTurnStartSeq === null && boundary.lastTurn === 0
   }
 }

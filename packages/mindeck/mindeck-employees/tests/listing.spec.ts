@@ -23,14 +23,42 @@ it('keeps usable employees in Cloud order, normalizes optional fields, and skips
   })
   expect(listing.skipped).toBe(4)
   expect(listing.employees).toEqual([
-    { id: 'e1', name: '法务专员', avatar: 'legal', tagline: '审合同', instructions: '先确认合同类型。', starters: ['a', 'b', 'c', 'd'], skills: ['contract-review'], draft: true },
-    { id: 'e2', name: '助理', avatar: 'general', tagline: '', instructions: '', starters: [], skills: [], draft: false },
+    { id: 'e1', name: '法务专员', avatar: 'legal', tagline: '审合同', instructions: '先确认合同类型。', starters: ['a', 'b', 'c', 'd'], skills: ['contract-review'], draft: true, defaultModel: null, folders: [] },
+    { id: 'e2', name: '助理', avatar: 'general', tagline: '', instructions: '', starters: [], skills: [], draft: false, defaultModel: null, folders: [] },
   ])
   expect(() => parseEmployees({ items: [] })).toThrow('unknown format')
 })
 
+it('reads the default model and the library folders, keeping usable folders once each', () => {
+  const folder = { driveId: 'drive-company', itemId: 'space$company!rules', path: '企业空间 / 制度文件', label: '企业制度', accessible: true }
+  const listing = parseEmployees({
+    fullText: true,
+    employees: [{
+      id: 'e1', name: '制度问答', defaultModel: ' deepseek-chat ',
+      folders: [
+        folder,
+        { ...folder, label: '重复的资源' },
+        { driveId: 'drive-dept', itemId: 'space$dept!rules', path: '研发部 /\n规范', label: ' 研发\n规范 ', accessible: false },
+        { driveId: 'drive-dept', itemId: 'space$dept!root', path: '', label: '研发部' },
+        { driveId: 'drive-dept', itemId: 'no-label', path: '研发部', label: '  ' },
+        { itemId: 'no-drive', path: 'x', label: 'x' },
+        'not a folder',
+      ],
+    }, { id: 'e2', name: '助理', defaultModel: '', folders: null }],
+  })
+  expect(listing.employees.map(({ id, defaultModel, folders }) => ({ id, defaultModel, folders }))).toEqual([
+    { id: 'e1', defaultModel: 'deepseek-chat', folders: [
+      folder,
+      { driveId: 'drive-dept', itemId: 'space$dept!rules', path: '研发部 / 规范', label: '研发 规范', accessible: false },
+      { driveId: 'drive-dept', itemId: 'space$dept!root', path: '研发部', label: '研发部', accessible: true },
+    ] },
+    { id: 'e2', defaultModel: null, folders: [] },
+  ])
+})
+
 const employee = (id: string, retired = false): CachedEmployee => ({
   id, name: id, avatar: 'general', tagline: '', instructions: '', starters: [], skills: [], draft: false, retired,
+  defaultModel: null, folders: [],
 })
 
 it('retires cached employees missing from the listing and brings listed ones back', () => {
@@ -59,6 +87,11 @@ it('keeps each member\'s employees and the last member, and reads a damaged file
   expect(employeesOf(read, u2).map(entry => entry.id)).toEqual(['b'])
   expect(employeesOf(read, { ...u2, cloudUrl: 'https://other.example.com' })).toEqual([])
   expect(JSON.parse(await readFile(file, 'utf8'))).toMatchObject({ version: 1 })
+
+  // A file written before default models and folders reads with neither.
+  const { defaultModel: _model, folders: _folders, ...earlier } = employee('old')
+  await writeFile(file, JSON.stringify({ version: 1, last: u1, owners: [{ ...u1, employees: [earlier] }] }))
+  expect(employeesOf(await readCache(file), u1)).toEqual([employee('old')])
 
   await writeFile(file, '{"version":1,')
   expect(await readCache(file)).toEqual(EMPTY_CACHE)

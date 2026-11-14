@@ -31,6 +31,10 @@ export interface EmployeeCache {
 export const EMPTY_CACHE: EmployeeCache = { last: null, owners: [] }
 
 const ownerSchema = z.object({ cloudUrl: z.string(), userId: z.string() })
+const folderSchema = z.object({
+  driveId: z.string(), itemId: z.string(), path: z.string(), label: z.string(), accessible: z.boolean(),
+})
+// Default models and folders came after version 1, so files written before them read with neither.
 const employeeSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -41,6 +45,8 @@ const employeeSchema = z.object({
   skills: z.array(z.string()),
   draft: z.boolean(),
   retired: z.boolean(),
+  defaultModel: z.string().nullable().default(null),
+  folders: z.array(folderSchema).default([]),
 })
 const cacheSchema = z.object({
   version: z.literal(1),
