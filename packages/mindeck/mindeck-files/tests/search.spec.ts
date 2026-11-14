@@ -1,7 +1,7 @@
 /** KQL patterns of a library search and the passages read from OpenCloud highlights. */
 import { expect, it } from 'vitest'
 import { passageOf } from '../src/library-service.ts'
-import { phraseParts, searchPattern, searchPhrase } from '../src/opencloud.ts'
+import { parseMultistatus, phraseParts, searchPattern, searchPhrase } from '../src/opencloud.ts'
 import { passageText } from '../src/tools.ts'
 
 it('splits Chinese runs into consecutive pairs and keeps other words whole', () => {
@@ -37,4 +37,15 @@ it('reads a highlight into a short passage around the first match', () => {
   const exact = passageOf(`<mark>${'中'.repeat(160)}</mark>后面`)
   expect(exact).toEqual([{ text: '中'.repeat(160), match: true }, { text: '…', match: false }])
   expect(passageText(passageOf('出差<mark>住宿</mark>费') ?? [])).toBe('出差**住宿**费')
+})
+
+it('decodes the character references OpenCloud writes in highlights', () => {
+  const [item] = parseMultistatus('<d:multistatus xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns"><d:response>'
+    + '<d:href>/dav/spaces/drive-1/%E5%88%B6%E5%BA%A6/a.docx</d:href><d:propstat><d:prop>'
+    + '<oc:highlights>第四章 住宿费用&#xA;第七条 &lt;mark&gt;住宿&lt;/mark&gt;费 R&amp;D</oc:highlights>'
+    + '</d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response></d:multistatus>')
+  expect(item).toMatchObject({ driveId: 'drive-1', path: '制度/a.docx', highlights: '第四章 住宿费用\n第七条 <mark>住宿</mark>费 R&D' })
+  expect(passageOf(item?.highlights ?? '')).toEqual([
+    { text: '第四章 住宿费用 第七条 ', match: false }, { text: '住宿', match: true }, { text: '费 R&D', match: false },
+  ])
 })

@@ -82,8 +82,10 @@ const PROPFIND_BODY = '<?xml version="1.0"?><d:propfind xmlns:d="DAV:" xmlns:oc=
   + '<d:getcontentlength/><d:getlastmodified/><d:resourcetype/><d:getcontenttype/><oc:size/><oc:permissions/><oc:fileid/>'
   + '</d:prop></d:propfind>'
 
+// OpenCloud writes line breaks in highlights, and other characters Go's XML encoder escapes, as character references
+// such as `&#xA;`, which only `htmlEntities` decodes.
 const parser = new XMLParser({
-  ignoreAttributes: true, removeNSPrefix: true, processEntities: true, parseTagValue: false,
+  ignoreAttributes: true, removeNSPrefix: true, processEntities: true, htmlEntities: true, parseTagValue: false,
   isArray: name => name === 'response' || name === 'propstat',
 })
 
