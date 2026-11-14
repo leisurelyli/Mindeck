@@ -46,14 +46,13 @@ it('sends the model to the library folders by the paths the file-library tools u
       { driveId: 'drive-dept', itemId: 'specs', path: '研发部 / 规范 / 2026', label: '研发规范', accessible: false },
     ],
   })
-  expect(persona.split('\n\n').at(-1)).toBe([
+  expect(persona.split('\n\n').slice(-3)).toEqual([
     'The company keeps the material for this role in these file library folders:',
-    '- 企业制度: folder "/企业空间/制度文件"',
-    '- 研发规范: folder "/研发部/规范/2026"',
+    '- 企业制度: folder "/企业空间/制度文件"\n- 研发规范: folder "/研发部/规范/2026"',
     'Before answering a question this material may cover, search it with library_search, setting folder to one of these '
     + 'folders, instead of answering from memory. Read the files you find with library_download, name the files your '
     + 'answer relies on, and say so when the material does not cover the question.',
-  ].join('\n'))
+  ])
   expect(persona.startsWith(employeePersona(legal))).toBe(true)
   expect(libraryFolderPath('企业空间')).toBe('/企业空间')
   expect(libraryFolderPath(' 研发部 /  规范 / ')).toBe('/研发部/规范')

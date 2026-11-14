@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Start a conversation with one of the company's digital employees. An administrator sets up each one in Mindeck Cloud: a job title, an avatar, a tagline, role instructions, up to four starter requests, suggested company skills, a default model, and the file library folders it consults. This plugin registers each employee as an agent preset with the employee's role and folders as its persona, and the general assistant `mindeck-general`, which new Mindeck conversations start with. A conversation with an employee starts on the employee's default model. The **Digital employees** page in the left sidebar starts a conversation with any of them, and the base preset picker on a blank conversation switches between them.
+Start a conversation with one of the company's digital employees. An administrator sets up each one in Mindeck Cloud: a job title, an avatar, a tagline, role instructions, up to four starter requests, suggested skills, a default model, and the file library folders it consults. This plugin registers each employee as an agent preset whose persona states its role and folders and whose conversations start on its default model, plus the general assistant `mindeck-general` for new conversations. The **Digital employees** page starts a conversation with any of them, and the preset picker of a blank conversation switches between them.
 
 ## Table of Contents
 
@@ -101,7 +101,9 @@ The company's instructions for this role:
 The company suggests these skills for this role: /<skill>, /<skill>. Use them when they fit the task.
 
 The company keeps the material for this role in these file library folders:
+
 - <label>: folder "/<Space>/<folder>"
+
 Before answering a question this material may cover, search it with library_search, setting folder to one of these folders, instead of answering from memory. Read the files you find with library_download, name the files your answer relies on, and say so when the material does not cover the question.
 ```
 

@@ -59,11 +59,11 @@ function libraryParagraph(folders: readonly EmployeeFolder[]): string | undefine
   if (folders.length === 0) return undefined
   return [
     'The company keeps the material for this role in these file library folders:',
-    ...folders.map(folder => `- ${promptSafe(folder.label)}: folder "${promptSafe(libraryFolderPath(folder.path))}"`),
+    folders.map(folder => `- ${promptSafe(folder.label)}: folder "${promptSafe(libraryFolderPath(folder.path))}"`).join('\n'),
     'Before answering a question this material may cover, search it with library_search, setting folder to one of '
     + 'these folders, instead of answering from memory. Read the files you find with library_download, name the files '
     + 'your answer relies on, and say so when the material does not cover the question.',
-  ].join('\n')
+  ].join('\n\n')
 }
 
 /**

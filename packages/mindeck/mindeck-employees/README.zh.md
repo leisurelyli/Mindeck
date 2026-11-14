@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-与企业的数字员工开始对话。管理员在 Mindeck Cloud 中设置每位数字员工：岗位名称、头像、一句话介绍、岗位说明、最多 4 条示例请求、建议使用的企业技能、默认模型，以及它查阅的资源库文件夹。本插件把每位员工注册为一个以其岗位和资料文件夹为人设的 Agent 预设，并注册通用助手 `mindeck-general`，Mindeck 的新对话默认使用它。与员工的对话使用该员工的默认模型开始。左侧栏的**数字员工**页面可以与其中任意一位开始对话，空白对话上的基础预设选择器可以在员工之间切换。
+与企业的数字员工开始对话。管理员在 Mindeck Cloud 中设置每位数字员工：岗位名称、头像、一句话介绍、岗位说明、最多 4 条示例请求、建议技能、默认模型，以及它查阅的资源库文件夹。本插件把每位员工注册为一个 Agent 预设，人设写明其岗位和资料文件夹，对话使用其默认模型开始；另注册新对话默认使用的通用助手 `mindeck-general`。**数字员工**页面可以与其中任意一位开始对话，空白对话的预设选择器可以在员工之间切换。
 
 ## 目录
 
@@ -101,7 +101,9 @@ The company's instructions for this role:
 The company suggests these skills for this role: /<skill>, /<skill>. Use them when they fit the task.
 
 The company keeps the material for this role in these file library folders:
+
 - <label>: folder "/<Space>/<folder>"
+
 Before answering a question this material may cover, search it with library_search, setting folder to one of these folders, instead of answering from memory. Read the files you find with library_download, name the files your answer relies on, and say so when the material does not cover the question.
 ```
 
