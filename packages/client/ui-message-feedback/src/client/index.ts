@@ -25,7 +25,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import { FeedbackDialog } from './FeedbackDialog.tsx'
 import { MessageFeedbackActions } from './MessageFeedbackActions.tsx'
 import type { FeedbackDialogInjected, MessageFeedbackInjected } from './slots.ts'
-import { FeedbackSurface } from './surface.ts'
+import { FeedbackSurface, type FeedbackSubmitHook } from './surface.ts'
 import { en, ja, es, fr, de, ru, pt, zh } from './locales.ts'
 
 export type {
@@ -34,8 +34,9 @@ export type {
 } from './controller.ts'
 export type { FeedbackDialogState, FeedbackDialogTarget, FeedbackSubmit } from './dialog.ts'
 export type {
-  FeedbackDialogInjected, FeedbackDialogProps, MessageFeedbackActionProps, MessageFeedbackInjected,
+  FeedbackDialogInjected, FeedbackDialogOptionsOwnerProps, FeedbackDialogProps, MessageFeedbackActionProps, MessageFeedbackInjected,
 } from './slots.ts'
+export type { FeedbackSubmitHook } from './surface.ts'
 export type { MessageFeedbackKey } from './locales.ts'
 
 /** Opens the existing Session feedback form without submitting feedback. */
@@ -45,6 +46,13 @@ export interface FeedbackUi {
    * @param sessionId - Session whose feedback draft to open.
    */
   openSession(sessionId: SessionId): void
+  /**
+   * Run `hook` before each dialog submission of every Session records its feedback. The submission waits for the hook;
+   * a rejection keeps the dialog open with the generic failure, and nothing is recorded.
+   * @param hook - receives the Session and the open target.
+   * @returns disposer that removes the hook.
+   */
+  beforeSubmit(hook: FeedbackSubmitHook): () => void
 }
 
 declare module '@deepseek-ai/cordis' {
@@ -69,10 +77,11 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en, ja, es, fr, de, ru, pt }), 'ui-message-feedback: dictionaries')
 
   const surfaces = new Map<SessionId, FeedbackSurface>()
+  const submitHooks = new Set<FeedbackSubmitHook>()
   const surfaceFor = (sessionId: SessionId): FeedbackSurface => {
     let surface = surfaces.get(sessionId)
     if (surface === undefined) {
-      surface = new FeedbackSurface(ctx, sessionId)
+      surface = new FeedbackSurface(ctx, sessionId, submitHooks)
       surfaces.set(sessionId, surface)
     }
     return surface
@@ -84,6 +93,12 @@ export function apply(ctx: ClientContext): void {
 
   const feedbackUi: FeedbackUi = {
     openSession: (sessionId) => { surfaceFor(sessionId).dialog.open({ kind: 'session' }) },
+    beforeSubmit: (hook) => {
+      // A distinct wrapper per call, so registering the same function twice adds and removes two entries.
+      const entry: FeedbackSubmitHook = (sessionId, target) => hook(sessionId, target)
+      submitHooks.add(entry)
+      return () => { submitHooks.delete(entry) }
+    },
   }
   ctx.provide('feedbackUi', feedbackUi)
 
@@ -117,6 +132,7 @@ export function apply(ctx: ClientContext): void {
     id: 'feedback-dialog',
     order: 2,
     locale: NS,
+    children: { 'feedback.dialog.options': { kind: 'list', scope: 'session' } },
     inject: (sessionId): FeedbackDialogInjected => {
       const { dialog } = surfaceFor(sessionId)
       return {

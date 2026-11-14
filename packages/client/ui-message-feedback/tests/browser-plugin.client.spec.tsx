@@ -10,7 +10,7 @@
  * The node half stays inert.
  */
 import { Context, Service } from '@deepseek-ai/cordis'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
@@ -202,6 +202,35 @@ describe('ui-message-feedback browser plugin', () => {
     expect(dialog.hooks.dialog.getSnapshot().toast).toBe(2)
     dialog.dismissToast(2)
     expect(dialog.hooks.dialog.getSnapshot().toast).toBe(0)
+  })
+
+  it('awaits every beforeSubmit hook before recording, and records nothing when one fails', async () => {
+    const b = await bench()
+    await b.fiber.await()
+    const message = b.entry()!.inject!(sid('s1'))
+    const dialog = b.dialogEntry()!.inject!(sid('s1'))
+    const order: string[] = []
+    const hook = vi.fn(async (sessionId: SessionId, target: unknown) => {
+      order.push(`hook ${sessionId} ${JSON.stringify(target)}`)
+      await Promise.resolve()
+      order.push(`after ${b.calls.filter(call => call.method === 'put').length}`)
+    })
+    const remove = b.ctx.feedbackUi.beforeSubmit(hook)
+    message.openDialog(MSG, 'negative')
+    await dialog.submit()
+    expect(order).toEqual([`hook s1 ${JSON.stringify({ kind: 'message', messageId: MSG, rating: 'negative' })}`, 'after 0'])
+    expect(b.calls.filter(call => call.method === 'put')).toHaveLength(1)
+
+    const failing = b.ctx.feedbackUi.beforeSubmit(() => Promise.reject(new Error('host unreachable')))
+    message.openDialog(MSG, 'negative')
+    await dialog.submit()
+    expect(dialog.hooks.dialog.getSnapshot()).toMatchObject({ target: { kind: 'message' }, failure: 'submit-hook-failed' })
+    expect(b.calls.filter(call => call.method === 'put')).toHaveLength(1)
+    failing()
+    remove()
+    await dialog.submit()
+    expect(hook).toHaveBeenCalledTimes(2)
+    expect(b.calls.filter(call => call.method === 'put')).toHaveLength(2)
   })
 
   it('keeps the dialog open with the carrier code when the record call itself fails', async () => {

@@ -9,7 +9,7 @@
  */
 
 import type {
-  HostObservable, InjectFace, PropsLocale, PropsRuntime,
+  HostObservable, InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime,
 } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { MessageId } from '@deepseek-ai/dsh-api-remotes/client'
@@ -17,7 +17,26 @@ import type { MessageFeedbackItem, MessageFeedbackRating } from '@deepseek-ai/ds
 // Type-only: pulls this package's LocaleNamespaceMap merge (the 'feedback' seat).
 import type {} from './locales.ts'
 import type { MessageFeedbackActionResult, MessageFeedbackView } from './controller.ts'
-import type { FeedbackDialogState } from './dialog.ts'
+import type { FeedbackDialogState, FeedbackDialogTarget } from './dialog.ts'
+
+/** Owner share of one `feedback.dialog.options` entry. */
+export interface FeedbackDialogOptionsOwnerProps {
+  /** What the open dialog submits to. */
+  readonly target: FeedbackDialogTarget
+  /** Whether a submission is in flight; the dialog ignores edits until it settles. */
+  readonly submitting: boolean
+}
+
+declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface SlotMap {
+    /**
+     * Rows under the feedback dialog's detail field while the dialog is open, such as a choice that a
+     * `feedbackUi.beforeSubmit` hook of the same plugin sends along. Each entry receives the open target; entries
+     * without content return null. With no entries, the dialog is unchanged.
+     */
+    'feedback.dialog.options': { kind: 'list'; scope: 'session'; owner: FeedbackDialogOptionsOwnerProps }
+  }
+}
 
 /** Injected business face of one assistant-message feedback entry. */
 export interface MessageFeedbackInjected {
@@ -81,4 +100,5 @@ export interface FeedbackDialogInjected {
 /** Full props of the feedback dialog overlay entry. */
 export type FeedbackDialogProps =
   InjectFace<FeedbackDialogInjected>
+  & PropsRenderSlots<'feedback.dialog.options'>
   & PropsLocale<'feedback'>

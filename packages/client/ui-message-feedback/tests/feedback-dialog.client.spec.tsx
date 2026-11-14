@@ -36,8 +36,11 @@ function mount(overrides: Partial<FeedbackDialogState> = {}) {
   }
   const useDialog = (<T,>(select: (v: FeedbackDialogState) => T): T =>
     useSyncExternalStore(() => () => {}, () => select(state))) as never
-  const props = { useDialog, ...verbs, t } as Parameters<typeof FeedbackDialog>[0]
-  return { ...render(<FeedbackDialog {...props} />), ...verbs }
+  const renderSlot = vi.fn((_key: string, owner: { target: unknown; submitting: boolean }) => (
+    <p data-testid="options">{JSON.stringify(owner)}</p>
+  ))
+  const props = { useDialog, ...verbs, renderSlot, t } as Parameters<typeof FeedbackDialog>[0]
+  return { ...render(<FeedbackDialog {...props} />), ...verbs, renderSlot }
 }
 
 describe('FeedbackDialog', () => {
@@ -53,6 +56,15 @@ describe('FeedbackDialog', () => {
 
     expect(ui.queryByRole('dialog')).toBeNull()
     expect(ui.queryByRole('alert')).toBeNull()
+    expect(ui.renderSlot).not.toHaveBeenCalled()
+  })
+
+  it('renders the options list under the detail box with the open target', () => {
+    const target = { kind: 'message' as const, messageId: 'm1' as never, rating: 'negative' as const }
+    const ui = mount({ target, submitting: true })
+    expect(ui.renderSlot).toHaveBeenCalledWith('feedback.dialog.options', { target, submitting: true })
+    const options = ui.getByTestId('options')
+    expect(options.previousElementSibling?.tagName).toBe('TEXTAREA')
   })
 
   it('shows every category, the detail box with the hint, and an enabled Submit for an empty draft', () => {

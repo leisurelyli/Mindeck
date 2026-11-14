@@ -43,7 +43,7 @@ const FAILURE_COPY: Partial<Record<string, 'error.conflict' | 'error.noteTooLarg
  * @returns the modal while a target is open and either toast while it is showing.
  */
 export function FeedbackDialog({
-  useDialog, edit, submit, dismiss, dismissFailure, dismissToast, t,
+  useDialog, edit, submit, dismiss, dismissFailure, dismissToast, renderSlot, t,
 }: FeedbackDialogProps) {
   const state = useDialog(s => s)
   // The toast centers over the composer card this entry renders inside of.
@@ -122,6 +122,7 @@ export function FeedbackDialog({
           readOnly={state.submitting}
           onChange={(event) => { edit({ text: event.target.value }) }}
         />
+        {state.target !== null && renderSlot('feedback.dialog.options', { target: state.target, submitting: state.submitting })}
       </Modal>
     </>
   )
