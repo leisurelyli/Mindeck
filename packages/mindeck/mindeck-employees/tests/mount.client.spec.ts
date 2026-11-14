@@ -23,7 +23,8 @@ const sessionId = 'session-1' as SessionId
 const catalog: MindeckEmployeeCatalog = {
   cards: [
     { kind: 'general', presetId: 'mindeck-general' },
-    { kind: 'employee', presetId: 'mindeck-employee-e1', employeeId: 'e1', name: '法务专员', avatar: 'legal', tagline: '审合同', starters: ['审一份合同'], draft: false },
+    { kind: 'employee', presetId: 'mindeck-employee-e1', employeeId: 'e1', name: '法务专员', avatar: 'legal', tagline: '审合同', starters: ['审一份合同'], draft: false,
+      folders: [], model: null },
   ],
 }
 

@@ -103,6 +103,13 @@ button.name, a.name { cursor: pointer; }
 .useButton { box-sizing: border-box; display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px; border: 0; border-radius: var(--dsw-radius-sm); background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 12px; line-height: 18px; white-space: nowrap; cursor: pointer; }
 .useButton:disabled { cursor: default; opacity: 0.4; }
 
+/* A text match's passage takes a second line under its name, inside the name column, so the start action never
+   covers it; the matching text is marked. */
+.row[data-passage] { grid-template-rows: 40px auto; padding-bottom: 8px; }
+.row[data-passage] .actions { bottom: auto; height: 40px; }
+.passage { grid-column: 1; grid-row: 2; display: -webkit-box; min-width: 0; margin: -2px 0 0 30px; overflow: hidden; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.passage mark { padding: 0 1px; border-radius: var(--dsw-radius-xs); background: var(--dsw-alias-state-business-tertiary); color: var(--dsw-alias-label-primary); }
+
 .skeleton { height: 32px; margin: 6px 10px; border-radius: var(--dsw-radius-md); background: var(--dsw-alias-bg-skeleton); }
 
 /* Empty, failed, and unavailable states center their message in the space they replace. */

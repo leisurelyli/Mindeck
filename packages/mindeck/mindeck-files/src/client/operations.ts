@@ -1,6 +1,6 @@
 /** Operations and the availability observable injected into the file-library side panel and page. */
 import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
-import type { LibraryAvailability, LibraryEntryView, LibrarySpaceView } from '../types.ts'
+import type { LibraryAvailability, LibraryEntryView, LibrarySearchView, LibrarySpaceView } from '../types.ts'
 import type { MindeckFilesKey } from './locales.ts'
 
 /** Latest availability as the Client observes it. */
@@ -20,8 +20,11 @@ export interface MindeckFilesReads {
   spaces: () => Promise<LibraryResult<LibrarySpaceView[]>>
   /** @param path - library path of a space or folder. @returns its entries, folders first. */
   list: (path: string) => Promise<LibraryResult<LibraryEntryView[]>>
-  /** @param query - text contained in names. @returns matching entries. */
-  search: (query: string) => Promise<LibraryResult<LibraryEntryView[]>>
+  /**
+   * @param query - search text.
+   * @returns matching entries, a text match with its passage, and whether the search looked at document text.
+   */
+  search: (query: string) => Promise<LibraryResult<LibrarySearchView>>
   /**
    * Save a file from the member's computer into a library folder.
    * @param folder - library path of a space or folder.

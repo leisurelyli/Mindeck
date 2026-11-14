@@ -173,6 +173,14 @@
 .starterIcon { flex: none; }
 .starterText { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* The folders and model rest on the card's lower edge, so neighboring cards line them up whatever their starters. */
+.details { display: flex; flex-direction: column; gap: 2px; margin: auto 2px 0; padding: 10px 6px 4px; border-top: 0.5px solid var(--dsw-alias-border-l3); }
+/* At least 8px under the starters of the tallest card in a row. */
+.starters:has(+ .details) { margin-bottom: 8px; }
+.detail { display: flex; gap: 8px; min-width: 0; margin: 0; font-size: 12px; line-height: 18px; }
+.detailLabel { flex: none; color: var(--dsw-alias-label-tertiary); }
+.detailValue { min-width: 0; overflow: hidden; color: var(--dsw-alias-label-secondary); text-overflow: ellipsis; white-space: nowrap; }
+
 @media (hover: hover) {
   .main:hover:not(:disabled) .image { transform: scale(1.03); }
   .main:hover:not(:disabled) .cta { opacity: 1; }

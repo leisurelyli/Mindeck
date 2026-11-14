@@ -3,7 +3,7 @@ import { useId, useState } from 'react'
 import { IconChevronRightOutlineRegular, IconNewChatOutlineRegular, Tag } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
-import type { MindeckEmployeeCard } from '../types.ts'
+import type { MindeckEmployeeCard, MindeckEmployeeFolderView } from '../types.ts'
 import { portrait } from './avatars.ts'
 import { avatarInitial, avatarTint } from './cards.ts'
 import type { MindeckEmployeesKey } from './locales.ts'
@@ -24,6 +24,35 @@ interface CardView {
   readonly tagline: string
   readonly starters: readonly string[]
   readonly draft: boolean
+  readonly folders: readonly MindeckEmployeeFolderView[]
+  readonly model: string | null
+}
+
+/**
+ * @param props.card - the card.
+ * @param props.id - id the card's start button names as part of its description.
+ * @param props.t - page copy.
+ * @returns the folders the employee consults and its default model, or nothing when it has neither.
+ */
+function Details({ card, id, t }: { card: CardView; id: string; t: EmployeesPageProps['t'] }) {
+  if (card.folders.length === 0 && card.model === null) return null
+  const folders = card.folders.map(folder => folder.accessible ? folder.label : t('folderNoAccess', { label: folder.label }))
+  return (
+    <section id={id} className={css.details} aria-label={t('details', { name: card.name })}>
+      {card.folders.length > 0 && (
+        <p className={css.detail} title={card.folders.map(folder => t('folderTitle', { label: folder.label, path: folder.path })).join('\n')}>
+          <span className={css.detailLabel}>{t('folders')}</span>
+          <span className={css.detailValue}>{folders.join(t('folderSeparator'))}</span>
+        </p>
+      )}
+      {card.model !== null && (
+        <p className={css.detail}>
+          <span className={css.detailLabel}>{t('model')}</span>
+          <span className={css.detailValue}>{card.model}</span>
+        </p>
+      )}
+    </section>
+  )
 }
 
 /**
@@ -60,10 +89,12 @@ function EmployeeCard({ card, busy, onStart, t }: {
   const draftId = useId()
   const detailId = useId()
   const startersId = useId()
+  const detailsId = useId()
+  const described = [...card.draft ? [draftId] : [], detailId, ...card.folders.length > 0 || card.model !== null ? [detailsId] : []]
   return (
     <article className={css.card} aria-labelledby={nameId}>
       <button type="button" className={css.main} aria-label={t('startWith', { name: card.name })}
-        aria-describedby={card.draft ? `${draftId} ${detailId}` : detailId}
+        aria-describedby={described.join(' ')}
         disabled={busy} onClick={() => { onStart() }}>
         <span className={css.portrait}>
           <Portrait key={card.avatar} avatar={card.avatar} name={card.name} />
@@ -92,6 +123,7 @@ function EmployeeCard({ card, busy, onStart, t }: {
           </ul>
         </div>
       )}
+      <Details card={card} id={detailsId} t={t} />
     </article>
   )
 }
@@ -111,9 +143,12 @@ export function EmployeesPage({ useCatalog, start, t }: EmployeesPageProps) {
   const view = (card: MindeckEmployeeCard): CardView => card.kind === 'general'
     ? {
       presetId: card.presetId, avatar: 'general', name: t('generalName'), tagline: t('generalTagline'),
-      starters: GENERAL_STARTERS.map(key => t(key)), draft: false,
+      starters: GENERAL_STARTERS.map(key => t(key)), draft: false, folders: [], model: null,
     }
-    : { presetId: card.presetId, avatar: card.avatar, name: card.name, tagline: card.tagline, starters: card.starters, draft: card.draft }
+    : {
+      presetId: card.presetId, avatar: card.avatar, name: card.name, tagline: card.tagline, starters: card.starters,
+      draft: card.draft, folders: card.folders, model: card.model,
+    }
   const run = (presetId: string, starter?: string): void => {
     if (busy) return
     setBusy(true)

@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, within } from '@testing-library/react'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import type { LibraryAvailability, LibraryEntryView, LibrarySpaceView } from '../src/types.ts'
+import type { LibraryAvailability, LibraryEntryView, LibrarySearchView, LibrarySpaceView } from '../src/types.ts'
 import { en } from '../src/client/locales.ts'
 import type { LibraryResult, LibrarySnapshot } from '../src/client/operations.ts'
 import { LibraryPanel, type LibraryPanelProps } from '../src/client/LibraryPanel.tsx'
@@ -29,7 +29,7 @@ function fixture(availability: LibraryAvailability | undefined) {
   const operations = {
     spaces: vi.fn(async () => ok(spaces)),
     list: vi.fn(async (_path: string): Promise<LibraryResult<LibraryEntryView[]>> => ok(folder)),
-    search: vi.fn(async (_query: string) => ok([folder[1]!])),
+    search: vi.fn(async (_query: string): Promise<LibraryResult<LibrarySearchView>> => ok({ entries: [folder[1]!], text: false })),
     upload: vi.fn(async (_folder: string, file: File, _overwrite: boolean): Promise<LibraryResult<LibraryEntryView>> =>
       ok({ path: `/研发部/${file.name}`, name: file.name, kind: 'file', writable: true })),
     addToConversation: vi.fn((_entry: LibraryEntryView) => true),
@@ -91,6 +91,21 @@ it('searches after typing pauses and offers a retry after a failure', async () =
   const result = await view.findByRole('button', { name: `${en.addToConversation}: 规范.md` })
   expect(result.textContent).toContain('研发部')
   expect(view.queryByRole('button', { name: en.upload })).toBeNull()
+
+  // A text match shows its passage; an empty search says what the library searched.
+  f.operations.search.mockResolvedValueOnce({ ok: true, value: { text: true, entries: [{
+    ...folder[1]!, passage: [{ text: '接口', match: true }, { text: '命名用小驼峰', match: false }],
+  }] } })
+  fireEvent.change(view.getByRole('searchbox', { name: en.searchPlaceholder }), { target: { value: '接口' } })
+  const passage = await view.findByText('命名用小驼峰')
+  expect(passage.querySelector('mark')?.textContent).toBe('接口')
+  f.operations.search.mockResolvedValueOnce({ ok: true, value: { text: false, entries: [] } })
+  fireEvent.change(view.getByRole('searchbox', { name: en.searchPlaceholder }), { target: { value: '年假' } })
+  expect(await view.findByText(en.noResults)).toBeTruthy()
+  expect(view.getByText(en.namesOnlyHint)).toBeTruthy()
+  f.operations.search.mockResolvedValueOnce({ ok: true, value: { text: true, entries: [] } })
+  fireEvent.change(view.getByRole('searchbox', { name: en.searchPlaceholder }), { target: { value: '年假制度' } })
+  expect(await view.findByText(en.noTextResultsHint)).toBeTruthy()
 })
 
 it('uploads picked and dropped files into the open folder, offers to replace same-named files, and explains a failure', async () => {

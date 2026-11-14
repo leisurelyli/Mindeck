@@ -353,6 +353,7 @@ it('keeps the presets after sign-out and swaps them for another member\'s cached
   f.cloud.state.byToken['token-u1'] = [LEGAL]
   const other: CachedEmployee = {
     id: 'e9', name: '人事专员', avatar: 'hr', tagline: '', instructions: '', starters: [], skills: [], draft: false, retired: false,
+    defaultModel: null, folders: [],
   }
   // u2 used this computer before; the plugin starts with u1 signed in.
   await writeCache(f.cacheFile, withOwner(EMPTY_CACHE, { cloudUrl: 'https://cloud.example.com', userId: 'u2' }, [other]))

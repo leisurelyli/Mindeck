@@ -7,6 +7,7 @@ import {
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { LibraryEntryView } from '../types.ts'
 import { NOTICE_MS, parentOf, SPACE_ICONS, useFileDrop, useLibraryBrowser } from './browser.ts'
+import { Passage } from './Passage.tsx'
 import type { MindeckFilesKey } from './locales.ts'
 import type { MindeckFilesInjected } from './operations.ts'
 import css from './Library.module.css'
@@ -136,7 +137,10 @@ export function LibraryPanel({ t, useLibrary, spaces, list, search, upload: uplo
             })}
           </ul>)}
         {view.status === 'entries' && (view.entries.length === 0
-          ? <p className={css.state}>{t(view.search ? 'noResults' : 'empty')}</p>
+          ? <div className={css.state}>
+            <p>{t(!view.search ? 'empty' : view.text ? 'noTextResults' : 'noResults')}</p>
+            {view.search && <p className={css.stateHint}>{t(view.text ? 'noTextResultsHint' : 'namesOnlyHint')}</p>}
+          </div>
           : <ul className={css.list}>
             {view.entries.map((entry) => {
               const meta = describe(entry)
@@ -145,6 +149,7 @@ export function LibraryPanel({ t, useLibrary, spaces, list, search, upload: uplo
                 <span className={css.text}>
                   <span className={css.name}>{entry.name}</span>
                   {meta !== '' && <span className={css.meta}>{meta}</span>}
+                  {entry.passage !== undefined && <Passage parts={entry.passage} className={css.passage as string} />}
                 </span>
               </>
               return <li key={entry.path} className={css.row}>

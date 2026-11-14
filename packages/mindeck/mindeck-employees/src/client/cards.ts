@@ -23,12 +23,16 @@ export function starterInsertion(draft: string, starter: string): { text: string
 }
 
 /**
- * Pick the character a fallback avatar shows.
+ * Pick the text a fallback avatar shows, as Mindeck Cloud's console does: a leading Latin word or number, such as
+ * `IT` for `IT 帮助台`, or else the first two characters, such as `合同` for `合同审查专员`.
  * @param name - the card's name.
- * @returns the first character shown when the avatar image is unavailable.
+ * @returns up to two characters shown when the avatar image is unavailable.
  */
 export function avatarInitial(name: string): string {
-  return Array.from(name.trim())[0] ?? ''
+  const trimmed = name.trim()
+  const latin = /^[A-Za-z0-9]+/u.exec(trimmed)
+  if (latin !== null) return latin[0].slice(0, 2).toUpperCase()
+  return Array.from(trimmed).slice(0, 2).join('')
 }
 
 /** Number of tints a fallback avatar can take. */

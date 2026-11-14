@@ -8,6 +8,7 @@ import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-cli
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { LibraryEntryView } from '../types.ts'
 import { parentOf, SPACE_ICONS, useFileDrop, useLibraryBrowser } from './browser.ts'
+import { Passage } from './Passage.tsx'
 import type { MindeckFilesKey } from './locales.ts'
 import type { MindeckFilesPageInjected } from './operations.ts'
 import css from './LibraryPage.module.css'
@@ -186,14 +187,15 @@ export function LibraryPage({ t, useLibrary, spaces, list, search, upload, start
             {view.status === 'entries' && entries.length === 0 && (
               <div className={css.state} role="status">
                 <span className={css.stateIcon} aria-hidden="true">{searching ? <IconSearchOutlineRegular size={20} /> : <IconFolderCloseRegular size={20} />}</span>
-                <p className={css.stateTitle}>{t(searching ? 'noResults' : 'empty')}</p>
+                <p className={css.stateTitle}>{t(!searching ? 'empty' : view.text ? 'noTextResults' : 'noResults')}</p>
+                {searching && <p className={css.stateHint}>{t(view.text ? 'noTextResultsHint' : 'namesOnlyHint')}</p>}
                 {!searching && target !== null && <p className={css.stateHint}>{t('emptyHint')}</p>}
               </div>
             )}
             {entries.length > 0 && (
               <ul className={css.list} aria-label={searching ? t('searchResults', { query: browser.query.trim() }) : folderLabel} aria-busy={busy}>
                 {entries.map(entry => (
-                  <li key={entry.path} className={css.row}>
+                  <li key={entry.path} className={css.row} data-passage={entry.passage === undefined ? undefined : ''}>
                     <span className={css.nameCell}>
                       {entry.kind === 'folder' ? <IconFolderCloseRegular size={20} className={css.entryIcon} /> : <FileTypeIcon path={entry.name} size={20} className={css.fileIcon} />}
                       {entry.kind === 'folder'
@@ -207,6 +209,7 @@ export function LibraryPage({ t, useLibrary, spaces, list, search, upload, start
                       {located ? location(entry) : entry.modified === undefined ? '' : new Date(entry.modified).toLocaleDateString()}
                     </span>
                     <span className={`${css.meta} ${css.sizeColumn}`}>{entry.kind === 'file' && entry.size !== undefined ? fileSizeText(entry.size) : ''}</span>
+                    {entry.passage !== undefined && <Passage parts={entry.passage} className={css.passage as string} />}
                     <span className={css.actions}>
                       <button type="button" className={css.useButton} aria-label={t('useEntry', { name: entry.name })} disabled={busy}
                         onClick={() => { start(entry) }}>

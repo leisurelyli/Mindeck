@@ -10,7 +10,7 @@ import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { StaticRemoteAccess } from '@deepseek-ai/dsh-client-test-runtime'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { RemoteError, type RemoteResult, type TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
-import type { LibraryAvailability, LibraryEntryView } from '../src/types.ts'
+import type { LibraryAvailability, LibraryEntryView, LibrarySearchScope, LibrarySearchView } from '../src/types.ts'
 import type { MindeckFilesInjected, MindeckFilesPageInjected } from '../src/client/operations.ts'
 import { LIBRARY_PANEL_ID, LIBRARY_TAB_ID, mountFiles } from '../src/client/mount.ts'
 import type { MindeckConversationRequest, MindeckDraft } from '@deepseek-ai/dsh-mindeck-account/client'
@@ -48,10 +48,12 @@ async function fixture() {
     list: vi.fn(async (_path: string): Promise<RemoteResult<LibraryEntryView[]>> => ({
       ok: false, error: new RemoteError('mindeck-files/denied', 'no access', {}),
     })),
-    search: vi.fn(async (_query: string, _signal?: AbortSignal): Promise<RemoteResult<LibraryEntryView[]>> => ({ ok: true, value: [
-      { path: '/Personal/周报/第一周.md', name: '第一周.md', kind: 'file', writable: true },
-      { path: '/研发部/周报', name: '周报', kind: 'folder', writable: true },
-    ] })),
+    search: vi.fn(async (_query: string, _scope: LibrarySearchScope, _signal?: AbortSignal): Promise<RemoteResult<LibrarySearchView>> => ({
+      ok: true, value: { text: false, entries: [
+        { path: '/Personal/周报/第一周.md', name: '第一周.md', kind: 'file', writable: true },
+        { path: '/研发部/周报', name: '周报', kind: 'folder', writable: true },
+      ] },
+    })),
     upload: vi.fn(async (_folder: string, _name: string, _content: string, _overwrite: boolean)
     : Promise<RemoteResult<LibraryEntryView>> => ({ ok: false, error: new RemoteError('mindeck-files/exists', 'taken', {}) })),
   }
@@ -131,7 +133,8 @@ it('registers the side panel, the page, and the row, writes library references i
     const signal = new AbortController().signal
     expect(await source.candidates({ sessionId }, { query: ' ', signal })).toEqual([])
     const candidates = await source.candidates({ sessionId }, { query: '周报', signal })
-    expect(f.remote.search).toHaveBeenCalledWith('周报', signal)
+    // `@` finds items by name, also where the library searches document text.
+    expect(f.remote.search).toHaveBeenCalledWith('周报', 'names', signal)
     expect(candidates).toEqual([
       { name: '/Personal/周报/第一周.md', label: '第一周.md', description: 'My files / 周报', icon: 'file', section: 'File library', value: 'file' },
       { name: '/研发部/周报', label: '周报', description: '研发部', icon: 'folder', section: 'File library', value: 'folder' },
@@ -144,6 +147,9 @@ it('registers the side panel, the page, and the row, writes library references i
     superseded.abort()
     expect(await pending).toEqual([])
     expect(f.remote.search).toHaveBeenCalledOnce()
+    // The panel and the page search document text where the library indexes it.
+    expect(await operations.search('周报')).toMatchObject({ ok: true, value: { text: false } })
+    expect(f.remote.search).toHaveBeenLastCalledWith('周报', 'text')
     expect(source?.name).toBe('mindeck-files')
     expect(await source?.codec?.serialize('library:/研发部/规范.md', new AbortController().signal)).toBe('library:/研发部/规范.md')
     expect(operations.addToConversation({ path: '/Shared with me/周报', name: '周报', kind: 'folder', writable: false })).toBe(true)

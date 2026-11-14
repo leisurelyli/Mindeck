@@ -17,6 +17,12 @@ export const en = {
   generalStarter1: 'Write a work email for me',
   generalStarter2: 'Make this text clearer and more formal',
   generalStarter3: 'Turn my meeting notes into a to-do list',
+  details: 'About {name}',
+  folders: 'Files',
+  folderSeparator: ', ',
+  folderNoAccess: '{label} (no access for you)',
+  folderTitle: '{label}: {path}',
+  model: 'Model',
 }
 
 /** Key of one page string. */
@@ -35,6 +41,12 @@ export const zh: Record<MindeckEmployeesKey, string> = {
   generalStarter1: '帮我写一封工作邮件',
   generalStarter2: '把这段文字改得更通顺、更正式',
   generalStarter3: '把会议记录整理成待办清单',
+  details: '“{name}”的资料和模型',
+  folders: '资料',
+  folderSeparator: '、',
+  folderNoAccess: '{label}（你暂无权限）',
+  folderTitle: '{label}：{path}',
+  model: '模型',
 }
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {

@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, within } from '@testing-library/react'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import type { LibraryAvailability, LibraryEntryView, LibrarySpaceView } from '../src/types.ts'
+import type { LibraryAvailability, LibraryEntryView, LibrarySearchView, LibrarySpaceView } from '../src/types.ts'
 import { zh } from '../src/client/locales.ts'
 import type { LibraryResult, LibrarySnapshot } from '../src/client/operations.ts'
 import { LibraryPage, type LibraryPageProps } from '../src/client/LibraryPage.tsx'
@@ -32,7 +32,7 @@ function fixture(availability: LibraryAvailability | undefined) {
   const operations = {
     spaces: vi.fn(async () => ok(spaces)),
     list: vi.fn(async (path: string): Promise<LibraryResult<LibraryEntryView[]>> => ok(folders[path] ?? [])),
-    search: vi.fn(async (_query: string) => ok([folders['/研发部']![1]!])),
+    search: vi.fn(async (_query: string): Promise<LibraryResult<LibrarySearchView>> => ok({ entries: [folders['/研发部']![1]!], text: false })),
     upload: vi.fn(async (_folder: string, file: File, _overwrite: boolean): Promise<LibraryResult<LibraryEntryView>> =>
       ok({ path: `/研发部/${file.name}`, name: file.name, kind: 'file', writable: true })),
     startWith: vi.fn(async (_entry: Pick<LibraryEntryView, 'path' | 'name' | 'kind'>) => {}),
@@ -96,6 +96,33 @@ it('searches every space, names where each result is, and returns to the folder 
   expect(view.queryByRole('button', { name: zh.upload })).toBeNull()
   fireEvent.click(view.getByRole('button', { name: zh.clearSearch }))
   expect(await view.findByText(zh.empty)).toBeTruthy()
+})
+
+it('shows the passage of a text match and explains an empty search by what the library searches', async () => {
+  const f = fixture('ready')
+  f.operations.search.mockResolvedValueOnce({ ok: true, value: { text: true, entries: [{
+    path: '/研发部/差旅费用管理办法.docx', name: '差旅费用管理办法.docx', kind: 'file', size: 4096, writable: false,
+    passage: [{ text: '出差人员的', match: false }, { text: '住宿', match: true }, { text: '费实行限额', match: false }, { text: '标准', match: true }],
+  }] } })
+  const view = render(<LibraryPage {...f.props} />)
+  await vi.waitFor(() => { expect(f.operations.list).toHaveBeenCalledWith('/Personal') })
+  const search = view.getByRole('searchbox', { name: zh.searchAllPlaceholder })
+  fireEvent.change(search, { target: { value: '住宿标准' } })
+  const row = (await view.findByText('差旅费用管理办法.docx')).closest('li')
+  if (row === null) throw new Error('Expected the result row')
+  expect(row.hasAttribute('data-passage')).toBe(true)
+  expect(row.textContent).toContain('出差人员的住宿费实行限额标准')
+  expect([...row.querySelectorAll('mark')].map(mark => mark.textContent)).toEqual(['住宿', '标准'])
+
+  f.operations.search.mockResolvedValueOnce({ ok: true, value: { text: true, entries: [] } })
+  fireEvent.change(search, { target: { value: '年假' } })
+  expect(await view.findByText(zh.noTextResults)).toBeTruthy()
+  expect(view.getByText(zh.noTextResultsHint)).toBeTruthy()
+
+  f.operations.search.mockResolvedValueOnce({ ok: true, value: { text: false, entries: [] } })
+  fireEvent.change(search, { target: { value: '住宿' } })
+  expect(await view.findByText(zh.noResults)).toBeTruthy()
+  expect(view.getByText(zh.namesOnlyHint)).toBeTruthy()
 })
 
 it('offers a retry after a failed read, and uploads picked and dropped files into the open folder', async () => {

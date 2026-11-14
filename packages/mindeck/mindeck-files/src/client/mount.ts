@@ -130,9 +130,9 @@ function registerUi(ctx: Context): void {
         signal.addEventListener('abort', () => { clearTimeout(timer); resolve(false) }, { once: true })
       })
       if (!paused) return []
-      const found = await ctx.remote.mindeckFiles.search(text, signal)
+      const found = await ctx.remote.mindeckFiles.search(text, 'names', signal)
       if (!found.ok || signal.aborted) return []
-      return found.value.map((entry) => {
+      return found.value.entries.map((entry) => {
         const label = libraryLabel(entry.path, t)
         return {
           name: entry.path, label: entry.name, description: label.location, icon: entry.kind,
@@ -161,7 +161,7 @@ function registerUi(ctx: Context): void {
   const reads = {
     spaces: async () => result(await ctx.remote.mindeckFiles.spaces()),
     list: async (path: string) => result(await ctx.remote.mindeckFiles.list(path)),
-    search: async (query: string) => result(await ctx.remote.mindeckFiles.search(query)),
+    search: async (query: string) => result(await ctx.remote.mindeckFiles.search(query, 'text')),
     upload: async (folder: string, file: File, overwrite: boolean): Promise<LibraryResult<LibraryEntryView>> => {
       let content: string
       try { content = await fileBase64(file) }

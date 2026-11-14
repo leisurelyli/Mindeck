@@ -7,7 +7,7 @@ import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-tes
 import type { MindeckEmployeeCard, MindeckEmployeeCatalog } from '../src/types.ts'
 import { EmployeesPage, type EmployeesPageProps } from '../src/client/EmployeesPage.tsx'
 import { zh } from '../src/client/locales.ts'
-import { starterInsertion } from '../src/client/cards.ts'
+import { avatarInitial, starterInsertion } from '../src/client/cards.ts'
 import { portrait } from '../src/client/avatars.ts'
 import type { MindeckEmployeesSnapshot } from '../src/client/operations.ts'
 
@@ -16,11 +16,18 @@ afterEach(() => { cleanup() })
 const GENERAL: MindeckEmployeeCard = { kind: 'general', presetId: 'mindeck-general' }
 const LEGAL: MindeckEmployeeCard = {
   kind: 'employee', presetId: 'mindeck-employee-legal', employeeId: 'legal', name: '法务专员', avatar: 'legal',
-  tagline: '审合同，解释条款', starters: ['帮我审一份采购合同', '解释竞业限制条款'], draft: false,
+  tagline: '审合同，解释条款', starters: ['帮我审一份采购合同', '解释竞业限制条款'], draft: false, folders: [], model: null,
 }
 const HR: MindeckEmployeeCard = {
   kind: 'employee', presetId: 'mindeck-employee-hr', employeeId: 'hr', name: '人事专员', avatar: 'future-key',
-  tagline: '', starters: [], draft: true,
+  tagline: '', starters: [], draft: true, folders: [], model: null,
+}
+const RULES: MindeckEmployeeCard = {
+  kind: 'employee', presetId: 'mindeck-employee-rules', employeeId: 'rules', name: '制度问答', avatar: 'hr',
+  tagline: '答报销、请假和考勤的问题', starters: [], draft: false, model: 'GLM 4.6', folders: [
+    { label: '企业制度', path: '企业空间 / 制度文件', accessible: true },
+    { label: '研发规范', path: '研发部 / 规范', accessible: false },
+  ],
 }
 
 function fixture(catalog: MindeckEmployeeCatalog) {
@@ -45,7 +52,7 @@ it('lists the general assistant first with its own starters, then the company\'s
   // A draft carries its mark; an employee without starters shows no starter list, and an unknown avatar shows its initial.
   expect(within(cards[2]!).getByText(zh.draft)).toBeTruthy()
   expect(within(cards[2]!).queryByRole('list')).toBeNull()
-  expect(cards[2]!.querySelector('[data-tint]')?.textContent).toBe('人')
+  expect(cards[2]!.querySelector('[data-tint]')?.textContent).toBe('人事')
   expect(cards[1]!.querySelector('img')?.getAttribute('data-backdrop')).toBe('lavender')
 })
 
@@ -87,5 +94,28 @@ it('draws the name\'s first character when a portrait fails to load', () => {
   const image = card.querySelector('img')
   if (image === null) throw new Error('Expected the legal portrait')
   fireEvent.error(image)
-  expect(card.querySelector('[data-tint]')?.textContent).toBe('法')
+  expect(card.querySelector('[data-tint]')?.textContent).toBe('法务')
+})
+
+it('shows the leading Latin word or the first two characters when there is no portrait, as Mindeck Cloud does', () => {
+  expect(avatarInitial(' IT 帮助台')).toBe('IT')
+  expect(avatarInitial('hrbp 助理')).toBe('HR')
+  expect(avatarInitial('合同审查专员')).toBe('合同')
+  expect(avatarInitial('法')).toBe('法')
+  expect(avatarInitial('  ')).toBe('')
+})
+
+it('names the folders an employee consults, those the member cannot open, and its model at the foot of its card', () => {
+  const view = render(<EmployeesPage {...fixture({ cards: [GENERAL, RULES, LEGAL] }).props} />)
+  const [general, rules, legal] = view.getAllByRole('article')
+  const details = within(rules!).getByRole('region', { name: '“制度问答”的资料和模型' })
+  expect([...details.querySelectorAll('p')].map(line => line.textContent)).toEqual([
+    '资料企业制度、研发规范（你暂无权限）', '模型GLM 4.6',
+  ])
+  expect(details.querySelector('p')?.getAttribute('title')).toBe('企业制度：企业空间 / 制度文件\n研发规范：研发部 / 规范')
+  expect(within(rules!).getByRole('button', { name: '与“制度问答”开始新对话' }).getAttribute('aria-describedby')).toContain(details.id)
+  // Without starters the section is left out entirely, and cards without folders or a model have no details.
+  expect(within(rules!).queryByText(zh.starters)).toBeNull()
+  expect(within(general!).queryByRole('region')).toBeNull()
+  expect(within(legal!).queryByRole('region')).toBeNull()
 })

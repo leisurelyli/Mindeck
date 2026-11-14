@@ -10,7 +10,13 @@ export type LibraryView =
   | { readonly status: 'loading' }
   | { readonly status: 'error'; readonly reason: MindeckFilesKey }
   | { readonly status: 'spaces'; readonly spaces: readonly LibrarySpaceView[] }
-  | { readonly status: 'entries'; readonly entries: readonly LibraryEntryView[]; readonly search: boolean }
+  | {
+    readonly status: 'entries'
+    readonly entries: readonly LibraryEntryView[]
+    readonly search: boolean
+    /** Whether a search also looked at document text; false for a folder and for a library that indexes names only. */
+    readonly text: boolean
+  }
 
 /** Progress and outcome of the latest upload. */
 export type LibraryUpload =
@@ -119,14 +125,16 @@ export function useLibraryBrowser(
     const text = query.trim()
     const timer = setTimeout(() => {
       if (text !== '') {
-        void search(text).then((result) => { settle(result, (entries) => { remember(entries); return { status: 'entries', entries, search: true } }) })
+        void search(text).then((result) => {
+          settle(result, (found) => { remember(found.entries); return { status: 'entries', entries: found.entries, search: true, text: found.text } })
+        })
       } else if (path === null) {
         void spaces().then((result) => {
           if (result.ok && current) { setKnown(result.value); remember(result.value) }
           settle(result, value => ({ status: 'spaces', spaces: value }))
         })
       } else {
-        void list(path).then((result) => { settle(result, (entries) => { remember(entries); return { status: 'entries', entries, search: false } }) })
+        void list(path).then((result) => { settle(result, (entries) => { remember(entries); return { status: 'entries', entries, search: false, text: false } }) })
       }
     }, text === '' ? 0 : SEARCH_DELAY_MS)
     return () => { current = false; clearTimeout(timer) }
