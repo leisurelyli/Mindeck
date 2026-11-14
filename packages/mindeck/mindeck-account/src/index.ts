@@ -117,7 +117,7 @@ const storedSessionSchema = zod.object({
     endpoints: zod.object({
       console: zod.string(), models: zod.string(), skills: zod.string(),
       anthropicBaseUrl: zod.string(), openaiBaseUrl: zod.string(),
-      files: zod.object({ url: zod.string(), token: zod.string() }).nullable().optional(),
+      files: zod.object({ url: zod.string(), token: zod.string(), fullText: zod.boolean().optional() }).nullable().optional(),
       webSearch: zod.string().optional(), employees: zod.string().optional(),
       sync: zod.string().optional(), inbox: zod.string().optional(),
     }),

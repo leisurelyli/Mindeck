@@ -40,6 +40,8 @@ export interface FakeCloud {
   readonly syncTags: Array<string | null>
   /** `policies.personalDeepSeek` of bootstrap. */
   personalDeepSeek: boolean
+  /** `endpoints.files` of bootstrap. */
+  files: unknown
   /** `client` of bootstrap; undefined leaves it out. */
   client: unknown
   /** Status that answers feedback; 200 stores it. */
@@ -55,7 +57,7 @@ const bootstrap = (url: string, cloud: FakeCloud) => ({
   device: { id: 'session-1', expiresAt: '2027-01-01T00:00:00.000Z' },
   endpoints: {
     console: url, models: `${url}/api/desktop/models`, skills: `${url}/api/desktop/skills`,
-    anthropicBaseUrl: `${url}/api/gateway/anthropic`, openaiBaseUrl: `${url}/api/gateway/openai/v1`, files: null,
+    anthropicBaseUrl: `${url}/api/gateway/anthropic`, openaiBaseUrl: `${url}/api/gateway/openai/v1`, files: cloud.files,
     webSearch: `${url}/api/desktop/web-search`, employees: `${url}/api/desktop/employees`,
     ...cloud.syncEnabled ? { sync: `${url}/api/desktop/sync`, inbox: `${url}/api/desktop/inbox` } : {},
   },
@@ -165,7 +167,7 @@ export async function startFakeCloud(options: { basePath?: string } = {}): Promi
   const cloud: FakeCloud = {
     url: `http://127.0.0.1:${address.port}${basePath}`,
     requests: [], devices: [], deviceRequests: [], deviceRequestStatus: 204, feedback: [], feedbackStatus: 200, tokens: new Set(), droppedPolls: 0, pendingPolls: 0, outcome: 'issue', userName: '林晓',
-    syncEnabled: false, syncStatus: 200, syncTags: [], personalDeepSeek: true, client: undefined,
+    syncEnabled: false, syncStatus: 200, syncTags: [], personalDeepSeek: true, files: null, client: undefined,
     sync: {
       revisions: { models: 1, skills: 1, employees: 1, webSearch: 1, policies: 1, announcements: 1, client: 1 },
       me: { accessRevision: 1, inbox: { unread: 0, latestAt: null }, quotaRequest: null },

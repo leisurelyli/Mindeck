@@ -215,6 +215,7 @@ it('ends the session only for the token Mindeck Cloud rejected', async () => {
 
 it('keeps the company policy, contact, and endpoints of a stored session across a restart', async () => {
   const f = await fixture()
+  f.cloud.files = { url: `${f.cloud.url}/files`, token: `${f.cloud.url}/api/desktop/files/token`, fullText: true }
   await signIn(f)
   await f.cloud.close()
   await f.live.replace({ cloudUrl: f.cloud.url, requestTimeoutMs: 5001 })
@@ -222,6 +223,7 @@ it('keeps the company policy, contact, and endpoints of a stored session across 
   const session = await f.account().session()
   expect(session?.bootstrap.endpoints).toMatchObject({
     webSearch: `${f.cloud.url}/api/desktop/web-search`, employees: `${f.cloud.url}/api/desktop/employees`,
+    files: { url: `${f.cloud.url}/files`, fullText: true },
   })
 })
 

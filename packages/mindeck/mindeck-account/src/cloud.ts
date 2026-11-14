@@ -54,7 +54,8 @@ const bootstrapSchema = z.object({
     skills: z.url(),
     anthropicBaseUrl: z.url(),
     openaiBaseUrl: z.url(),
-    files: z.object({ url: z.url(), token: z.url() }).nullable().optional(),
+    /** File library; `fullText` tells whether its search covers document contents, absent from an older Mindeck Cloud. */
+    files: z.object({ url: z.url(), token: z.url(), fullText: z.boolean().optional() }).nullable().optional(),
     /** Company web search status; absent from a Mindeck Cloud without web search. */
     webSearch: z.url().optional(),
     /** The member's digital employees; absent from a Mindeck Cloud without them. */
