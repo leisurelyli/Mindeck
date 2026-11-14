@@ -171,7 +171,7 @@ export function mapGatewayFailure(failure: LlmFailure, token: string | undefined
       hooks.rateLimited()
       const limit = memberLimitOf({ ...failure, status })
       if (limit === undefined) {
-        return { ...failure, status, code: RATE_LIMIT_CODE, message: `模型服务商暂时限流，稍后自动重试。${read.text === undefined ? '' : `服务商说明：${read.text}`}` }
+        return { ...failure, status, code: RATE_LIMIT_CODE, message: `模型服务商暂时限流，请稍后再试。${read.text === undefined ? '' : `服务商说明：${read.text}`}` }
       }
       if (repeated) return { ...failure, status, code: RATE_LIMITED_CODE, message: LIMIT_LASTING_MESSAGES[limit] }
       const wait = limit === 'concurrency' ? CONCURRENCY_RETRY_AFTER_MS : hooks.minuteLimitWaitMs

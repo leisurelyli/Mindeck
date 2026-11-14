@@ -102,6 +102,6 @@ it('waits once for a company limit, by its reason, and explains a refusal that l
   expect(lasting.code).toBe(RATE_LIMITED_CODE)
   expect(lasting.message).toMatch(/^同时进行的请求超过了企业设定的上限/)
   const fromProvider = mapGatewayFailure(provider, 'token-1', hooks, true)
-  expect(fromProvider).toEqual({ message: '模型服务商暂时限流，稍后自动重试。服务商说明：Too many requests', code: 'RATE_LIMIT', status: 429 })
+  expect(fromProvider).toEqual({ message: '模型服务商暂时限流，请稍后再试。服务商说明：Too many requests', code: 'RATE_LIMIT', status: 429 })
   expect(hooks.rateLimited).toHaveBeenCalledTimes(5)
 })

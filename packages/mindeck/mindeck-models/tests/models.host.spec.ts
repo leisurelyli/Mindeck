@@ -263,7 +263,7 @@ it('waits out a company limit once per conversation, explains a lasting one, tel
   expect(await failure()).toBeUndefined()
   // A request that went through starts the count over.
   expect(await failure()).toMatchObject({ code: 'RATE_LIMIT', providerRetryAfterMs: 30_000 })
-  expect(await failure()).toMatchObject({ code: 'RATE_LIMIT', message: '模型服务商暂时限流，稍后自动重试。服务商说明：Too many requests' })
+  expect(await failure()).toMatchObject({ code: 'RATE_LIMIT', message: '模型服务商暂时限流，请稍后再试。服务商说明：Too many requests' })
   expect(f.account.requestSync).toHaveBeenCalledTimes(5)
   // The base retry policy accepts the company limit's wait.
   expect(f.ctx.llm.providerRetryPolicy('mindeck-anthropic')).toMatchObject({ mode: 'normal', maxRetries: 5, maxDelayMs: 30_000 })
