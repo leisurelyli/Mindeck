@@ -167,12 +167,6 @@ export interface ModelDefaults {
   readonly maxTokens: number
 }
 
-/** How every route calls the gateway. */
-export interface RouteOptions {
-  /** Longest provider-requested wait, in milliseconds, before the base retry policy retries a refused request. */
-  readonly maxRetryWaitMs: number
-}
-
 /**
  * Group catalog models into one pi-ai profile per client API, each named after the company: members choose
  * models, not protocols. A route's endpoint is its first model's gateway URL; a later model with another URL
@@ -181,14 +175,12 @@ export interface RouteOptions {
  * @param models - the member's models in catalog order.
  * @param companyName - name shown for every route.
  * @param defaults - sizes for models the catalog does not size.
- * @param options - the retry wait of every route.
  * @returns profiles keyed by route, and the ids of models left out.
  */
 export function routeProfiles(
   models: readonly CatalogModel[],
   companyName: string,
   defaults: ModelDefaults,
-  options: RouteOptions,
 ): { profiles: Record<string, PiAiProviderProfile>; conflicting: string[] } {
   const groups = new Map<ModelApi, CatalogModel[]>()
   const conflicting: string[] = []
@@ -208,8 +200,6 @@ export function routeProfiles(
       baseURL: first.baseUrl,
       defaultContextWindow: defaults.contextWindow,
       defaultMaxTokens: defaults.maxTokens,
-      // A company limit asks for up to a minute's wait, longer than the base policy's default ceiling.
-      retryPolicy: { mode: 'normal', backoff: { maxDelayMs: options.maxRetryWaitMs } },
       models: group.map(model => ({
         id: model.id,
         name: model.displayName,

@@ -24,7 +24,13 @@ export const SIGN_IN_REQUIRED_CODE = 'MINDECK_SIGN_IN_REQUIRED'
  */
 export const RATE_LIMITED_CODE = 'MINDECK_RATE_LIMITED'
 
-/** Retry code the base retry policy waits on, for a first refusal by a company limit and for a provider's own 429. */
+/**
+ * Failure code of a conversation's first request in a row that a company limit refused. Its `providerRetryAfterMs`
+ * is the wait before the one retry `retryMemberLimits` makes; the base retry policy does not retry it.
+ */
+export const LIMIT_WAIT_CODE = 'MINDECK_LIMIT_WAIT'
+
+/** Retry code the base retry policy waits on, for a provider's own 429. */
 const RATE_LIMIT_CODE = 'RATE_LIMIT'
 
 /**
@@ -39,7 +45,10 @@ const MEMBER_LIMIT_REASONS: Readonly<Record<string, MemberLimit>> = {
   MEMBER_CONCURRENCY_LIMIT: 'concurrency',
 }
 
-/** The gateway's fixed `Retry-After` of a request refused for the requests running at once, in milliseconds. */
+/**
+ * The gateway's fixed `Retry-After` of a request refused for the requests running at once, in milliseconds; the wait
+ * when the 429 carries no usable `error.retryAfter`.
+ */
 const CONCURRENCY_RETRY_AFTER_MS = 3000
 
 /** What the transcript says while the desktop waits out a company limit once. */
@@ -79,10 +88,13 @@ export interface GatewayHooks {
   /** Mindeck Cloud or the model provider refused a request as too many (HTTP 429). */
   readonly rateLimited: () => void
   /**
-   * Milliseconds the desktop waits before its one retry of a request the per-minute company limit refused. The 429's
-   * `Retry-After` does not reach the adapter, so this covers the limit's whole window.
+   * Milliseconds the desktop waits before its one retry of a request the per-minute company limit refused when the
+   * 429 carries no usable `error.retryAfter`. The 429's `Retry-After` header does not reach the adapter, so this
+   * covers the limit's whole window.
    */
   readonly minuteLimitWaitMs: number
+  /** Longest `error.retryAfter` the desktop waits out, in milliseconds; a longer one counts as unusable. */
+  readonly maxLimitWaitMs: number
 }
 
 /** What a provider failure says about the gateway's answer. */
@@ -92,19 +104,26 @@ export interface GatewayFailure {
   readonly text?: string
   /** `error.reason`, which the gateway sets on failures the desktop tells apart. */
   readonly reason?: string
+  /**
+   * `error.retryAfter`, the whole seconds the gateway asks the desktop to wait before retrying a request a company
+   * limit refused; present only when it is a positive integer.
+   */
+  readonly retryAfter?: number
 }
 
 /**
  * Read the gateway's own message from a provider failure. The client SDKs report the gateway's JSON
  * error body, the error object inside it, or its message, with or without the HTTP status.
  * @param message - failure text from the client SDK.
- * @returns the HTTP status, the gateway message, and `error.reason`, when the text carries them.
+ * @returns the HTTP status, the gateway message, `error.reason`, and a usable `error.retryAfter`, when the text carries
+ *   them.
  */
 export function readGatewayFailure(message: string): GatewayFailure {
   const status = /^\s*(\d{3})\b/.exec(message)?.[1]
   const json = message.indexOf('{')
   let text: string | undefined
   let reason: string | undefined
+  let retryAfter: number | undefined
   if (json >= 0) {
     try {
       const body: unknown = JSON.parse(message.slice(json))
@@ -114,6 +133,8 @@ export function readGatewayFailure(message: string): GatewayFailure {
       if (typeof inner === 'string' && inner.length > 0) text = inner
       const code = typeof error === 'object' && error !== null && 'reason' in error ? error.reason : undefined
       if (typeof code === 'string' && code.length > 0) reason = code
+      const after = typeof error === 'object' && error !== null && 'retryAfter' in error ? error.retryAfter : undefined
+      if (typeof after === 'number' && Number.isSafeInteger(after) && after > 0) retryAfter = after
     } catch (_error) {
       // Not a JSON body: the SDK already reduced the response to its message, read below.
     }
@@ -126,6 +147,7 @@ export function readGatewayFailure(message: string): GatewayFailure {
     ...status === undefined ? {} : { status: Number(status) },
     ...text === undefined ? {} : { text },
     ...reason === undefined ? {} : { reason },
+    ...retryAfter === undefined ? {} : { retryAfter },
   }
 }
 
@@ -143,8 +165,9 @@ export function memberLimitOf(failure: LlmFailure): MemberLimit | undefined {
 
 /**
  * Map one failed request: a refused session ends the local session, an exhausted quota stops retries
- * and shows the Cloud's explanation, and a missing model refreshes the catalog. A company limit's first refusal is
- * retried once after its wait; its refusal of that retry stops with an explanation. A provider's own 429 keeps the
+ * and shows the Cloud's explanation, and a missing model refreshes the catalog. A company limit's first refusal becomes
+ * {@link LIMIT_WAIT_CODE} with the wait the gateway's `error.retryAfter` asks for, up to `hooks.maxLimitWaitMs`, or
+ * else the limit's fallback wait; its refusal of the retry stops with an explanation. A provider's own 429 keeps the
  * base retry policy.
  * @param failure - failure reported by the pi-ai adapter.
  * @param token - token the request used.
@@ -174,8 +197,10 @@ export function mapGatewayFailure(failure: LlmFailure, token: string | undefined
         return { ...failure, status, code: RATE_LIMIT_CODE, message: `模型服务商暂时限流，请稍后再试。${read.text === undefined ? '' : `服务商说明：${read.text}`}` }
       }
       if (repeated) return { ...failure, status, code: RATE_LIMITED_CODE, message: LIMIT_LASTING_MESSAGES[limit] }
-      const wait = limit === 'concurrency' ? CONCURRENCY_RETRY_AFTER_MS : hooks.minuteLimitWaitMs
-      return { ...failure, status, code: RATE_LIMIT_CODE, message: LIMIT_WAIT_MESSAGES[limit], providerRetryAfterMs: wait }
+      const asked = read.retryAfter === undefined ? undefined : read.retryAfter * 1000
+      const wait = asked !== undefined && asked <= hooks.maxLimitWaitMs ? asked
+        : limit === 'concurrency' ? CONCURRENCY_RETRY_AFTER_MS : hooks.minuteLimitWaitMs
+      return { ...failure, status, code: LIMIT_WAIT_CODE, message: LIMIT_WAIT_MESSAGES[limit], providerRetryAfterMs: wait }
     }
     case undefined:
       return failure
@@ -187,7 +212,8 @@ export function mapGatewayFailure(failure: LlmFailure, token: string | undefined
 /**
  * Delegating adapter that applies {@link mapGatewayFailure} to every error finish. It remembers, per conversation,
  * that a company limit refused the last request, until a request of that conversation finishes otherwise or the
- * limit refuses it again.
+ * limit refuses it again. Auxiliary requests, such as a conversation's title, carry a `purpose`; they neither read
+ * nor change that record, so a refused title request between a refusal and its retry does not reset it.
  */
 export class GatewayAdapter extends LlmAdapter {
   /** Conversations whose last request a company limit refused. */
@@ -233,10 +259,13 @@ export class GatewayAdapter extends LlmAdapter {
 
   stream(options: GenerateOptions): AsyncIterable<StreamChunk> { return this.guard(this.inner.stream(options), options) }
 
-  private async *guard(source: AsyncIterable<StreamChunk>, options: GenerateOptions): AsyncIterable<StreamChunk> {
+  // The packages that make auxiliary requests declare their purposes, so any string may arrive here.
+  private async *guard(
+    source: AsyncIterable<StreamChunk>, options: Pick<GenerateOptions<string>, 'sessionId' | 'purpose'>,
+  ): AsyncIterable<StreamChunk> {
     const token = await this.hooks.token()
-    // A request outside a conversation has no earlier request to compare with.
-    const conversation = options.sessionId === undefined ? undefined : String(options.sessionId)
+    // A request outside a conversation's own requests has no earlier request to compare with.
+    const conversation = options.sessionId === undefined || options.purpose !== undefined ? undefined : String(options.sessionId)
     for await (const chunk of source) {
       if (chunk.type === 'finish' && chunk.reason.kind === 'error') {
         const { failure } = chunk.reason

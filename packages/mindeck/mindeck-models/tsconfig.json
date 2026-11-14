@@ -16,6 +16,7 @@
     { "path": "../../core/session" },
     { "path": "../../llm/llm" },
     { "path": "../../llm/llm-pi-ai" },
+    { "path": "../../llm/llm-retry" },
     { "path": "../../util/home-paths" },
     { "path": "../../util/timeout" },
     { "path": "../../util/values" },

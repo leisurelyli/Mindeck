@@ -24,15 +24,17 @@ import type { Session } from '@deepseek-ai/dsh-session'
 import { type CatalogModel, fetchCatalog, routeProfiles } from './catalog.ts'
 import { readCachedCatalog, writeCachedCatalog } from './catalog-cache.ts'
 import { EMPLOYEE_HEADER, GatewayAdapter, type ModelNotes, SIGN_IN_REQUIRED_CODE } from './gateway-adapter.ts'
+import { retryMemberLimits } from './member-limit-retry.ts'
 import { fetchSearchStatus, MindeckSearchProvider, type SearchStatus } from './search.ts'
 
 export { parseCatalog, routeProfiles, ROUTES } from './catalog.ts'
 export type { CatalogModel, IgnoredSetting, ModelApi, ParsedCatalog, ReasoningLevel, SettingField } from './catalog.ts'
 export {
-  ACCOUNT_UNAVAILABLE_CODE, EMPLOYEE_HEADER, GatewayAdapter, mapGatewayFailure, memberLimitOf, RATE_LIMITED_CODE, readGatewayFailure,
-  RECOMMENDED_BADGE, SESSION_ENDED_CODE, SIGN_IN_REQUIRED_CODE,
+  ACCOUNT_UNAVAILABLE_CODE, EMPLOYEE_HEADER, GatewayAdapter, LIMIT_WAIT_CODE, mapGatewayFailure, memberLimitOf, RATE_LIMITED_CODE,
+  readGatewayFailure, RECOMMENDED_BADGE, SESSION_ENDED_CODE, SIGN_IN_REQUIRED_CODE,
 } from './gateway-adapter.ts'
 export type { GatewayFailure, GatewayHooks, MemberLimit, ModelNotes } from './gateway-adapter.ts'
+export { MEMBER_LIMIT_POLICY_KEY, retryMemberLimits } from './member-limit-retry.ts'
 export { fetchSearchStatus, mapSearchResults, MINDECK_SEARCH_PROVIDER_ID, MindeckSearchProvider } from './search.ts'
 export type { MindeckSearchHooks, SearchStatus } from './search.ts'
 
@@ -59,10 +61,17 @@ export interface Config {
   /** Results requested per web search, from 1 through 50; a smaller bound set by the caller wins. */
   searchCount: number
   /**
-   * Milliseconds to wait before the one retry of a request the company's per-minute limit refused. The gateway's
-   * `Retry-After` does not reach the desktop, so the default covers the limit's whole one-minute window.
+   * Milliseconds to wait before the one retry of a request the company's per-minute limit refused when the gateway's
+   * 429 carries no usable `error.retryAfter`. The `Retry-After` header does not reach the desktop, so the default
+   * covers the limit's whole one-minute window.
    */
   minuteLimitWaitMs: number
+  /**
+   * Longest wait, in milliseconds, that the gateway's `error.retryAfter` may ask for before the one retry of a request
+   * a company limit refused. A longer, non-integer, or non-positive value is not used; the limit's fallback wait
+   * applies instead.
+   */
+  maxLimitWaitMs: number
 }
 
 export const Config: z<Config> = z.object({
@@ -81,7 +90,9 @@ export const Config: z<Config> = z.object({
   searchCount: z.natural().min(1).max(50).default(10)
     .description('Results requested per web search, from 1 through 50; a smaller bound set by the caller wins.'),
   minuteLimitWaitMs: z.natural().min(1000).max(MAX_TIMER_DELAY_MS).default(60_000)
-    .description('Milliseconds to wait before the one retry of a request the company\'s per-minute limit refused.'),
+    .description('Milliseconds to wait before the one retry of a request the company\'s per-minute limit refused when the gateway names no usable wait.'),
+  maxLimitWaitMs: z.natural().min(1000).max(MAX_TIMER_DELAY_MS).default(60_000)
+    .description('Longest wait, in milliseconds, the gateway\'s error.retryAfter may ask for before the one retry of a request a company limit refused.'),
 })
 
 /** Register the member's company models while a Mindeck session exists. */
@@ -118,7 +129,9 @@ export function apply(ctx: Context, config: Config): void {
     // The company may have changed the limit meanwhile.
     rateLimited: () => { ctx.mindeckAccount.requestSync() },
     minuteLimitWaitMs: config.minuteLimitWaitMs,
+    maxLimitWaitMs: config.maxLimitWaitMs,
   })
+  retryMemberLimits(ctx, lifetime.signal)
 
   // Gateway requests of a digital employee's conversation name the employee, so Mindeck Cloud can attribute them.
   ctx.on('llm-pi-ai/request-headers', (request, _headers, next) => {
@@ -259,7 +272,7 @@ export function apply(ctx: Context, config: Config): void {
   const publishModels = (models: readonly CatalogModel[], companyName: string): void => {
     const { profiles: next, conflicting } = routeProfiles(models, companyName, {
       contextWindow: config.defaultContextWindow, maxTokens: config.defaultMaxTokens,
-    }, { maxRetryWaitMs: config.minuteLimitWaitMs })
+    })
     if (conflicting.length > 0) {
       ctx.logger.warn(`mindeck-models: left out models with a second gateway address: ${conflicting.join(', ')}`)
     }

@@ -2694,7 +2694,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-mindeck-models`
 
 - `inject`: `llm` · `mindeckAccount`
-- `source`: [`packages/mindeck/mindeck-models/src/index.ts:43`](../packages/mindeck/mindeck-models/src/index.ts)
+- `source`: [`packages/mindeck/mindeck-models/src/index.ts:45`](../packages/mindeck/mindeck-models/src/index.ts)
 
 ```ts config-catalog
 /** Deployment options. */
@@ -2717,10 +2717,17 @@ export interface Config {
   /** Results requested per web search, from 1 through 50; a smaller bound set by the caller wins. */
   searchCount: number
   /**
-   * Milliseconds to wait before the one retry of a request the company's per-minute limit refused. The gateway's
-   * `Retry-After` does not reach the desktop, so the default covers the limit's whole one-minute window.
+   * Milliseconds to wait before the one retry of a request the company's per-minute limit refused when the gateway's
+   * 429 carries no usable `error.retryAfter`. The `Retry-After` header does not reach the desktop, so the default
+   * covers the limit's whole one-minute window.
    */
   minuteLimitWaitMs: number
+  /**
+   * Longest wait, in milliseconds, that the gateway's `error.retryAfter` may ask for before the one retry of a request
+   * a company limit refused. A longer, non-integer, or non-positive value is not used; the limit's fallback wait
+   * applies instead.
+   */
+  maxLimitWaitMs: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-mindeck-models -->

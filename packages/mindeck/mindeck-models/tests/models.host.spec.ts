@@ -5,13 +5,24 @@ import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
-import LlmRuntime, { QUOTA_EXCEEDED_CODE, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+import type { Agent } from '@deepseek-ai/dsh-agent'
+import { mountAgentLoopTestDependencies, mountAgentLoopTestHarness } from '@deepseek-ai/dsh-agent-loop-testkit'
+import LlmRuntime, { createUserMessage, QUOTA_EXCEEDED_CODE, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+import * as LlmRetry from '@deepseek-ai/dsh-llm-retry'
 import type { MindeckSession } from '@deepseek-ai/dsh-mindeck-account'
 import { SessionId } from '@deepseek-ai/dsh-session'
+import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import { afterEach, expect, it, vi } from 'vitest'
 import { assemble } from '../../../llm/llm-pi-ai/tests/assemble.ts'
 import { anthropicTextEvents, closeMockServers, mockServer, textEvents } from '../../../llm/llm-pi-ai/tests/mock-server.ts'
 import * as MindeckModels from '../src/index.ts'
+
+declare module '@deepseek-ai/dsh-llm/types' {
+  interface LlmRequestPurposeMap {
+    /** An auxiliary request of a conversation in these tests, as a title request is. */
+    'mindeck-test-title': true
+  }
+}
 
 const cleanups: Array<() => Promise<void>> = []
 /** Options with a fresh cache directory removed after the test. */
@@ -20,7 +31,7 @@ function options(overrides: Partial<MindeckModels.Config> = {}): MindeckModels.C
   cleanups.push(async () => { rmSync(cacheDir, { recursive: true, force: true }) })
   return {
     refreshIntervalMs: 600_000, retryIntervalMs: 15_000, cacheDir, requestTimeoutMs: 15_000,
-    defaultContextWindow: 128_000, defaultMaxTokens: 8192, searchCount: 10, minuteLimitWaitMs: 60_000,
+    defaultContextWindow: 128_000, defaultMaxTokens: 8192, searchCount: 10, minuteLimitWaitMs: 60_000, maxLimitWaitMs: 60_000,
     ...overrides,
   }
 }
@@ -50,7 +61,11 @@ async function catalogServer() {
   return { url: `http://127.0.0.1:${address.port}/api/desktop/models`, state }
 }
 
-async function fixture(gatewayUrl: string) {
+/**
+ * @param gatewayUrl - base URL of every catalog model.
+ * @param agents - also mount the agent loop's prerequisites, for tests that run conversations.
+ */
+async function fixture(gatewayUrl: string, agents = false) {
   const catalog = await catalogServer()
   const model = (id: string, api = 'anthropic-messages') => ({
     id, displayName: id, protocol: 'anthropic', api, baseUrl: gatewayUrl,
@@ -86,7 +101,8 @@ async function fixture(gatewayUrl: string) {
   }
   ctx.provide('mindeckAccount', account as never)
   ctx.provide('agentDefaultModel', defaults as never)
-  await ctx.plugin(LlmRuntime)
+  if (agents) await mountAgentLoopTestDependencies(ctx)
+  else await ctx.plugin(LlmRuntime)
   const updated = vi.fn<(route: string) => void>()
   ctx.on('llm/models-updated', updated)
   const signIn = (token: string) => { current = session(token); ctx.emit('mindeck-account/changed') }
@@ -241,6 +257,7 @@ it('waits out a company limit once per conversation, explains a lasting one, tel
     limited('MEMBER_CONCURRENCY_LIMIT'), limited('MEMBER_CONCURRENCY_LIMIT'),
     limited('MEMBER_RATE_LIMIT'), { events: anthropicTextEvents }, limited('MEMBER_RATE_LIMIT'),
     { status: 429, body: JSON.stringify({ type: 'error', error: { type: 'rate_limit_error', message: 'Too many requests' } }) },
+    limited('MEMBER_RATE_LIMIT'), limited('MEMBER_RATE_LIMIT'), limited('MEMBER_RATE_LIMIT'),
   ])
   const f = await fixture(`${gateway.url}/gateway/anthropic`)
   f.catalog.state.models = [f.model('deepseek-chat')]
@@ -254,19 +271,83 @@ it('waits out a company limit once per conversation, explains a lasting one, tel
     const finish = (await assemble(f.ctx, request)).finish
     return finish.kind === 'error' ? finish.failure : undefined
   }
-  expect(await failure()).toMatchObject({ code: 'RATE_LIMIT', status: 429, providerRetryAfterMs: 3000 })
+  expect(await failure()).toMatchObject({ code: MindeckModels.LIMIT_WAIT_CODE, status: 429, providerRetryAfterMs: 3000 })
   const lasting = await failure()
   expect(lasting?.code).toBe(MindeckModels.RATE_LIMITED_CODE)
   expect(lasting?.message).toMatch(/^同时进行的请求超过了企业设定的上限/)
   // After a lasting refusal is reported, the conversation's next request waits once again.
-  expect(await failure()).toMatchObject({ code: 'RATE_LIMIT', providerRetryAfterMs: 30_000 })
+  expect(await failure()).toMatchObject({ code: MindeckModels.LIMIT_WAIT_CODE, providerRetryAfterMs: 30_000 })
   expect(await failure()).toBeUndefined()
   // A request that went through starts the count over.
-  expect(await failure()).toMatchObject({ code: 'RATE_LIMIT', providerRetryAfterMs: 30_000 })
+  expect(await failure()).toMatchObject({ code: MindeckModels.LIMIT_WAIT_CODE, providerRetryAfterMs: 30_000 })
   expect(await failure()).toMatchObject({ code: 'RATE_LIMIT', message: '模型服务商暂时限流，请稍后再试。服务商说明：Too many requests' })
   expect(f.account.requestSync).toHaveBeenCalledTimes(5)
-  // The base retry policy accepts the company limit's wait.
-  expect(f.ctx.llm.providerRetryPolicy('mindeck-anthropic')).toMatchObject({ mode: 'normal', maxRetries: 5, maxDelayMs: 30_000 })
+  // An auxiliary request of the conversation, such as its title, neither counts as its retry nor resets the count.
+  const title = async () => {
+    const finish = (await assemble(f.ctx, { ...request, purpose: 'mindeck-test-title' })).finish
+    return finish.kind === 'error' ? finish.failure : undefined
+  }
+  expect(await failure()).toMatchObject({ code: MindeckModels.LIMIT_WAIT_CODE })
+  expect(await title()).toMatchObject({ code: MindeckModels.LIMIT_WAIT_CODE })
+  expect(await failure()).toMatchObject({ code: MindeckModels.RATE_LIMITED_CODE })
+  // Provider limits keep the base retry policy's defaults; the plugin waits out company limits itself.
+  expect(f.ctx.llm.providerRetryPolicy('mindeck-anthropic')).toMatchObject({ mode: 'normal', maxRetries: 5, maxDelayMs: 10_000 })
+})
+
+it('shows a company limit\'s wait as its only retry, stops when the limit lasts, and leaves a provider\'s 429 to the base retries', async () => {
+  const limited = (reason: string) => ({
+    status: 429,
+    body: JSON.stringify({ type: 'error', error: { type: 'rate_limit_error', message: '请求太频繁。', reason, retryAfter: 1 } }),
+  })
+  const provider = { status: 429, body: JSON.stringify({ type: 'error', error: { type: 'rate_limit_error', message: 'Too many requests' } }) }
+  const gateway = await mockServer([
+    limited('MEMBER_RATE_LIMIT'), { events: anthropicTextEvents },
+    provider, { events: anthropicTextEvents },
+    limited('MEMBER_CONCURRENCY_LIMIT'), limited('MEMBER_CONCURRENCY_LIMIT'),
+    limited('MEMBER_RATE_LIMIT'),
+  ])
+  const f = await fixture(`${gateway.url}/gateway/anthropic`, true)
+  f.catalog.state.models = [f.model('deepseek-chat')]
+  await f.ctx.plugin(LlmRetry)
+  await f.ctx.plugin(MindeckModels, options())
+  await vi.waitFor(() => { expect(f.providers()).toEqual(['mindeck-anthropic']) })
+  const harness = await mountAgentLoopTestHarness(f.ctx)
+  const agent = await harness.create(SessionId('limited'), { provider: 'mindeck-anthropic', model: 'deepseek-chat' })
+  const next = (type: SessionEvent['type']) => new Promise<SessionEvent>((resolve) => {
+    const dispose = f.ctx.on('session/event', (session, event) => {
+      if (session === agent.session && event.type === type) { dispose(); resolve(event) }
+    })
+  })
+  const turn = async (text: string, during?: (agent: Agent) => Promise<void>) => {
+    const ended = next('turn/end')
+    agent.followup(createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user' } }))
+    await during?.(agent)
+    return ended
+  }
+  const events = (type: SessionEvent['type']) => agent.session.snapshotEvents().filter(event => event.type === type).map(event => event.data)
+
+  // The per-minute limit: one wait of the gateway's second, counted as the one retry it allows, then the answer.
+  expect(await turn('一')).toMatchObject({ data: { reason: { kind: 'completed' } } })
+  expect(events('llm/retry')).toEqual([{
+    retryId: expect.any(String) as unknown, turn: 1, step: 1, provider: 'mindeck-anthropic', mode: 'normal',
+    policyKey: MindeckModels.MEMBER_LIMIT_POLICY_KEY, retry: 1, maxRetries: 1, delayMs: 1000,
+    failure: { code: MindeckModels.LIMIT_WAIT_CODE, status: 429, message: '请求较多，已达到企业设定的每分钟请求上限，稍后自动继续。', providerRetryAfterMs: 1000 },
+  }])
+  expect(events('llm/retry-started')).toMatchObject([{ turn: 1, step: 1, retry: 1 }])
+
+  // A provider's 429 keeps the base policy's five retries.
+  expect(await turn('二')).toMatchObject({ data: { reason: { kind: 'completed' } } })
+  expect(events('llm/retry')[1]).toMatchObject({ turn: 2, retry: 1, maxRetries: 5, failure: { code: 'RATE_LIMIT' } })
+
+  // The concurrency limit refuses the retry as well: the turn stops with the explanation after its one retry.
+  expect(await turn('三')).toMatchObject({ data: { reason: { kind: 'error', error: { code: MindeckModels.RATE_LIMITED_CODE } } } })
+  expect(events('llm/retry').slice(2)).toMatchObject([{ turn: 3, retry: 1, maxRetries: 1, failure: { code: MindeckModels.LIMIT_WAIT_CODE } }])
+
+  // Stopping the turn during the wait ends it without a retry.
+  const stopped = await turn('四', async (current) => { await next('llm/retry'); current.cancel({ kind: 'user' }) })
+  expect(stopped.data).toMatchObject({ turn: 4, reason: { kind: 'aborted' } })
+  expect(events('llm/retry-started').map(started => (started as { turn: number }).turn)).toEqual([1, 2, 3])
+  expect(gateway.requests).toHaveLength(7)
 })
 
 it('sends the catalog output limit in the request field pi-ai picks for the OpenAI route', async () => {

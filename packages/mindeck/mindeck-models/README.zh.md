@@ -33,7 +33,7 @@ kind: "package-reference"
 
 存在[网页服务](../../web/web/README.zh.md)时，插件注册 `mindeck-search` 搜索提供方，Mindeck 应用组合包通过 `web.searchProvider` 选中它。每次读取目录时，也会读取 `GET {endpoints.webSearch}`：企业开启搜索时，模型步骤可以使用 `web_search`；关闭时则不提供。一次搜索把查询词、结果条数（`searchCount`，默认 10，调用方给出更小的上限时取其值）和成员最近的提问（截断到 128 个字符）发给网关。网关使用企业的 DeepSeek 密钥，把这次搜索计入成员的额度和每日搜索次数，再返回 DeepSeek 搜索接口的结果。网关拒绝时的消息（例如额度或当天次数已用完）就是模型读到的搜索失败原因。没有联网搜索的 Mindeck Cloud 不提供搜索。
 
-网关拒绝时保留 Mindeck Cloud 自己的消息。401 结束桌面会话并弹出登录对话框。402 表示成员或部门的月度额度已用完，不会重试。403 表示账号当前不能使用模型，例如账号已停用或尚未修改初始密码，对话中显示 Cloud 给出的原因。404 表示管理员移除了该模型或成员对它的使用权限，随后会重新读取目录。会话结束后才开始的请求不会发出，并以“已退出 Mindeck 企业账号，请登录后重试。”失败。429 会让账号同步一次，并按 `error.reason` 区分，从不匹配消息文字。企业设定的每分钟请求上限（`MEMBER_RATE_LIMIT`）或同时进行的请求上限（`MEMBER_CONCURRENCY_LIMIT`）会等待一次：对话中说明请求较多、稍后自动继续，每分钟上限等 `minuteLimitWaitMs`（默认 1 分钟），并发上限等网关固定的 3 秒。同一上限又拒绝这段对话的重试时，请求停止，并说明这段对话超过了企业设定的上限，可以稍后再试，经常遇到时请联系管理员。没有 `reason` 的 429 来自模型服务商；对话中说明是服务商限流，由基座的重试策略重试。
+网关拒绝时保留 Mindeck Cloud 自己的消息。401 结束桌面会话并弹出登录对话框。402 表示成员或部门的月度额度已用完，不会重试。403 表示账号当前不能使用模型，例如账号已停用或尚未修改初始密码，对话中显示 Cloud 给出的原因。404 表示管理员移除了该模型或成员对它的使用权限，随后会重新读取目录。会话结束后才开始的请求不会发出，并以“已退出 Mindeck 企业账号，请登录后重试。”失败。429 会让账号同步一次，并按 `error.reason` 区分，从不匹配消息文字。企业设定的每分钟请求上限（`MEMBER_RATE_LIMIT`）或同时进行的请求上限（`MEMBER_CONCURRENCY_LIMIT`）会等待一次：对话中说明请求较多、稍后自动继续，重试行按这一次计数（1/1）。网关的 `error.retryAfter` 是正整数秒且不超过 `maxLimitWaitMs`（默认 1 分钟）时，按它等待；否则每分钟上限等 `minuteLimitWaitMs`（默认 1 分钟），并发上限等网关固定的 3 秒。同一上限又拒绝这段对话的重试时，请求停止，并说明这段对话超过了企业设定的上限，可以稍后再试，经常遇到时请联系管理员。没有 `reason` 的 429 来自模型服务商；对话中说明是服务商限流，由基座的重试策略最多重试 5 次。
 
 -----
 
@@ -47,7 +47,7 @@ kind: "package-reference"
 
 `MindeckSearchProvider` 在读到已登录成员的搜索状态后可用，在状态为开启时就绪，因此网页服务会选中它，但企业关闭搜索时模型步骤不会使用 `web_search`。搜索结果先经 zod 校验，再转成网页来源。搜索接口返回 401 时，把令牌报告给 `mindeckAccount.rejectToken`；状态读取失败时，本次会话保留上一次的状态。
 
-`GatewayAdapter` 委托给 pi-ai 适配器并改写错误结束块。它从 SDK 的失败文本中读出 HTTP 状态和网关的 `error.message`：401 映射为 `ACCOUNT_TOKEN_INVALID` 并把令牌报告给 `mindeckAccount.rejectToken`，402 映射为 `QUOTA`，403 映射为 `ACCOUNT_UNAVAILABLE`，404 映射为 `UNKNOWN_MODEL`，其他错误码保持不变。`error.reason` 指明企业上限的 429 映射为带 `providerRetryAfterMs` 的 `RATE_LIMIT`，由基座的重试策略按它等待；pi-ai 会丢掉响应的 `Retry-After`，所以每条路由的 `retryPolicy` 把可接受的等待提高到 `minuteLimitWaitMs`。适配器按对话记住上一次请求被企业上限拒绝，连续第二次拒绝映射为不会重试的 `MINDECK_RATE_LIMITED`；其他任何结束都会清掉这条记录。没有会话的请求以 `MINDECK_SIGN_IN_REQUIRED` 失败。对话界面对未翻译的错误码直接显示消息，因此这些 Mindeck 错误码带中文说明，不再显示 DeepSeek 账号与 API 密钥的文案。
+`GatewayAdapter` 委托给 pi-ai 适配器并改写错误结束块。它从 SDK 的失败文本中读出 HTTP 状态和网关的 `error.message`：401 映射为 `ACCOUNT_TOKEN_INVALID` 并把令牌报告给 `mindeckAccount.rejectToken`，402 映射为 `QUOTA`，403 映射为 `ACCOUNT_UNAVAILABLE`，404 映射为 `UNKNOWN_MODEL`，其他错误码保持不变。`error.reason` 指明企业上限的 429 映射为 `MINDECK_LIMIT_WAIT`，等待时间写在 `providerRetryAfterMs`；pi-ai 会丢掉响应头 `Retry-After`，所以等待时间取自响应体的 `error.retryAfter` 或回退值。基座的重试策略不重试这个错误码，由插件的 `agent/request-error` 监听（`retryMemberLimits`）等待一次：记一条 `maxRetries: 1`、`policyKey` 为 `mindeck-models/member-limit` 的 `llm/retry`，等完记 `llm/retry-started` 并重试；停止这一轮或卸载插件会结束等待，不再重试。适配器按对话记住上一次请求被企业上限拒绝，连续第二次拒绝映射为不会重试的 `MINDECK_RATE_LIMITED`；其他任何结束都会清掉这条记录。带 `purpose` 的辅助请求（例如对话标题）既不读取也不改变这条记录。各路由使用基座重试策略的默认值。没有会话的请求以 `MINDECK_SIGN_IN_REQUIRED` 失败。对话界面对未翻译的错误码直接显示消息，因此这些 Mindeck 错误码带中文说明，不再显示 DeepSeek 账号与 API 密钥的文案。
 
 </details>
 

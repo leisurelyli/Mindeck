@@ -2,7 +2,7 @@
 import { expect, it, vi } from 'vitest'
 import { QUOTA_EXCEEDED_CODE } from '@deepseek-ai/dsh-llm'
 import {
-  mapGatewayFailure, memberLimitOf, parseCatalog, RATE_LIMITED_CODE, readGatewayFailure, routeProfiles, SESSION_ENDED_CODE,
+  LIMIT_WAIT_CODE, mapGatewayFailure, memberLimitOf, parseCatalog, RATE_LIMITED_CODE, readGatewayFailure, routeProfiles, SESSION_ENDED_CODE,
 } from '../src/index.ts'
 
 const entry = (id: string, api: string, baseUrl = 'https://cloud.example.com/gateway/anthropic') => ({
@@ -25,15 +25,12 @@ it('skips catalog entries it cannot read and groups the rest by client API', () 
   ])
   expect(() => parseCatalog({ data: [] })).toThrow('unknown format')
 
-  const { profiles, conflicting } = routeProfiles(catalog.models, '星河科技', { contextWindow: 128_000, maxTokens: 8192 }, {
-    maxRetryWaitMs: 60_000,
-  })
+  const { profiles, conflicting } = routeProfiles(catalog.models, '星河科技', { contextWindow: 128_000, maxTokens: 8192 })
   expect(conflicting).toEqual(['elsewhere'])
-  const retryPolicy = { mode: 'normal', backoff: { maxDelayMs: 60_000 } }
   expect(profiles).toEqual({
     'mindeck-anthropic': {
       displayName: '星河科技', api: 'anthropic-messages', baseURL: 'https://cloud.example.com/gateway/anthropic',
-      defaultContextWindow: 128_000, defaultMaxTokens: 8192, retryPolicy,
+      defaultContextWindow: 128_000, defaultMaxTokens: 8192,
       models: [
         { id: 'chat', name: 'CHAT', input: ['text', 'image'], contextWindow: 64_000 },
         { id: 'text-only', name: 'TEXT-ONLY', input: ['text'] },
@@ -41,7 +38,7 @@ it('skips catalog entries it cannot read and groups the rest by client API', () 
     },
     'mindeck-openai': {
       displayName: '星河科技', api: 'openai-completions', baseURL: 'https://cloud.example.com/gateway/openai/v1',
-      defaultContextWindow: 128_000, defaultMaxTokens: 8192, retryPolicy,
+      defaultContextWindow: 128_000, defaultMaxTokens: 8192,
       models: [{ id: 'gpt', name: 'GPT', input: ['text', 'image'], contextWindow: 64_000 }],
     },
   })
@@ -95,7 +92,7 @@ it('keeps the thinking and compatibility settings pi-ai accepts and leaves out o
   expect(catalog.ignored[4]?.reason).toMatch(/sets reasoning "medium", which it does not offer; its levels are off, low, high, max/)
 
   // Each model carries its own settings on its route, so the route stays the same whatever they are.
-  const { profiles } = routeProfiles(catalog.models, '星河科技', { contextWindow: 128_000, maxTokens: 8192 }, { maxRetryWaitMs: 60_000 })
+  const { profiles } = routeProfiles(catalog.models, '星河科技', { contextWindow: 128_000, maxTokens: 8192 })
   expect(profiles['mindeck-openai']?.models?.map(model => model.id))
     .toEqual(['deepseek-v4', 'wrong-protocol', 'wrong-type', 'unknown-level', 'stray-default'])
   expect(profiles['mindeck-openai']?.models?.[0]).toEqual({
@@ -116,11 +113,21 @@ it('reads the gateway message from either SDK format', () => {
   expect(readGatewayFailure('502 {not json')).toEqual({ status: 502 })
   expect(readGatewayFailure('429: {"message":"请求太频繁。","type":"rate_limit_exceeded","reason":"MEMBER_RATE_LIMIT"}'))
     .toEqual({ status: 429, text: '请求太频繁。', reason: 'MEMBER_RATE_LIMIT' })
+  expect(readGatewayFailure('429: {"message":"请求太频繁。","reason":"MEMBER_RATE_LIMIT","retryAfter":37}'))
+    .toEqual({ status: 429, text: '请求太频繁。', reason: 'MEMBER_RATE_LIMIT', retryAfter: 37 })
+  expect(readGatewayFailure('429 {"type":"error","error":{"message":"请求太多。","reason":"MEMBER_CONCURRENCY_LIMIT","retryAfter":2}}'))
+    .toMatchObject({ retryAfter: 2 })
+  // Only a positive whole number of seconds is a wait.
+  for (const retryAfter of [0, -3, 1.5, '12', null, 1e300]) {
+    expect(readGatewayFailure(`429: ${JSON.stringify({ message: '请求太频繁。', reason: 'MEMBER_RATE_LIMIT', retryAfter })}`))
+      .not.toHaveProperty('retryAfter')
+  }
 })
 
 it('ends the session on 401, stops on 402, and refreshes the catalog on 404', () => {
   const hooks = {
-    token: async () => 'token', sessionEnded: vi.fn(), modelMissing: vi.fn(), notes: () => undefined, rateLimited: vi.fn(), minuteLimitWaitMs: 60_000,
+    token: async () => 'token', sessionEnded: vi.fn(), modelMissing: vi.fn(), notes: () => undefined, rateLimited: vi.fn(),
+    minuteLimitWaitMs: 60_000, maxLimitWaitMs: 60_000,
   }
   const failure = (message: string) => ({ message, code: 'PI_AI_ERROR' })
   expect(mapGatewayFailure(failure('401 {"error":{"message":"登录已失效。"}}'), 'token-1', hooks, false))
@@ -141,7 +148,8 @@ it('ends the session on 401, stops on 402, and refreshes the catalog on 404', ()
 
 it('waits once for a company limit, by its reason, and explains a refusal that lasts; a provider\'s own 429 keeps the base retries', () => {
   const hooks = {
-    token: async () => 'token', sessionEnded: vi.fn(), modelMissing: vi.fn(), notes: () => undefined, rateLimited: vi.fn(), minuteLimitWaitMs: 45_000,
+    token: async () => 'token', sessionEnded: vi.fn(), modelMissing: vi.fn(), notes: () => undefined, rateLimited: vi.fn(),
+    minuteLimitWaitMs: 45_000, maxLimitWaitMs: 60_000,
   }
   // Anthropic reports the whole body with the status; OpenAI reports the error object after `429:`.
   const minute = { message: '429 {"type":"error","error":{"type":"rate_limit_error","message":"请求太频繁，请在 37 秒后重试。请求编号：r1","reason":"MEMBER_RATE_LIMIT"}}', code: 'RATE_LIMIT' }
@@ -151,9 +159,9 @@ it('waits once for a company limit, by its reason, and explains a refusal that l
   expect(memberLimitOf({ message: '402 {"error":{"message":"x","reason":"MEMBER_RATE_LIMIT"}}', code: 'QUOTA' })).toBeUndefined()
 
   expect(mapGatewayFailure(minute, 'token-1', hooks, false)).toEqual({
-    message: '请求较多，已达到企业设定的每分钟请求上限，稍后自动继续。', code: 'RATE_LIMIT', status: 429, providerRetryAfterMs: 45_000,
+    message: '请求较多，已达到企业设定的每分钟请求上限，稍后自动继续。', code: LIMIT_WAIT_CODE, status: 429, providerRetryAfterMs: 45_000,
   })
-  expect(mapGatewayFailure(running, 'token-1', hooks, false)).toMatchObject({ code: 'RATE_LIMIT', providerRetryAfterMs: 3000 })
+  expect(mapGatewayFailure(running, 'token-1', hooks, false)).toMatchObject({ code: LIMIT_WAIT_CODE, providerRetryAfterMs: 3000 })
   expect(mapGatewayFailure(minute, 'token-1', hooks, true)).toEqual({
     message: '这段对话的请求超过了企业设定的每分钟上限，可以稍后再试；如果经常遇到，请联系管理员。', code: RATE_LIMITED_CODE, status: 429,
   })
@@ -163,4 +171,30 @@ it('waits once for a company limit, by its reason, and explains a refusal that l
   const fromProvider = mapGatewayFailure(provider, 'token-1', hooks, true)
   expect(fromProvider).toEqual({ message: '模型服务商暂时限流，请稍后再试。服务商说明：Too many requests', code: 'RATE_LIMIT', status: 429 })
   expect(hooks.rateLimited).toHaveBeenCalledTimes(5)
+})
+
+it('waits as long as the gateway\'s error.retryAfter asks, up to the configured longest wait, and otherwise the limit\'s fallback', () => {
+  const hooks = {
+    token: async () => 'token', sessionEnded: vi.fn(), modelMissing: vi.fn(), notes: () => undefined, rateLimited: vi.fn(),
+    minuteLimitWaitMs: 45_000, maxLimitWaitMs: 60_000,
+  }
+  const minute = (retryAfter?: unknown) => ({ code: 'RATE_LIMIT', message: `429 ${JSON.stringify({ type: 'error', error: {
+    type: 'rate_limit_error', message: '请求太频繁。', reason: 'MEMBER_RATE_LIMIT', ...retryAfter === undefined ? {} : { retryAfter },
+  } })}` })
+  const running = (retryAfter?: unknown) => ({ code: 'RATE_LIMIT', message: `429: ${JSON.stringify({
+    message: '同时进行的请求太多。', type: 'rate_limit_exceeded', reason: 'MEMBER_CONCURRENCY_LIMIT', ...retryAfter === undefined ? {} : { retryAfter },
+  })}` })
+  const wait = (failure: { code: string; message: string }) => mapGatewayFailure(failure, 'token-1', hooks, false).providerRetryAfterMs
+
+  // Present and usable: the gateway's wait, up to the longest wait included.
+  expect([wait(minute(37)), wait(minute(60)), wait(running(2)), wait(running(1))]).toEqual([37_000, 60_000, 2000, 1000])
+  // Absent: the configured wait for the per-minute limit, the gateway's fixed three seconds for the other.
+  expect([wait(minute()), wait(running())]).toEqual([45_000, 3000])
+  // Unusable: not a positive whole number of seconds, or longer than the longest wait.
+  for (const retryAfter of [0, -1, 2.5, '12', null, 61]) {
+    expect([wait(minute(retryAfter)), wait(running(retryAfter))]).toEqual([45_000, 3000])
+  }
+  expect(mapGatewayFailure(minute(37), 'token-1', hooks, false)).toMatchObject({ code: LIMIT_WAIT_CODE, status: 429 })
+  // A refusal that lasts is not retried, whatever wait it names.
+  expect(mapGatewayFailure(minute(5), 'token-1', hooks, true)).not.toHaveProperty('providerRetryAfterMs')
 })
