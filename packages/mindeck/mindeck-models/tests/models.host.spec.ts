@@ -5,7 +5,7 @@ import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
-import LlmRuntime, { QUOTA_EXCEEDED_CODE } from '@deepseek-ai/dsh-llm'
+import LlmRuntime, { QUOTA_EXCEEDED_CODE, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import type { MindeckSession } from '@deepseek-ai/dsh-mindeck-account'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import { afterEach, expect, it, vi } from 'vitest'
@@ -79,7 +79,7 @@ async function fixture(gatewayUrl: string) {
     }),
     requestSync: vi.fn(),
   }
-  let selection = { provider: 'deepseek-official', model: 'deepseek-chat' }
+  let selection: { provider: string; model: string; reasoningEffort?: string } = { provider: 'deepseek-official', model: 'deepseek-chat' }
   const defaults = {
     currentSelection: () => selection,
     saveSelection: vi.fn(async (next: typeof selection) => { selection = next }),
@@ -280,6 +280,76 @@ it('sends the catalog output limit in the request field pi-ai picks for the Open
   // The gateway address is no provider pi-ai knows, so it sends the newer OpenAI field.
   expect(gateway.requests[0]).toMatchObject({ max_completion_tokens: 32_768 })
   expect(gateway.requests[0]).not.toHaveProperty('max_tokens')
+})
+
+it('offers the company\'s thinking levels, starts at its default level, and sends each model\'s request switches', async () => {
+  const gateway = await mockServer([{ events: textEvents }, { events: textEvents }, { events: textEvents }])
+  const f = await fixture(`${gateway.url}/gateway/openai/v1`)
+  const warn = vi.spyOn(f.ctx.logger, 'warn').mockImplementation(() => {})
+  const deepseek = {
+    ...f.model('deepseek-v4', 'openai-completions'), protocol: 'openai', maxOutputTokens: 32_768,
+    reasoningEfforts: { off: null, low: 'low', high: 'high', max: 'max' }, defaultReasoning: 'high',
+    compat: { thinkingFormat: 'deepseek', maxTokensField: 'max_tokens', supportsDeveloperRole: false },
+  }
+  // An Anthropic switch on a Chat Completions model: the model stays, without its switches.
+  f.catalog.state.models = [deepseek, { ...deepseek, id: 'kimi', defaultReasoning: 'low', compat: { forceAdaptiveThinking: true } }]
+  await f.ctx.plugin(MindeckModels, options())
+  await vi.waitFor(() => { expect(f.providers()).toEqual(['mindeck-openai']) })
+  await vi.waitFor(() => {
+    const reported = /left out 1 model settings pi-ai refuses; kimi compat: .*forceAdaptiveThinking/
+    expect(warn.mock.calls.some(([message]) => reported.test(String(message)))).toBe(true)
+  })
+
+  expect((await f.ctx.llm.resolveModelInfo('mindeck-openai', 'deepseek-v4')).reasoning).toEqual({
+    efforts: ['off', 'low', 'high', 'max'].map(id => ({ id, name: `${id.charAt(0).toUpperCase()}${id.slice(1)}` })),
+    defaultEffort: 'high',
+  })
+  expect((await f.ctx.llm.resolveModelInfo('mindeck-openai', 'kimi')).reasoning?.defaultEffort).toBe('low')
+
+  const request = (model: string, reasoningEffort?: string) => assemble(f.ctx, {
+    provider: 'mindeck-openai', model, system: '先给结论。', messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }],
+    ...reasoningEffort === undefined ? {} : { reasoningEffort: ReasoningEffortId(reasoningEffort) },
+  })
+  expect((await request('deepseek-v4')).finish).toEqual({ kind: 'stop' })
+  expect(gateway.requests[0]).toMatchObject({ thinking: { type: 'enabled' }, reasoning_effort: 'high', max_tokens: 32_768 })
+  expect(gateway.requests[0]).not.toHaveProperty('max_completion_tokens')
+  expect(gateway.requests[0]).toMatchObject({ messages: [{ role: 'system' }, { role: 'user' }] })
+  await request('deepseek-v4', 'off')
+  expect(gateway.requests[1]).toMatchObject({ thinking: { type: 'disabled' } })
+  expect(gateway.requests[1]).not.toHaveProperty('reasoning_effort')
+  // Without the DeepSeek switches, pi-ai treats the gateway as OpenAI and sends only the level.
+  await request('kimi')
+  expect(gateway.requests[2]).toMatchObject({
+    reasoning_effort: 'low', max_completion_tokens: 32_768, messages: [{ role: 'developer' }, { role: 'user' }],
+  })
+  expect(gateway.requests[2]).not.toHaveProperty('thinking')
+})
+
+it('drops a saved thinking level the company withdrew, and keeps the settings in the saved catalog', async () => {
+  const f = await fixture('http://127.0.0.1:9/gateway/openai/v1')
+  const config = options()
+  const levels = (reasoningEfforts: unknown) => ({
+    ...f.model('deepseek-v4', 'openai-completions'), protocol: 'openai', reasoningEfforts, defaultReasoning: 'high',
+  })
+  f.catalog.state.models = [levels({ off: null, low: 'low', high: 'high' })]
+  await f.ctx.plugin(MindeckModels, config)
+  await vi.waitFor(() => { expect(f.selection()).toEqual({ provider: 'mindeck-openai', model: 'deepseek-v4' }) })
+  await f.defaults.saveSelection({ provider: 'mindeck-openai', model: 'deepseek-v4', reasoningEffort: 'low' })
+  await vi.waitFor(() => {
+    const saved = JSON.parse(readFileSync(join(config.cacheDir, 'models-catalog.json'), 'utf8')) as { models: unknown[] }
+    expect(saved.models).toEqual([expect.objectContaining({ reasoningEfforts: { off: null, low: 'low', high: 'high' }, defaultReasoning: 'high', compat: null })])
+  })
+
+  // A level the company still offers stays the member's choice.
+  f.catalog.state.models = [{ ...levels({ off: null, low: 'low', high: 'high' }), displayName: '深度求索' }]
+  f.ctx.emit('mindeck-account/revised', new Set(['models']))
+  await vi.waitFor(async () => { expect((await f.ctx.llm.listModels('mindeck-openai'))[0]?.name).toBe('深度求索') })
+  expect(f.selection()).toEqual({ provider: 'mindeck-openai', model: 'deepseek-v4', reasoningEffort: 'low' })
+
+  f.catalog.state.models = [levels({ off: null, high: 'high', max: 'max' })]
+  f.ctx.emit('mindeck-account/revised', new Set(['models']))
+  await vi.waitFor(() => { expect(f.selection()).toEqual({ provider: 'mindeck-openai', model: 'deepseek-v4' }) })
+  expect((await f.ctx.llm.resolveModelInfo('mindeck-openai', 'deepseek-v4')).reasoning?.defaultEffort).toBe('high')
 })
 
 it('names the digital employee of a conversation in its gateway requests and its feedback', async () => {

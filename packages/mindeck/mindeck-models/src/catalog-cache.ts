@@ -2,7 +2,7 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { z } from 'zod'
-import type { CatalogModel } from './catalog.ts'
+import { type CatalogModel, withSettings } from './catalog.ts'
 
 /** Whose catalog a cache file holds; a file written for another Cloud or member is ignored. */
 export interface CatalogOwner {
@@ -20,6 +20,10 @@ const cachedModelSchema = z.object({
   contextWindow: z.number().int().positive().nullable(),
   maxOutputTokens: z.number().int().positive().nullable(),
   input: z.array(z.enum(['text', 'image'])),
+  // Checked again on reading, as the Cloud catalog is: a file saved before an upgrade may hold settings pi-ai now refuses.
+  reasoningEfforts: z.unknown().optional(),
+  defaultReasoning: z.unknown().optional(),
+  compat: z.unknown().optional(),
 })
 
 const cacheSchema = z.object({
@@ -30,7 +34,7 @@ const cacheSchema = z.object({
 })
 
 /**
- * Read the cached catalog of one member.
+ * Read the cached catalog of one member. Each model keeps the thinking and compatibility settings pi-ai accepts.
  * @param file - cache file path.
  * @param owner - the signed-in member.
  * @returns the cached models, or undefined when the file is missing, unreadable, or holds another member's catalog.
@@ -47,7 +51,9 @@ export async function readCachedCatalog(file: string, owner: CatalogOwner): Prom
   catch { return undefined } // SyntaxError: a damaged file holds no catalog; the next save replaces it.
   const parsed = cacheSchema.safeParse(body)
   if (!parsed.success || parsed.data.cloudUrl !== owner.cloudUrl || parsed.data.userId !== owner.userId) return undefined
-  return parsed.data.models
+  // A refused setting is left out without a report; the Cloud's next answer reports its own.
+  return parsed.data.models.map(({ reasoningEfforts, defaultReasoning, compat, ...model }) =>
+    withSettings(model, { reasoningEfforts, defaultReasoning, compat }).model)
 }
 
 /**

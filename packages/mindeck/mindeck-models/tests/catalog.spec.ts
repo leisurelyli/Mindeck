@@ -47,6 +47,65 @@ it('skips catalog entries it cannot read and groups the rest by client API', () 
   })
 })
 
+it('keeps the thinking and compatibility settings pi-ai accepts and leaves out only a refused one', () => {
+  const deepseek = {
+    ...entry('deepseek-v4', 'openai-completions', 'https://cloud.example.com/gateway/openai/v1'),
+    reasoningEfforts: { off: null, low: 'low', high: 'high', max: 'max' },
+    defaultReasoning: 'high',
+    compat: { thinkingFormat: 'deepseek', maxTokensField: 'max_tokens', supportsDeveloperRole: false },
+  }
+  const catalog = parseCatalog({ models: [
+    deepseek,
+    // A Cloud without thinking settings, and one that sets none.
+    entry('plain', 'anthropic-messages'),
+    { ...entry('unset', 'anthropic-messages'), reasoningEfforts: null, defaultReasoning: null, compat: null },
+    { ...entry('no-thinking', 'anthropic-messages'), reasoningEfforts: false },
+    // An Anthropic switch on a Chat Completions model, and a value of the wrong type.
+    { ...deepseek, id: 'wrong-protocol', compat: { forceAdaptiveThinking: true } },
+    { ...deepseek, id: 'wrong-type', compat: { supportsDeveloperRole: 'no' } },
+    // A level pi-ai does not know takes the default level with it; a default outside the levels goes alone.
+    { ...deepseek, id: 'unknown-level', reasoningEfforts: { turbo: 'turbo' } },
+    { ...deepseek, id: 'stray-default', defaultReasoning: 'medium' },
+    { ...entry('default-only', 'anthropic-messages'), defaultReasoning: 'high' },
+  ] })
+  expect(catalog.skipped).toEqual([])
+  const settings = (id: string) => {
+    const model = catalog.models.find(candidate => candidate.id === id)
+    return model === undefined ? undefined : [model.reasoningEfforts, model.defaultReasoning, model.compat]
+  }
+  expect(settings('deepseek-v4')).toEqual([deepseek.reasoningEfforts, 'high', deepseek.compat])
+  expect(settings('plain')).toEqual([null, null, null])
+  expect(settings('unset')).toEqual([null, null, null])
+  expect(settings('no-thinking')).toEqual([false, null, null])
+  expect(settings('wrong-protocol')).toEqual([deepseek.reasoningEfforts, 'high', null])
+  expect(settings('wrong-type')).toEqual([deepseek.reasoningEfforts, 'high', null])
+  expect(settings('unknown-level')).toEqual([null, null, deepseek.compat])
+  expect(settings('stray-default')).toEqual([deepseek.reasoningEfforts, null, deepseek.compat])
+  expect(settings('default-only')).toEqual([null, null, null])
+  expect(catalog.ignored.map(setting => [setting.model, setting.field])).toEqual([
+    ['wrong-protocol', 'compat'],
+    ['wrong-type', 'compat'],
+    ['unknown-level', 'reasoningEfforts'],
+    ['unknown-level', 'defaultReasoning'],
+    ['stray-default', 'defaultReasoning'],
+    ['default-only', 'defaultReasoning'],
+  ])
+  expect(catalog.ignored[0]?.reason)
+    .toMatch(/model "wrong-protocol" sets compat "forceAdaptiveThinking", but its api is "openai-completions"/)
+  expect(catalog.ignored[4]?.reason).toMatch(/sets reasoning "medium", which it does not offer; its levels are off, low, high, max/)
+
+  // Each model carries its own settings on its route, so the route stays the same whatever they are.
+  const { profiles } = routeProfiles(catalog.models, '星河科技', { contextWindow: 128_000, maxTokens: 8192 }, { maxRetryWaitMs: 60_000 })
+  expect(profiles['mindeck-openai']?.models?.map(model => model.id))
+    .toEqual(['deepseek-v4', 'wrong-protocol', 'wrong-type', 'unknown-level', 'stray-default'])
+  expect(profiles['mindeck-openai']?.models?.[0]).toEqual({
+    id: 'deepseek-v4', name: 'DEEPSEEK-V4', input: ['text', 'image'], contextWindow: 64_000,
+    reasoningEfforts: deepseek.reasoningEfforts, reasoning: 'high', compat: deepseek.compat,
+  })
+  expect(profiles['mindeck-openai']).not.toHaveProperty('reasoning')
+  expect(profiles['mindeck-anthropic']?.models?.find(model => model.id === 'no-thinking')).toMatchObject({ reasoningEfforts: false })
+})
+
 it('reads the gateway message from either SDK format', () => {
   expect(readGatewayFailure('402 {"type":"error","error":{"type":"billing_error","message":"本月额度已用完。"}}'))
     .toEqual({ status: 402, text: '本月额度已用完。' })

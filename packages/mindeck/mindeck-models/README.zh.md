@@ -29,6 +29,8 @@ kind: "package-reference"
 
 每次登录或退出后、[账号的同步](../mindeck-account/README.zh.md#use-this-package)报告 `models` 或 `webSearch` 有变化时、作为兜底每隔 `refreshIntervalMs`（默认十分钟），以及网关报告模型已不存在后（这时还会请账号同步一次），都会重新读取目录和联网搜索状态。读取失败时保留当前模型，并在 `retryIntervalMs`（默认 15 秒）后重试，此后每失败一次等待时间加倍，最长为 `refreshIntervalMs`。每次读到的目录保存到 `cacheDir` 下的 `models-catalog.json`（为空时使用 DeepSeek Harness 主目录下的 `mindeck`）；启动时，在云端应答之前先提供该成员在同一 Mindeck Cloud 下保存的目录。企业推荐的模型排在前面，并在模型选择器中带**推荐**徽标；企业对模型的说明随模型列表提供。`defaultContextWindow` 和 `defaultMaxTokens` 为目录未给出尺寸的模型提供尺寸；`requestTimeoutMs` 限制每次目录请求的时长。
 
+目录中的模型可以带上企业设定的思考等级及每级在请求中发送的取值（`reasoningEfforts`；不支持思考的模型为 `false`）、对话的初始等级（`defaultReasoning`），以及该模型客户端接口的 pi-ai 请求兼容开关（`compat`），格式与 [llm-pi-ai](../../llm/llm-pi-ai/README.zh.md) 相同。有等级时，模型选择器提供这些等级；在成员从选择器中选这个模型或某个等级之前，该模型上的对话从企业设定的等级开始，选过之后，所选等级随默认模型保存，用于新对话；数字员工的对话从员工默认模型的企业等级开始。没有等级时选择器不提供等级，请求也不带等级，与以前相同。每项设置都按 `providers` 写入时的规则检查；pi-ai 拒绝的那一项只从该模型中去掉，模型照常可用，Host 日志会写明模型、设置项和 pi-ai 给出的原因。企业撤掉成员保存为默认的等级后，保存的默认选择会去掉该等级，新对话从企业设定的等级开始。
+
 存在[网页服务](../../web/web/README.zh.md)时，插件注册 `mindeck-search` 搜索提供方，Mindeck 应用组合包通过 `web.searchProvider` 选中它。每次读取目录时，也会读取 `GET {endpoints.webSearch}`：企业开启搜索时，模型步骤可以使用 `web_search`；关闭时则不提供。一次搜索把查询词、结果条数（`searchCount`，默认 10，调用方给出更小的上限时取其值）和成员最近的提问（截断到 128 个字符）发给网关。网关使用企业的 DeepSeek 密钥，把这次搜索计入成员的额度和每日搜索次数，再返回 DeepSeek 搜索接口的结果。网关拒绝时的消息（例如额度或当天次数已用完）就是模型读到的搜索失败原因。没有联网搜索的 Mindeck Cloud 不提供搜索。
 
 网关拒绝时保留 Mindeck Cloud 自己的消息。401 结束桌面会话并弹出登录对话框。402 表示成员或部门的月度额度已用完，不会重试。403 表示账号当前不能使用模型，例如账号已停用或尚未修改初始密码，对话中显示 Cloud 给出的原因。404 表示管理员移除了该模型或成员对它的使用权限，随后会重新读取目录。会话结束后才开始的请求不会发出，并以“已退出 Mindeck 企业账号，请登录后重试。”失败。429 会让账号同步一次，并按 `error.reason` 区分，从不匹配消息文字。企业设定的每分钟请求上限（`MEMBER_RATE_LIMIT`）或同时进行的请求上限（`MEMBER_CONCURRENCY_LIMIT`）会等待一次：对话中说明请求较多、稍后自动继续，每分钟上限等 `minuteLimitWaitMs`（默认 1 分钟），并发上限等网关固定的 3 秒。同一上限又拒绝这段对话的重试时，请求停止，并说明这段对话超过了企业设定的上限，可以稍后再试，经常遇到时请联系管理员。没有 `reason` 的 429 来自模型服务商；对话中说明是服务商限流，由基座的重试策略重试。
@@ -41,7 +43,7 @@ kind: "package-reference"
 <details>
 <summary>维护者细节 — 点击展开</summary>
 
-插件读取会话 bootstrap 中的 `GET {endpoints.models}`，按客户端接口把模型分成三条 pi-ai 路由：`mindeck-anthropic`（`anthropic-messages`）、`mindeck-openai`（`openai-completions`）和 `mindeck-openai-responses`（`openai-responses`）。每条路由都显示企业名称，因此模型选择器把这些模型列在同一个标题下，而不是按协议分组。路由只在有模型时存在，其端点取第一个模型的网关地址。网关适配器在路由的模型列表中补上每个模型的说明，并给推荐模型加上 `RECOMMENDED_BADGE`。适配器来自 [llm-pi-ai](../../llm/llm-pi-ai/README.zh.md) 的 `createPiAiAdapter`，因此请求头、图片附件和回放与普通 pi-ai 路由一致；凭据是每次请求时读取的当前会话令牌。在与[数字员工](../mindeck-employees/README.zh.md)的对话中，`llm-pi-ai/request-headers` 监听器会给这些路由的请求加上 `x-mindeck-employee`，值为该员工在 Mindeck Cloud 中的 id；对话发起的搜索也带同一个请求头，便于 Mindeck Cloud 归属用量。目录未变时不改动任何注册。模型有变化的路由会发出 `llm/models-updated`。
+插件读取会话 bootstrap 中的 `GET {endpoints.models}`，按客户端接口把模型分成三条 pi-ai 路由：`mindeck-anthropic`（`anthropic-messages`）、`mindeck-openai`（`openai-completions`）和 `mindeck-openai-responses`（`openai-responses`）。每条路由都显示企业名称，因此模型选择器把这些模型列在同一个标题下，而不是按协议分组。路由只在有模型时存在，其端点取第一个模型的网关地址。网关适配器在路由的模型列表中补上每个模型的说明，并给推荐模型加上 `RECOMMENDED_BADGE`。每个模型条目把目录设置作为自己的 `reasoningEfforts`、`reasoning` 和 `compat`；路由不设 `reasoning` 和 `compat`，因此设置变化的模型仍留在其对话所记录的路由上。`withSettings` 用 `assertModelProfile` 依次检查这些设置，pi-ai 接受一项才把它加入条目，因此 `defaultReasoning` 是对照已保留的等级检查的；读取保存的目录时会再检查一次。适配器来自 [llm-pi-ai](../../llm/llm-pi-ai/README.zh.md) 的 `createPiAiAdapter`，因此请求头、图片附件和回放与普通 pi-ai 路由一致；凭据是每次请求时读取的当前会话令牌。在与[数字员工](../mindeck-employees/README.zh.md)的对话中，`llm-pi-ai/request-headers` 监听器会给这些路由的请求加上 `x-mindeck-employee`，值为该员工在 Mindeck Cloud 中的 id；对话发起的搜索也带同一个请求头，便于 Mindeck Cloud 归属用量。目录未变时不改动任何注册。模型有变化的路由会发出 `llm/models-updated`。
 
 `MindeckSearchProvider` 在读到已登录成员的搜索状态后可用，在状态为开启时就绪，因此网页服务会选中它，但企业关闭搜索时模型步骤不会使用 `web_search`。搜索结果先经 zod 校验，再转成网页来源。搜索接口返回 401 时，把令牌报告给 `mindeckAccount.rejectToken`；状态读取失败时，本次会话保留上一次的状态。
 
@@ -67,11 +69,11 @@ kind: "package-reference"
 
 #### What the model sees
 
-发往 `mindeck-anthropic`、`mindeck-openai` 和 `mindeck-openai-responses` 的请求不包含本插件添加的模型可见文本；pi-ai 按路由的客户端接口序列化每个请求。网关把模型名换成管理员配置的上游模型后原样转发。
+发往 `mindeck-anthropic`、`mindeck-openai` 和 `mindeck-openai-responses` 的请求不包含本插件添加的模型可见文本；pi-ai 按路由的客户端接口序列化每个请求，并带上对话的思考等级和目录中该模型的兼容开关。会话日志记录每个请求使用的等级。网关把模型名换成管理员配置的上游模型后原样转发。
 
 #### Token effect
 
-本插件不增加输入 token。目录为每个模型设定上下文窗口和输出上限，缺省时取 `defaultContextWindow` 与 `defaultMaxTokens`，每个请求记录的上下文和请求头会记下这些值。
+本插件不增加输入 token。目录为每个模型设定上下文窗口和输出上限，缺省时取 `defaultContextWindow` 与 `defaultMaxTokens`，每个请求记录的上下文和请求头会记下这些值。思考等级越高，消耗的输出 token 越多，这些 token 计入输出上限和成员的额度。
 
 #### KV Cache effect
 
@@ -95,7 +97,8 @@ kind: "package-reference"
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- 云端目录不含模型的推理等级和价格；路由使用 pi-ai 的默认值。
+- 云端目录不含价格。
+- 企业撤掉的等级只从保存的默认选择中去掉。已选了该等级的对话，下一次请求会以 `UNSUPPORTED_REASONING_EFFORT` 失败，直到成员另选一个等级。
 - 网关 502（例如上游密钥问题）会像其他服务器错误一样先重试，之后才显示其消息。
 
 -----

@@ -8,12 +8,12 @@
  */
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import type {} from '@deepseek-ai/dsh-agent'
+import type { ModelSelection } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import { LlmError } from '@deepseek-ai/dsh-llm'
 import type { AdapterRegistrationHandle } from '@deepseek-ai/dsh-llm'
 import { createPiAiAdapter, piAiAuthFrom } from '@deepseek-ai/dsh-llm-pi-ai'
-import type { PiAiProviderProfile } from '@deepseek-ai/dsh-llm-pi-ai'
+import type { PiAiModelProfile, PiAiProviderProfile } from '@deepseek-ai/dsh-llm-pi-ai'
 import type {} from '@deepseek-ai/dsh-mindeck-account'
 import type {} from '@deepseek-ai/dsh-mindeck-employees'
 import { deadline, MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
@@ -27,7 +27,7 @@ import { EMPLOYEE_HEADER, GatewayAdapter, type ModelNotes, SIGN_IN_REQUIRED_CODE
 import { fetchSearchStatus, MindeckSearchProvider, type SearchStatus } from './search.ts'
 
 export { parseCatalog, routeProfiles, ROUTES } from './catalog.ts'
-export type { CatalogModel, ModelApi, ParsedCatalog } from './catalog.ts'
+export type { CatalogModel, IgnoredSetting, ModelApi, ParsedCatalog, ReasoningLevel, SettingField } from './catalog.ts'
 export {
   ACCOUNT_UNAVAILABLE_CODE, EMPLOYEE_HEADER, GatewayAdapter, mapGatewayFailure, memberLimitOf, RATE_LIMITED_CODE, readGatewayFailure,
   RECOMMENDED_BADGE, SESSION_ENDED_CODE, SIGN_IN_REQUIRED_CODE,
@@ -177,7 +177,10 @@ export function apply(ctx: Context, config: Config): void {
     void ensureDefaultModel()
   }
 
-  /** Point the default model at a company model when it names a model this desktop cannot use. */
+  /**
+   * Point the default model at a company model when it names a model this desktop cannot use, and drop a saved
+   * thinking level the company no longer offers for its model, so new conversations start at the company's level.
+   */
   const ensureDefaultModel = async (): Promise<void> => {
     const defaults = ctx.get('agentDefaultModel')
     const route = Object.keys(catalog)[0]
@@ -185,11 +188,17 @@ export function apply(ctx: Context, config: Config): void {
     if (defaults === undefined || route === undefined || first === undefined) return
     const selection = defaults.currentSelection()
     const own = catalog[selection.provider]
+    const entry = own?.models?.find(model => model.id === selection.model)
     const usable = own === undefined
       ? ctx.llm.listProviders().some(provider => provider.id === selection.provider)
-      : own.models?.some(model => model.id === selection.model) === true
-    if (usable) return
-    try { await defaults.saveSelection({ provider: route, model: first }) }
+      : entry !== undefined
+    const effort = selection.reasoningEffort
+    const withdrawn = entry !== undefined && effort !== undefined && !offersLevel(entry, effort)
+    let next: ModelSelection
+    if (!usable) next = { provider: route, model: first }
+    else if (withdrawn) next = { provider: selection.provider, model: selection.model }
+    else return
+    try { await defaults.saveSelection(next) }
     catch (error) { ctx.logger.warn('mindeck-models: could not save the default model', error) }
   }
 
@@ -268,6 +277,10 @@ export function apply(ctx: Context, config: Config): void {
     if (listing.skipped.length > 0) {
       ctx.logger.warn(`mindeck-models: skipped ${listing.skipped.length} catalog entries in an unknown format`)
     }
+    if (listing.ignored.length > 0) {
+      const settings = listing.ignored.map(setting => `${setting.model} ${setting.field}: ${setting.reason}`)
+      ctx.logger.warn(`mindeck-models: left out ${listing.ignored.length} model settings pi-ai refuses; ${settings.join('; ')}`)
+    }
     publishModels(listing.models, session.bootstrap.company.name)
     await loadSearchStatus(session.bootstrap.endpoints.webSearch, session.token)
     await writeCachedCatalog(cacheFile, owner, listing.models).catch((error: unknown) => {
@@ -295,6 +308,16 @@ export function apply(ctx: Context, config: Config): void {
     return () => { clearInterval(timer) }
   }, 'mindeck-models: catalog refresh timer')
   refresh()
+}
+
+/**
+ * Whether a model entry offers a thinking level.
+ * @param entry - the model's profile on its route.
+ * @param effort - a saved level.
+ * @returns true when the entry's levels name it.
+ */
+function offersLevel(entry: PiAiModelProfile, effort: string): boolean {
+  return entry.reasoningEfforts !== undefined && entry.reasoningEfforts !== false && Object.hasOwn(entry.reasoningEfforts, effort)
 }
 
 /**
