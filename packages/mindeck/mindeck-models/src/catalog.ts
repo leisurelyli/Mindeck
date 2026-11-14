@@ -79,8 +79,6 @@ export interface ModelDefaults {
 export interface RouteOptions {
   /** Longest provider-requested wait, in milliseconds, before the base retry policy retries a refused request. */
   readonly maxRetryWaitMs: number
-  /** Request field of the output limit on the `openai-completions` route. */
-  readonly openaiMaxTokensField: 'max_tokens' | 'max_completion_tokens'
 }
 
 /**
@@ -119,9 +117,6 @@ export function routeProfiles(
       defaultMaxTokens: defaults.maxTokens,
       // A company limit asks for up to a minute's wait, longer than the base policy's default ceiling.
       retryPolicy: { mode: 'normal', backoff: { maxDelayMs: options.maxRetryWaitMs } },
-      // The gateway passes the body through, and the providers behind it read the output limit from one field; pi-ai
-      // cannot tell them from the gateway address.
-      ...api === 'openai-completions' ? { compat: { maxTokensField: options.openaiMaxTokensField } } : {},
       models: group.map(model => ({
         id: model.id,
         name: model.displayName,

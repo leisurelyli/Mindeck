@@ -63,12 +63,6 @@ export interface Config {
    * `Retry-After` does not reach the desktop, so the default covers the limit's whole one-minute window.
    */
   minuteLimitWaitMs: number
-  /**
-   * Request field that carries the output limit on the OpenAI Chat Completions route: `max_tokens`, which the
-   * providers behind Mindeck Cloud read, or `max_completion_tokens`, which some of them ignore and fall back to a short
-   * default.
-   */
-  openaiMaxTokensField: 'max_tokens' | 'max_completion_tokens'
 }
 
 export const Config: z<Config> = z.object({
@@ -88,8 +82,6 @@ export const Config: z<Config> = z.object({
     .description('Results requested per web search, from 1 through 50; a smaller bound set by the caller wins.'),
   minuteLimitWaitMs: z.natural().min(1000).max(MAX_TIMER_DELAY_MS).default(60_000)
     .description('Milliseconds to wait before the one retry of a request the company\'s per-minute limit refused.'),
-  openaiMaxTokensField: z.union(['max_tokens', 'max_completion_tokens'] as const).default('max_tokens')
-    .description('Request field that carries the output limit on the OpenAI Chat Completions route.'),
 })
 
 /** Register the member's company models while a Mindeck session exists. */
@@ -240,7 +232,7 @@ export function apply(ctx: Context, config: Config): void {
   const publishModels = (models: readonly CatalogModel[], companyName: string): void => {
     const { profiles: next, conflicting } = routeProfiles(models, companyName, {
       contextWindow: config.defaultContextWindow, maxTokens: config.defaultMaxTokens,
-    }, { maxRetryWaitMs: config.minuteLimitWaitMs, openaiMaxTokensField: config.openaiMaxTokensField })
+    }, { maxRetryWaitMs: config.minuteLimitWaitMs })
     if (conflicting.length > 0) {
       ctx.logger.warn(`mindeck-models: left out models with a second gateway address: ${conflicting.join(', ')}`)
     }

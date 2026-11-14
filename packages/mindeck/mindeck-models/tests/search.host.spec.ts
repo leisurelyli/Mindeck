@@ -96,7 +96,7 @@ async function fixture() {
   await ctx.plugin(WebRuntime, { searchProvider: MindeckModels.MINDECK_SEARCH_PROVIDER_ID })
   const plugin = await ctx.plugin(MindeckModels, {
     refreshIntervalMs: 600_000, retryIntervalMs: 15_000, cacheDir, requestTimeoutMs: 15_000,
-    defaultContextWindow: 128_000, defaultMaxTokens: 8192, searchCount: 8, minuteLimitWaitMs: 60_000, openaiMaxTokensField: 'max_tokens',
+    defaultContextWindow: 128_000, defaultMaxTokens: 8192, searchCount: 8, minuteLimitWaitMs: 60_000,
   })
   const refresh = () => { ctx.emit('mindeck-account/changed') }
   const signOut = () => { current = undefined; refresh() }

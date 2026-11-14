@@ -21,7 +21,7 @@ function options(overrides: Partial<MindeckModels.Config> = {}): MindeckModels.C
   return {
     refreshIntervalMs: 600_000, retryIntervalMs: 15_000, cacheDir, requestTimeoutMs: 15_000,
     defaultContextWindow: 128_000, defaultMaxTokens: 8192, searchCount: 10, minuteLimitWaitMs: 60_000,
-    openaiMaxTokensField: 'max_tokens', ...overrides,
+    ...overrides,
   }
 }
 afterEach(async () => {
@@ -269,24 +269,17 @@ it('waits out a company limit once per conversation, explains a lasting one, tel
   expect(f.ctx.llm.providerRetryPolicy('mindeck-anthropic')).toMatchObject({ mode: 'normal', maxRetries: 5, maxDelayMs: 30_000 })
 })
 
-it('sends the output limit as max_tokens on the OpenAI route, or as configured', async () => {
-  const gateway = await mockServer([{ events: textEvents }, { events: textEvents }])
+it('sends the catalog output limit in the request field pi-ai picks for the OpenAI route', async () => {
+  const gateway = await mockServer([{ events: textEvents }])
   const f = await fixture(`${gateway.url}/gateway/openai/v1`)
   f.catalog.state.models = [{ ...f.model('doubao-seed', 'openai-completions'), protocol: 'openai', maxOutputTokens: 32_768 }]
   await f.ctx.plugin(MindeckModels, options())
   await vi.waitFor(() => { expect(f.providers()).toEqual(['mindeck-openai']) })
   const request = { provider: 'mindeck-openai', model: 'doubao-seed', messages: [{ role: 'user' as const, content: [{ type: 'text' as const, text: 'hi' }] }] }
   expect((await assemble(f.ctx, request)).finish).toEqual({ kind: 'stop' })
-  expect(gateway.requests[0]).toMatchObject({ max_tokens: 32_768 })
-  expect(gateway.requests[0]).not.toHaveProperty('max_completion_tokens')
-
-  const other = await fixture(`${gateway.url}/gateway/openai/v1`)
-  other.catalog.state.models = [{ ...other.model('doubao-seed', 'openai-completions'), protocol: 'openai', maxOutputTokens: 32_768 }]
-  await other.ctx.plugin(MindeckModels, options({ openaiMaxTokensField: 'max_completion_tokens' }))
-  await vi.waitFor(() => { expect(other.providers()).toEqual(['mindeck-openai']) })
-  expect((await assemble(other.ctx, request)).finish).toEqual({ kind: 'stop' })
-  expect(gateway.requests[1]).toMatchObject({ max_completion_tokens: 32_768 })
-  expect(gateway.requests[1]).not.toHaveProperty('max_tokens')
+  // The gateway address is no provider pi-ai knows, so it sends the newer OpenAI field.
+  expect(gateway.requests[0]).toMatchObject({ max_completion_tokens: 32_768 })
+  expect(gateway.requests[0]).not.toHaveProperty('max_tokens')
 })
 
 it('names the digital employee of a conversation in its gateway requests and its feedback', async () => {

@@ -2712,12 +2712,6 @@ export interface Config {
    * `Retry-After` does not reach the desktop, so the default covers the limit's whole one-minute window.
    */
   minuteLimitWaitMs: number
-  /**
-   * Request field that carries the output limit on the OpenAI Chat Completions route: `max_tokens`, which the
-   * providers behind Mindeck Cloud read, or `max_completion_tokens`, which some of them ignore and fall back to a short
-   * default.
-   */
-  openaiMaxTokensField: 'max_tokens' | 'max_completion_tokens'
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-mindeck-models -->

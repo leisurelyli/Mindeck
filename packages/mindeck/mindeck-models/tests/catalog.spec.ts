@@ -26,7 +26,7 @@ it('skips catalog entries it cannot read and groups the rest by client API', () 
   expect(() => parseCatalog({ data: [] })).toThrow('unknown format')
 
   const { profiles, conflicting } = routeProfiles(catalog.models, '星河科技', { contextWindow: 128_000, maxTokens: 8192 }, {
-    maxRetryWaitMs: 60_000, openaiMaxTokensField: 'max_tokens',
+    maxRetryWaitMs: 60_000,
   })
   expect(conflicting).toEqual(['elsewhere'])
   const retryPolicy = { mode: 'normal', backoff: { maxDelayMs: 60_000 } }
@@ -41,7 +41,7 @@ it('skips catalog entries it cannot read and groups the rest by client API', () 
     },
     'mindeck-openai': {
       displayName: '星河科技', api: 'openai-completions', baseURL: 'https://cloud.example.com/gateway/openai/v1',
-      defaultContextWindow: 128_000, defaultMaxTokens: 8192, retryPolicy, compat: { maxTokensField: 'max_tokens' },
+      defaultContextWindow: 128_000, defaultMaxTokens: 8192, retryPolicy,
       models: [{ id: 'gpt', name: 'GPT', input: ['text', 'image'], contextWindow: 64_000 }],
     },
   })

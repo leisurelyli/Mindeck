@@ -45,7 +45,7 @@ kind: "package-reference"
 
 `MindeckSearchProvider` 在读到已登录成员的搜索状态后可用，在状态为开启时就绪，因此网页服务会选中它，但企业关闭搜索时模型步骤不会使用 `web_search`。搜索结果先经 zod 校验，再转成网页来源。搜索接口返回 401 时，把令牌报告给 `mindeckAccount.rejectToken`；状态读取失败时，本次会话保留上一次的状态。
 
-`GatewayAdapter` 委托给 pi-ai 适配器并改写错误结束块。它从 SDK 的失败文本中读出 HTTP 状态和网关的 `error.message`：401 映射为 `ACCOUNT_TOKEN_INVALID` 并把令牌报告给 `mindeckAccount.rejectToken`，402 映射为 `QUOTA`，403 映射为 `ACCOUNT_UNAVAILABLE`，404 映射为 `UNKNOWN_MODEL`，其他错误码保持不变。`error.reason` 指明企业上限的 429 映射为带 `providerRetryAfterMs` 的 `RATE_LIMIT`，由基座的重试策略按它等待；pi-ai 会丢掉响应的 `Retry-After`，所以每条路由的 `retryPolicy` 把可接受的等待提高到 `minuteLimitWaitMs`。适配器按对话记住上一次请求被企业上限拒绝，连续第二次拒绝映射为不会重试的 `MINDECK_RATE_LIMITED`；其他任何结束都会清掉这条记录。`mindeck-openai` 路由把 pi-ai 的 `maxTokensField` 设为 `openaiMaxTokensField`（默认 `max_tokens`）：pi-ai 无法从网关地址认出服务商，否则会发 `max_completion_tokens`，DeepSeek 会忽略它，火山方舟的文档只写到 65,536，而网关后面的服务商都按 `max_tokens` 读取，上限与目录的输出上限一致。没有会话的请求以 `MINDECK_SIGN_IN_REQUIRED` 失败。对话界面对未翻译的错误码直接显示消息，因此这些 Mindeck 错误码带中文说明，不再显示 DeepSeek 账号与 API 密钥的文案。
+`GatewayAdapter` 委托给 pi-ai 适配器并改写错误结束块。它从 SDK 的失败文本中读出 HTTP 状态和网关的 `error.message`：401 映射为 `ACCOUNT_TOKEN_INVALID` 并把令牌报告给 `mindeckAccount.rejectToken`，402 映射为 `QUOTA`，403 映射为 `ACCOUNT_UNAVAILABLE`，404 映射为 `UNKNOWN_MODEL`，其他错误码保持不变。`error.reason` 指明企业上限的 429 映射为带 `providerRetryAfterMs` 的 `RATE_LIMIT`，由基座的重试策略按它等待；pi-ai 会丢掉响应的 `Retry-After`，所以每条路由的 `retryPolicy` 把可接受的等待提高到 `minuteLimitWaitMs`。适配器按对话记住上一次请求被企业上限拒绝，连续第二次拒绝映射为不会重试的 `MINDECK_RATE_LIMITED`；其他任何结束都会清掉这条记录。没有会话的请求以 `MINDECK_SIGN_IN_REQUIRED` 失败。对话界面对未翻译的错误码直接显示消息，因此这些 Mindeck 错误码带中文说明，不再显示 DeepSeek 账号与 API 密钥的文案。
 
 </details>
 
@@ -71,7 +71,7 @@ kind: "package-reference"
 
 #### Token effect
 
-本插件不增加输入 token。目录为每个模型设定上下文窗口和输出上限，缺省时取 `defaultContextWindow` 与 `defaultMaxTokens`，每个请求记录的上下文和请求头会记下这些值。在 `mindeck-openai` 上，输出上限以 `max_tokens` 发送（`openaiMaxTokensField` 另有设定时除外），因此服务商较短的默认上限不会截断长回答。
+本插件不增加输入 token。目录为每个模型设定上下文窗口和输出上限，缺省时取 `defaultContextWindow` 与 `defaultMaxTokens`，每个请求记录的上下文和请求头会记下这些值。
 
 #### KV Cache effect
 
