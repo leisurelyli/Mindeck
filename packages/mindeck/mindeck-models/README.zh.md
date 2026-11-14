@@ -29,7 +29,7 @@ kind: "package-reference"
 
 每次登录或退出后、[账号的同步](../mindeck-account/README.zh.md#use-this-package)报告 `models` 或 `webSearch` 有变化时、作为兜底每隔 `refreshIntervalMs`（默认十分钟），以及网关报告模型已不存在后（这时还会请账号同步一次），都会重新读取目录和联网搜索状态。读取失败时保留当前模型，并在 `retryIntervalMs`（默认 15 秒）后重试，此后每失败一次等待时间加倍，最长为 `refreshIntervalMs`。每次读到的目录保存到 `cacheDir` 下的 `models-catalog.json`（为空时使用 DeepSeek Harness 主目录下的 `mindeck`）；启动时，在云端应答之前先提供该成员在同一 Mindeck Cloud 下保存的目录。企业推荐的模型排在前面，并在模型选择器中带**推荐**徽标；企业对模型的说明随模型列表提供。`defaultContextWindow` 和 `defaultMaxTokens` 为目录未给出尺寸的模型提供尺寸；`requestTimeoutMs` 限制每次目录请求的时长。
 
-目录中的模型可以带上企业设定的思考等级及每级在请求中发送的取值（`reasoningEfforts`；不支持思考的模型为 `false`）、对话的初始等级（`defaultReasoning`），以及该模型客户端接口的 pi-ai 请求兼容开关（`compat`），格式与 [llm-pi-ai](../../llm/llm-pi-ai/README.zh.md) 相同。有等级时，模型选择器提供这些等级；在成员从选择器中选这个模型或某个等级之前，该模型上的对话从企业设定的等级开始，选过之后，所选等级随默认模型保存，用于新对话；数字员工的对话从员工默认模型的企业等级开始。没有等级时选择器不提供等级，请求也不带等级，与以前相同。每项设置都按 `providers` 写入时的规则检查；pi-ai 拒绝的那一项只从该模型中去掉，模型照常可用，Host 日志会写明模型、设置项和 pi-ai 给出的原因。企业撤掉成员保存为默认的等级后，保存的默认选择会去掉该等级，新对话从企业设定的等级开始。
+目录中的模型可以带上企业设定的思考等级及每级在请求中发送的取值（`reasoningEfforts`；不支持思考的模型为 `false`）、对话的初始等级（`defaultReasoning`），以及该模型客户端接口的 pi-ai 请求兼容开关（`compat`），格式与 [llm-pi-ai](../../llm/llm-pi-ai/README.zh.md) 相同。有等级时，模型选择器提供这些等级；在成员从选择器中选这个模型或某个等级之前，该模型上的对话从企业设定的等级开始，选过之后，所选等级随默认模型保存，用于新对话；数字员工的对话从员工默认模型的企业等级开始。没有等级时选择器不提供等级，请求也不带等级，与以前相同。每项设置都按 `providers` 写入时的规则检查；pi-ai 拒绝的那一项只从该模型中去掉，模型照常可用，Host 日志会写明模型、设置项和 pi-ai 给出的原因。企业撤掉某个等级后，保存的默认选择以及选了该等级的已打开或恢复的对话都会去掉该等级，改从企业设定的等级继续，因为基座会拒绝模型不提供的等级。
 
 存在[网页服务](../../web/web/README.zh.md)时，插件注册 `mindeck-search` 搜索提供方，Mindeck 应用组合包通过 `web.searchProvider` 选中它。每次读取目录时，也会读取 `GET {endpoints.webSearch}`：企业开启搜索时，模型步骤可以使用 `web_search`；关闭时则不提供。一次搜索把查询词、结果条数（`searchCount`，默认 10，调用方给出更小的上限时取其值）和成员最近的提问（截断到 128 个字符）发给网关。网关使用企业的 DeepSeek 密钥，把这次搜索计入成员的额度和每日搜索次数，再返回 DeepSeek 搜索接口的结果。网关拒绝时的消息（例如额度或当天次数已用完）就是模型读到的搜索失败原因。没有联网搜索的 Mindeck Cloud 不提供搜索。
 
@@ -43,7 +43,7 @@ kind: "package-reference"
 <details>
 <summary>维护者细节 — 点击展开</summary>
 
-插件读取会话 bootstrap 中的 `GET {endpoints.models}`，按客户端接口把模型分成三条 pi-ai 路由：`mindeck-anthropic`（`anthropic-messages`）、`mindeck-openai`（`openai-completions`）和 `mindeck-openai-responses`（`openai-responses`）。每条路由都显示企业名称，因此模型选择器把这些模型列在同一个标题下，而不是按协议分组。路由只在有模型时存在，其端点取第一个模型的网关地址。网关适配器在路由的模型列表中补上每个模型的说明，并给推荐模型加上 `RECOMMENDED_BADGE`。每个模型条目把目录设置作为自己的 `reasoningEfforts`、`reasoning` 和 `compat`；路由不设 `reasoning` 和 `compat`，因此设置变化的模型仍留在其对话所记录的路由上。`withSettings` 用 `assertModelProfile` 依次检查这些设置，pi-ai 接受一项才把它加入条目，因此 `defaultReasoning` 是对照已保留的等级检查的；读取保存的目录时会再检查一次。适配器来自 [llm-pi-ai](../../llm/llm-pi-ai/README.zh.md) 的 `createPiAiAdapter`，因此请求头、图片附件和回放与普通 pi-ai 路由一致；凭据是每次请求时读取的当前会话令牌。在与[数字员工](../mindeck-employees/README.zh.md)的对话中，`llm-pi-ai/request-headers` 监听器会给这些路由的请求加上 `x-mindeck-employee`，值为该员工在 Mindeck Cloud 中的 id；对话发起的搜索也带同一个请求头，便于 Mindeck Cloud 归属用量。目录未变时不改动任何注册。模型有变化的路由会发出 `llm/models-updated`。
+插件读取会话 bootstrap 中的 `GET {endpoints.models}`，按客户端接口把模型分成三条 pi-ai 路由：`mindeck-anthropic`（`anthropic-messages`）、`mindeck-openai`（`openai-completions`）和 `mindeck-openai-responses`（`openai-responses`）。每条路由都显示企业名称，因此模型选择器把这些模型列在同一个标题下，而不是按协议分组。路由只在有模型时存在，其端点取第一个模型的网关地址。网关适配器在路由的模型列表中补上每个模型的说明，并给推荐模型加上 `RECOMMENDED_BADGE`。每个模型条目把目录设置作为自己的 `reasoningEfforts`、`reasoning` 和 `compat`；路由不设 `reasoning` 和 `compat`，因此设置变化的模型仍留在其对话所记录的路由上。`withSettings` 用 `assertModelProfile` 依次检查这些设置，pi-ai 接受一项才把它加入条目，因此 `defaultReasoning` 是对照已保留的等级检查的；读取保存的目录时会再检查一次。每次发布目录后以及 `agent/created` 时，若模型选择里的等级已不在该模型的等级中，就去掉等级重新选择这个模型，请求于是采用模型自己的 `reasoning`。适配器来自 [llm-pi-ai](../../llm/llm-pi-ai/README.zh.md) 的 `createPiAiAdapter`，因此请求头、图片附件和回放与普通 pi-ai 路由一致；凭据是每次请求时读取的当前会话令牌。在与[数字员工](../mindeck-employees/README.zh.md)的对话中，`llm-pi-ai/request-headers` 监听器会给这些路由的请求加上 `x-mindeck-employee`，值为该员工在 Mindeck Cloud 中的 id；对话发起的搜索也带同一个请求头，便于 Mindeck Cloud 归属用量。目录未变时不改动任何注册。模型有变化的路由会发出 `llm/models-updated`。
 
 `MindeckSearchProvider` 在读到已登录成员的搜索状态后可用，在状态为开启时就绪，因此网页服务会选中它，但企业关闭搜索时模型步骤不会使用 `web_search`。搜索结果先经 zod 校验，再转成网页来源。搜索接口返回 401 时，把令牌报告给 `mindeckAccount.rejectToken`；状态读取失败时，本次会话保留上一次的状态。
 
@@ -98,7 +98,6 @@ kind: "package-reference"
 <a id="known-limitations-and-deferred-work"></a>
 
 - 云端目录不含价格。
-- 企业撤掉的等级只从保存的默认选择中去掉。已选了该等级的对话，下一次请求会以 `UNSUPPORTED_REASONING_EFFORT` 失败，直到成员另选一个等级。
 - 网关 502（例如上游密钥问题）会像其他服务器错误一样先重试，之后才显示其消息。
 
 -----

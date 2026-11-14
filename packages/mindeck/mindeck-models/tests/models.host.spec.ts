@@ -325,12 +325,26 @@ it('offers the company\'s thinking levels, starts at its default level, and send
   expect(gateway.requests[2]).not.toHaveProperty('thinking')
 })
 
-it('drops a saved thinking level the company withdrew, and keeps the settings in the saved catalog', async () => {
+/** A live conversation whose model selection records each change, as the agent's own model state does. */
+function conversation(id: string, selection: { provider: string; model: string; reasoningEffort?: string }) {
+  let current = selection
+  return {
+    id,
+    model: { current: () => current, select: vi.fn((next: typeof selection) => { current = next }) },
+    selection: () => current,
+  }
+}
+
+it('drops a thinking level the company withdrew from the saved default and from conversations, keeping the settings in the saved catalog', async () => {
   const f = await fixture('http://127.0.0.1:9/gateway/openai/v1')
   const config = options()
   const levels = (reasoningEfforts: unknown) => ({
     ...f.model('deepseek-v4', 'openai-completions'), protocol: 'openai', reasoningEfforts, defaultReasoning: 'high',
   })
+  const open = conversation('session-low', { provider: 'mindeck-openai', model: 'deepseek-v4', reasoningEffort: 'low' })
+  const kept = conversation('session-high', { provider: 'mindeck-openai', model: 'deepseek-v4', reasoningEffort: 'high' })
+  const elsewhere = conversation('session-other', { provider: 'deepseek-official', model: 'deepseek-chat', reasoningEffort: 'low' })
+  f.ctx.provide('agents', { list: () => [open, kept, elsewhere] } as never)
   f.catalog.state.models = [levels({ off: null, low: 'low', high: 'high' })]
   await f.ctx.plugin(MindeckModels, config)
   await vi.waitFor(() => { expect(f.selection()).toEqual({ provider: 'mindeck-openai', model: 'deepseek-v4' }) })
@@ -350,6 +364,20 @@ it('drops a saved thinking level the company withdrew, and keeps the settings in
   f.ctx.emit('mindeck-account/revised', new Set(['models']))
   await vi.waitFor(() => { expect(f.selection()).toEqual({ provider: 'mindeck-openai', model: 'deepseek-v4' }) })
   expect((await f.ctx.llm.resolveModelInfo('mindeck-openai', 'deepseek-v4')).reasoning?.defaultEffort).toBe('high')
+  // An open conversation at the withdrawn level continues at the company's level; the others keep their choice.
+  expect(open.selection()).toEqual({ provider: 'mindeck-openai', model: 'deepseek-v4' })
+  expect(kept.model.select).not.toHaveBeenCalled()
+  expect(elsewhere.model.select).not.toHaveBeenCalled()
+  // So does a conversation resumed later with its old selection.
+  const resumed = conversation('session-resumed', { provider: 'mindeck-openai', model: 'deepseek-v4', reasoningEffort: 'low' })
+  await f.ctx.serial('agent/created', { agent: resumed as never, source: 'resume' })
+  expect(resumed.selection()).toEqual({ provider: 'mindeck-openai', model: 'deepseek-v4' })
+  // A conversation whose selection cannot change keeps it and is reported; creation goes on.
+  const warn = vi.spyOn(f.ctx.logger, 'warn').mockImplementation(() => {})
+  const closed = conversation('session-closed', { provider: 'mindeck-openai', model: 'deepseek-v4', reasoningEffort: 'low' })
+  closed.model.select.mockImplementation(() => { throw new Error('session closed') })
+  await f.ctx.serial('agent/created', { agent: closed as never, source: 'resume' })
+  expect(warn.mock.calls.some(([message]) => String(message).includes('session-closed'))).toBe(true)
 })
 
 it('names the digital employee of a conversation in its gateway requests and its feedback', async () => {

@@ -8,7 +8,7 @@
  */
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import type { ModelSelection } from '@deepseek-ai/dsh-agent'
+import type { Agent, ModelSelection } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import { LlmError } from '@deepseek-ai/dsh-llm'
 import type { AdapterRegistrationHandle } from '@deepseek-ai/dsh-llm'
@@ -175,7 +175,28 @@ export function apply(ctx: Context, config: Config): void {
       if (!deepEqualJson(previous[route], next[route])) ctx.emit('llm/models-updated', route)
     }
     void ensureDefaultModel()
+    for (const agent of ctx.get('agents')?.list() ?? []) dropWithdrawnLevel(agent)
   }
+
+  /** Whether a selection names a company model with a thinking level the company no longer offers for it. */
+  const withdrawn = (selection: Readonly<ModelSelection>): boolean => {
+    const entry = catalog[selection.provider]?.models?.find(model => model.id === selection.model)
+    const effort = selection.reasoningEffort
+    return entry !== undefined && effort !== undefined && !offersLevel(entry, effort)
+  }
+
+  /**
+   * Point a conversation whose thinking level the company withdrew back at the company's level for its model; the
+   * base refuses a request at a level the model does not offer, so the conversation could not continue otherwise.
+   */
+  const dropWithdrawnLevel = (agent: Agent): void => {
+    const selection = agent.model.current()
+    if (selection === undefined || !withdrawn(selection)) return
+    try { agent.model.select({ provider: selection.provider, model: selection.model }) }
+    catch (error) { ctx.logger.warn(`mindeck-models: could not reset the thinking level of conversation ${agent.id}`, error) }
+  }
+  // A conversation resumed after the company changed the levels carries its old selection.
+  ctx.on('agent/created', ({ agent }) => { dropWithdrawnLevel(agent) })
 
   /**
    * Point the default model at a company model when it names a model this desktop cannot use, and drop a saved
@@ -188,15 +209,12 @@ export function apply(ctx: Context, config: Config): void {
     if (defaults === undefined || route === undefined || first === undefined) return
     const selection = defaults.currentSelection()
     const own = catalog[selection.provider]
-    const entry = own?.models?.find(model => model.id === selection.model)
     const usable = own === undefined
       ? ctx.llm.listProviders().some(provider => provider.id === selection.provider)
-      : entry !== undefined
-    const effort = selection.reasoningEffort
-    const withdrawn = entry !== undefined && effort !== undefined && !offersLevel(entry, effort)
+      : own.models?.some(model => model.id === selection.model) === true
     let next: ModelSelection
     if (!usable) next = { provider: route, model: first }
-    else if (withdrawn) next = { provider: selection.provider, model: selection.model }
+    else if (withdrawn(selection)) next = { provider: selection.provider, model: selection.model }
     else return
     try { await defaults.saveSelection(next) }
     catch (error) { ctx.logger.warn('mindeck-models: could not save the default model', error) }
