@@ -2168,6 +2168,25 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         throws: ['RemoteError `mindeck-account/invalid-feedback` for blank or overlong text, `mindeck-account/signed-out` without a usable session, or `mindeck-account/unreachable` when Mindeck Cloud does not take it.'],
       },
       {
+        signature: '@Remote prepareFeedback(sessionId: string, messageId: string, attach: boolean): Promise<void>',
+        description: 'Say whether the next rating of an answer attaches its round\'s question and answer, as the feedback dialog\'s choice reads when the member submits; the dialog awaits this before the rating is recorded.',
+        parameters: [{ name: 'sessionId', description: 'the conversation.' }, { name: 'messageId', description: 'the rated answer.' }, { name: 'attach', description: 'whether the member ticked the choice.' }],
+      },
+      {
+        signature: '@Remote async requestQuota(reason: string, signal: AbortSignal): Promise<MindeckAccountView>',
+        description: 'Ask the member\'s approvers for more quota this month, as the quota notice offers once the personal limit is used up. The quota is read again afterwards, refused or not, since another device may have asked meanwhile.',
+        parameters: [{ name: 'reason', description: 'what the member wrote; blank sends none. Mindeck Cloud refuses more than 200 characters.' }, { name: 'signal', description: 'caller cancellation.' }],
+        returns: 'state whose quota carries the new request.',
+        throws: ['RemoteError `mindeck-account/quota-request-refused` with Mindeck Cloud\'s code and explanation, `mindeck-account/signed-out` without a usable session, or `mindeck-account/unreachable` when Mindeck Cloud does not take it.'],
+      },
+      {
+        signature: '@Remote async withdrawQuotaRequest(signal: AbortSignal): Promise<MindeckAccountView>',
+        description: 'Withdraw the member\'s pending quota request. The quota is read again afterwards, refused or not.',
+        parameters: [{ name: 'signal', description: 'caller cancellation.' }],
+        returns: 'state whose quota carries the withdrawn request.',
+        throws: ['RemoteError `mindeck-account/quota-request-refused` when the request was already decided (`QUOTA_REQUEST_DECIDED`) or none exists (`NOT_FOUND`), `mindeck-account/signed-out` without a usable session, or `mindeck-account/unreachable` when Mindeck Cloud does not take it.'],
+      },
+      {
         signature: '@Remote({ mode: \'stream\' }) async *watch(signal: AbortSignal): AsyncIterable<MindeckAccountView>',
         description: 'Stream account state.',
         parameters: [{ name: 'signal', description: 'stream lifetime; ending it never cancels a sign-in.' }],
@@ -2211,9 +2230,9 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the session with its token, or undefined while signed out.',
       },
       {
-        signature: 'async rejectToken(token: string): Promise<void>',
-        description: 'Report that Mindeck Cloud rejected a session token (HTTP 401). The stored session is removed only when it still holds that token, so a newer sign-in survives a late rejection.',
-        parameters: [{ name: 'token', description: 'the token the rejected request carried.' }],
+        signature: 'async rejectToken(token: string, reason?: MindeckSignOutReason | null): Promise<void>',
+        description: 'Report that Mindeck Cloud rejected a session token (HTTP 401). The stored session is removed only when it still holds that token, so a newer sign-in survives a late rejection. The sign-in page then says who ended the session; without `reason`, the account asks Mindeck Cloud once more with the rejected token.',
+        parameters: [{ name: 'token', description: 'the token the rejected request carried.' }, { name: 'reason', description: 'who ended the session, from the 401\'s `error.reason` (see `signOutReasonOf`); null when the 401 gave none, undefined when the caller did not read its body.' }],
       },
     ],
   },
@@ -5345,6 +5364,14 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [],
   },
   {
+    name: 'mindeck-account/employee',
+    mode: 'bail',
+    signature: '\'mindeck-account/employee\'(sessionId: SessionId): string | undefined',
+    summary: 'Name the Mindeck Cloud digital employee a conversation talks to, for the context of feedback on its answers.',
+    description: 'Name the Mindeck Cloud digital employee a conversation talks to, for the context of feedback on its answers.',
+    parameters: [{ name: 'sessionId', description: 'the conversation\'s Session.' }],
+  },
+  {
     name: 'mindeck-account/revised',
     mode: 'emit',
     signature: '\'mindeck-account/revised\'(topics: ReadonlySet<MindeckSyncTopic>): void',
@@ -7606,7 +7633,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'MindeckAccountView',
-    declaration: 'export interface MindeckAccountView {\n    readonly cloudUrl: string | null;\n    readonly welcomed: boolean;\n    readonly status: \'signed-out\' | \'signed-in\';\n    readonly user: MindeckAccountUser | null;\n    readonly companyName: string | null;\n    readonly notice: \'session-expired\' | null;\n    readonly attempt: MindeckSignInAttempt | null;\n    readonly quota: MindeckQuota | null;\n    readonly adminContact: string | null;\n    readonly personalDeepSeek: boolean;\n    readonly sync: MindeckSyncView | null;\n    readonly release: MindeckClientRelease | null;\n}',
+    declaration: 'export interface MindeckAccountView {\n    readonly cloudUrl: string | null;\n    readonly welcomed: boolean;\n    readonly status: \'signed-out\' | \'signed-in\';\n    readonly user: MindeckAccountUser | null;\n    readonly companyName: string | null;\n    readonly notice: \'session-expired\' | \'signed-out-by-admin\' | \'signed-out-by-member\' | null;\n    readonly attempt: MindeckSignInAttempt | null;\n    readonly quota: MindeckQuota | null;\n    readonly adminContact: string | null;\n    readonly personalDeepSeek: boolean;\n    readonly sync: MindeckSyncView | null;\n    readonly release: MindeckClientRelease | null;\n}',
   },
   {
     name: 'MindeckBootstrap',
@@ -7662,11 +7689,19 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'MindeckInboxSummary',
-    declaration: 'export interface MindeckInboxSummary {\n    readonly available: boolean;\n    readonly unread: number;\n    readonly release: MindeckClientRelease | null;\n}',
+    declaration: 'export interface MindeckInboxSummary {\n    readonly available: boolean;\n    readonly unread: number;\n    readonly release: MindeckClientRelease | null;\n    readonly adminContact: string | null;\n}',
   },
   {
     name: 'MindeckQuota',
-    declaration: 'export interface MindeckQuota {\n    readonly user: MindeckQuotaUsage;\n    readonly department: MindeckQuotaUsage | null;\n    readonly companyBudgetPercent: number | null;\n    readonly resetDate: string;\n}',
+    declaration: 'export interface MindeckQuota {\n    readonly user: MindeckQuotaUsage;\n    readonly granted: number;\n    readonly department: MindeckQuotaUsage | null;\n    readonly companyBudgetPercent: number | null;\n    readonly resetDate: string;\n    readonly request: MindeckQuotaRequestState | null;\n}',
+  },
+  {
+    name: 'MindeckQuotaRequest',
+    declaration: 'export interface MindeckQuotaRequest {\n    readonly id: string;\n    readonly status: string;\n    readonly month: string;\n    readonly reason: string | null;\n    readonly createdAt: string;\n    readonly decidedAt: string | null;\n    readonly decidedByName: string | null;\n    readonly decision: string | null;\n    readonly amount: number | null;\n    readonly decisionNote: string | null;\n}',
+  },
+  {
+    name: 'MindeckQuotaRequestState',
+    declaration: 'export interface MindeckQuotaRequestState {\n    readonly request: MindeckQuotaRequest | null;\n    readonly canRequest: boolean;\n    readonly blocker: string | null;\n}',
   },
   {
     name: 'MindeckQuotaUsage',
@@ -7683,6 +7718,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'MindeckSignInAttemptId',
     declaration: 'export type MindeckSignInAttemptId = Branded<\'MindeckSignInAttemptId\'>;',
+  },
+  {
+    name: 'MindeckSignOutReason',
+    declaration: 'export type MindeckSignOutReason = \'admin\' | \'member\';',
   },
   {
     name: 'MindeckSkillCatalog',

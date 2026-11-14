@@ -27,7 +27,7 @@ const FIXTURE: Record<string, string> = {
     },
     include: ['vendor/**/*.ts', 'packages/**/*.ts'],
   }),
-  'vendor/cordis/src/context.ts': 'export class Context { private brand!: void }\n',
+  'vendor/cordis/src/context.ts': 'export class Context { private brand!: void; bail(...args: unknown[]): unknown { return args } }\n',
   'vendor/cordis/src/events.ts': [
     'export class EventsService {',
     '  dispatch(type: string, args: unknown[]): unknown[] { return [type, args] }',
@@ -63,6 +63,12 @@ const FIXTURE: Record<string, string> = {
   'packages/fix/pkgc/src/helper.ts':
     "function scriptFire(args: [string]): void { void gEvents.dispatch('emit', args) }\n",
   'packages/fix/pkgc/src/caller.ts': "scriptFire(['pkgc/script-event'])\n",
+  'packages/fix/pkgd/src/index.ts': [
+    "import { Context } from '../../../../vendor/cordis/src/context.ts'",
+    'declare const ctx: Context',
+    "export const answer = ctx.bail('pkgd/bail-event', 's1')",
+    '',
+  ].join('\n'),
 }
 
 const root = mkdtempSync(join(tmpdir(), 'gen-doc-graphs-'))
@@ -96,6 +102,10 @@ describe('event relation call-site indexing', () => {
     // pkgc alone: the script helper is the first demand, so a wrongly passing
     // proof would index helper.ts only and lose the caller.ts call site.
     expect(dispatchersOf(['pkgc'], 'pkgc/script-event')).toEqual(['pkgc'])
+  })
+
+  it('records a Context bail dispatch', () => {
+    expect(dispatchersOf(['pkgd'], 'pkgd/bail-event')).toEqual(['pkgd'])
   })
 })
 

@@ -99,6 +99,37 @@ syncAnswer(): MindeckSyncAnswer | undefined
 @Remote async sendFeedback(text: string, signal: AbortSignal): Promise<void>
 
 /**
+ * Say whether the next rating of an answer attaches its round's question and answer, as the feedback dialog's choice
+ * reads when the member submits; the dialog awaits this before the rating is recorded.
+ * @param sessionId - the conversation.
+ * @param messageId - the rated answer.
+ * @param attach - whether the member ticked the choice.
+ */
+@Remote prepareFeedback(sessionId: string, messageId: string, attach: boolean): Promise<void>
+
+/**
+ * Ask the member's approvers for more quota this month, as the quota notice offers once the personal limit is used
+ * up. The quota is read again afterwards, refused or not, since another device may have asked meanwhile.
+ * @param reason - what the member wrote; blank sends none. Mindeck Cloud refuses more than 200 characters.
+ * @param signal - caller cancellation.
+ * @returns state whose quota carries the new request.
+ * @throws RemoteError `mindeck-account/quota-request-refused` with Mindeck Cloud's code and explanation,
+ *   `mindeck-account/signed-out` without a usable session, or `mindeck-account/unreachable` when Mindeck Cloud does
+ *   not take it.
+ */
+@Remote async requestQuota(reason: string, signal: AbortSignal): Promise<MindeckAccountView>
+
+/**
+ * Withdraw the member's pending quota request. The quota is read again afterwards, refused or not.
+ * @param signal - caller cancellation.
+ * @returns state whose quota carries the withdrawn request.
+ * @throws RemoteError `mindeck-account/quota-request-refused` when the request was already decided
+ *   (`QUOTA_REQUEST_DECIDED`) or none exists (`NOT_FOUND`), `mindeck-account/signed-out` without a usable session, or
+ *   `mindeck-account/unreachable` when Mindeck Cloud does not take it.
+ */
+@Remote async withdrawQuotaRequest(signal: AbortSignal): Promise<MindeckAccountView>
+
+/**
  * Stream account state.
  * @param signal - stream lifetime; ending it never cancels a sign-in.
  * @returns the current state, then every change.
@@ -150,10 +181,13 @@ async session(): Promise<MindeckSession | undefined>
 
 /**
  * Report that Mindeck Cloud rejected a session token (HTTP 401). The stored session is removed only
- * when it still holds that token, so a newer sign-in survives a late rejection.
+ * when it still holds that token, so a newer sign-in survives a late rejection. The sign-in page then says who
+ * ended the session; without `reason`, the account asks Mindeck Cloud once more with the rejected token.
  * @param token - the token the rejected request carried.
+ * @param reason - who ended the session, from the 401's `error.reason` (see `signOutReasonOf`); null when the 401
+ *   gave none, undefined when the caller did not read its body.
  */
-async rejectToken(token: string): Promise<void>
+async rejectToken(token: string, reason?: MindeckSignOutReason | null): Promise<void>
 ```
 
 Source: [`packages/mindeck/mindeck-account/src/index.ts`](../../packages/mindeck/mindeck-account/src/index.ts)
@@ -335,6 +369,26 @@ The stored session started, ended, or its cached account details changed. Consum
  */
 'mindeck-account/changed'(): void
 ```
+
+Source: [`packages/mindeck/mindeck-account/src/index.ts`](../../packages/mindeck/mindeck-account/src/index.ts)
+
+<a id="mindeck-accountemployee--bail"></a>
+
+#### `mindeck-account/employee` — bail
+
+Name the Mindeck Cloud digital employee a conversation talks to, for the context of feedback on its answers.
+
+```ts cordis-catalog
+/**
+ * Name the Mindeck Cloud digital employee a conversation talks to, for the context of feedback on its answers.
+ * @param sessionId - the conversation's Session.
+ * @returns the employee's Mindeck Cloud id, or undefined when the listener does not know one.
+ * @mode bail
+ */
+'mindeck-account/employee'(sessionId: SessionId): string | undefined
+```
+
+Types: [SessionId](core.zh.md)
 
 Source: [`packages/mindeck/mindeck-account/src/index.ts`](../../packages/mindeck/mindeck-account/src/index.ts)
 

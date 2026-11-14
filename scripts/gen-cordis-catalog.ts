@@ -1121,6 +1121,7 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   MindeckAccountView: 'Mindeck account state is owned by packages/mindeck/mindeck-account/README.md',
   MindeckSession: 'Mindeck Cloud sign-in session is owned by packages/mindeck/mindeck-account/README.md',
   MindeckSignInAttemptId: 'Mindeck device sign-in attempt identity is owned by packages/mindeck/mindeck-account/README.md',
+  MindeckSignOutReason: 'Mindeck Cloud sign-out reasons are owned by packages/mindeck/mindeck-account/README.md',
   LibraryAvailability: 'Mindeck file-library availability is owned by packages/mindeck/mindeck-files/README.md',
   LibraryEntryView: 'Mindeck file-library entries are owned by packages/mindeck/mindeck-files/README.md',
   LibrarySpaceView: 'Mindeck file-library spaces are owned by packages/mindeck/mindeck-files/README.md',

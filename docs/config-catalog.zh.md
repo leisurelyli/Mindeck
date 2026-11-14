@@ -2568,7 +2568,7 @@ export interface Config {
 
 - `inject`: `credentials` · `typert`
 - `refs`: `Volatile` (`@deepseek-ai/cordis`)
-- `source`: [`packages/mindeck/mindeck-account/src/index.ts:68`](../packages/mindeck/mindeck-account/src/index.ts)
+- `source`: [`packages/mindeck/mindeck-account/src/index.ts:77`](../packages/mindeck/mindeck-account/src/index.ts)
 
 ```ts config-catalog
 /** Deployment options. */
@@ -2709,6 +2709,17 @@ export interface Config {
   defaultMaxTokens: number
   /** Results requested per web search, from 1 through 50; a smaller bound set by the caller wins. */
   searchCount: number
+  /**
+   * Milliseconds to wait before the one retry of a request the company's per-minute limit refused. The gateway's
+   * `Retry-After` does not reach the desktop, so the default covers the limit's whole one-minute window.
+   */
+  minuteLimitWaitMs: number
+  /**
+   * Request field that carries the output limit on the OpenAI Chat Completions route: `max_tokens`, which the
+   * providers behind Mindeck Cloud read, or `max_completion_tokens`, which some of them ignore and fall back to a short
+   * default.
+   */
+  openaiMaxTokensField: 'max_tokens' | 'max_completion_tokens'
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-mindeck-models -->
