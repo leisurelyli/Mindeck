@@ -1,0 +1,8 @@
+version: 1
+scenario: mindeck-employee-folders
+profile: headless
+composition: mindeck-employee
+recording: live
+header:
+  class: mindeck-employee
+  pin: true

@@ -1,0 +1,23 @@
+# Mindeck digital-employee composition: a loopback Mindeck Cloud with its file library and the account the fixture
+# keeps signed in, the digital-employee and file-library plugins, and the preset roster they register into. The
+# employee's default model names a DeepSeek route of this recording.
+- insert:
+    - id: agent-preset-registry
+      name: '@deepseek-ai/dsh-agent-preset-registry'
+      config:
+        default: standard
+    - id: preset-standard
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: standard
+        name: Standard
+        description: Headless tools.
+        plugins: []
+    - id: mindeck-cloud-fixture
+      name: './mindeck-cloud-fixture.mjs'
+    - id: mindeck-files
+      name: '@deepseek-ai/dsh-mindeck-files'
+    - id: mindeck-employees
+      name: '@deepseek-ai/dsh-mindeck-employees'
+      config:
+        modelProviders: [deepseek-official]

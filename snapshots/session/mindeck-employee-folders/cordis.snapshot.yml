@@ -1,0 +1,39 @@
+# Keyless replay counterpart: the loopback Mindeck Cloud and file library stay real; only the model adapter is
+# replaced by replay.
+- id: llm-deepseek
+  name: '@deepseek-ai/dsh-llm-deepseek-api-key'
+  disabled: true
+
+- insert:
+    - id: llm-replay
+      name: '@deepseek-ai/dsh-llm-replay'
+      config:
+        providers:
+          - id: deepseek-official
+            name: DeepSeek
+            models:
+              - id: deepseek-v4-flash
+                contextWindow: 1000000
+                defaultMaxTokens: 256000
+                reasoningEfforts: [off, low, high, max]
+                defaultReasoningEffort: max
+              - id: deepseek-v4-pro
+    - id: agent-preset-registry
+      name: '@deepseek-ai/dsh-agent-preset-registry'
+      config:
+        default: standard
+    - id: preset-standard
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: standard
+        name: Standard
+        description: Headless tools.
+        plugins: []
+    - id: mindeck-cloud-fixture
+      name: './mindeck-cloud-fixture.mjs'
+    - id: mindeck-files
+      name: '@deepseek-ai/dsh-mindeck-files'
+    - id: mindeck-employees
+      name: '@deepseek-ai/dsh-mindeck-employees'
+      config:
+        modelProviders: [deepseek-official]
